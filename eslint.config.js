@@ -33,7 +33,8 @@ export default [
             'quotes': ['error', 'single', { 'avoidEscape': true }],
             'comma-dangle': ['error', 'never'],
             'no-trailing-spaces': 'error',
-            'eol-last': ['error', 'always']
+            'eol-last': ['error', 'always'],
+            '@typescript-eslint/no-explicit-any': 'warn'
         }
     },
     {
