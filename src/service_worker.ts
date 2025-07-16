@@ -13,7 +13,7 @@ if (chrome.sidePanel) {
 let currentTask: { prompt: string; history: string[] } | null = null;
 let activeTabId: number | null = null;
 
-=chrome.runtime.onMessage.addListener((message) => {
+chrome.runtime.onMessage.addListener((message) => {
   if (message.type === 'START_TASK') {
     if (currentTask) {
       updateLog('[System]: A task is already running.');
