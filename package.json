@@ -1,0 +1,28 @@
+{
+  "name": "web-walker-extension",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev:chrome": "vite -c vite.config.chrome.ts",
+    "build:chrome": "vite build -c vite.config.chrome.ts",
+    "dev:firefox": "vite -c vite.config.firefox.ts",
+    "build:firefox": "vite build -c vite.config.firefox.ts"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^6.0.0",
+    "@tsconfig/svelte": "^5.0.4",
+    "@types/chrome": "^0.1.0",
+    "@types/firefox-webext-browser": "^120.0.4",
+    "@types/node": "^24.0.13",
+    "cross-env": "^7.0.3",
+    "svelte": "^5.35.5",
+    "svelte-check": "^4.2.2",
+    "typescript": "~5.8.3",
+    "vite": "^7.0.4",
+    "vite-plugin-web-extension": "^4.4.4"
+  },
+  "dependencies": {
+    "@crxjs/vite-plugin": "^2.0.2"
+  }
+}
