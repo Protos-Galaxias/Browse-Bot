@@ -18,5 +18,11 @@ export default defineManifest({
   },
   omnibox: {
     keyword: "@ai",
-  }
+  },
+  web_accessible_resources: [
+    {
+      resources: ["content_script_parser.js"],
+      matches: ["<all_urls>"],
+    },
+  ],
 });

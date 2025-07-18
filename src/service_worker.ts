@@ -1,6 +1,10 @@
 // @ts-ignore
 import contentScript from './content?script';
 
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import { generateText } from 'ai';
+import { webWalker } from './walker'; // Import the new webWalker function
+
 if (chrome.sidePanel) {
     chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 } else {
@@ -13,7 +17,7 @@ if (chrome.sidePanel) {
 let currentTask: { prompt: string; history: string[] } | null = null;
 let activeTabId: number | null = null;
 
-chrome.runtime.onMessage.addListener((message) => {
+chrome.runtime.onMessage.addListener(async (message) => {
   if (message.type === 'START_TASK') {
     if (currentTask) {
       updateLog('[System]: A task is already running.');
@@ -21,7 +25,16 @@ chrome.runtime.onMessage.addListener((message) => {
     }
     console.log("Service Worker: Received START_TASK", message.prompt);
     currentTask = { prompt: message.prompt, history: [] };
-    runAgentLoop();
+    updateLog(`[System]: Starting Web Walker for: "${message.prompt}"`);
+    // runAgentLoop();
+    try {
+      const result = await webWalker(message.prompt);
+      updateLog(`[System]: Web Walker Finished with result: ${result}`);
+    } catch (error) {
+      updateLog(`[System]: Web Walker encountered an error: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      finishTask();
+    }
   }
   return true;
 });
@@ -81,12 +94,12 @@ async function getNextActionFromLLM(pageContext: string): Promise<any | null> {
   if (!currentTask) return null;
 
   updateLog('[Agent]: Asking LLM for the next step...');
-  const { apiKey, model } = await chrome.storage.local.get(['apiKey', 'model']);
+  // const { apiKey, model } = await chrome.storage.local.get(['apiKey', 'model']);
 
-  if (!apiKey) {
-    updateLog('[Error]: OpenRouter API Key is not set. Please set it in the settings.');
-    return { action: 'FINISH', result: 'Task failed: API key not set.' };
-  }
+  // if (!apiKey) {
+  //   updateLog('[Error]: OpenRouter API Key is not set. Please set it in the settings.');
+  //   return { action: 'FINISH', result: 'Task failed: API key not set.' };
+  // }
 
   const systemPrompt = `You are an autonomous web browsing agent. Your goal is to complete the user's request.
 You can see a simplified version of the web page, containing only text and interactive elements.
@@ -119,36 +132,21 @@ User's Goal: "${currentTask.prompt}"
 
 Based on the context and history, what is your next single action? Respond with a JSON object.`;
 
-console.log("systemPrompt666", systemPrompt)
-console.log("userPromptt666", userPrompt)
+  const openrouter = createOpenRouter({
+    apiKey: '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',
+  });
 
   try {
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: model || 'google/gemini-2.0-flash-exp:free',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        response_format: { type: 'json_object' }
-      }),
+    const { text } = await generateText({
+      model: openrouter.chat('openai/gpt-4.1-mini'),
+      prompt: userPrompt,
+      system: systemPrompt,
     });
 
-    if (!response.ok) {
-      const errorBody = await response.text();
-      throw new Error(`LLM API request failed with status ${response.status}: ${errorBody}`);
-    }
+    console.log("text666", text)
 
-    const result = await response.json();
-    const actionJson = result.choices[0].message.content;
-    const action = JSON.parse(actionJson);
+    const action = JSON.parse(text);
 
-    // Логируем действие и добавляем в историю
     const actionString = `[Action]: ${action.action} - ${action.comment}`;
     updateLog(actionString);
     currentTask.history.push(actionString);
@@ -159,6 +157,45 @@ console.log("userPromptt666", userPrompt)
     updateLog(`[Error]: LLM request failed: ${error instanceof Error ? error.message : String(error)}`);
     return null;
   }
+
+
+  // try {
+  //   const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+  //     method: 'POST',
+  //     headers: {
+  //       'Authorization': `Bearer ${apiKey}`,
+  //       'Content-Type': 'application/json',
+  //     },
+  //     body: JSON.stringify({
+  //       model: model || 'google/gemini-2.0-flash-exp:free',
+  //       messages: [
+  //         { role: 'system', content: systemPrompt },
+  //         { role: 'user', content: userPrompt }
+  //       ],
+  //       response_format: { type: 'json_object' }
+  //     }),
+  //   });
+
+  //   if (!response.ok) {
+  //     const errorBody = await response.text();
+  //     throw new Error(`LLM API request failed with status ${response.status}: ${errorBody}`);
+  //   }
+
+  //   const result = await response.json();
+  //   const actionJson = result.choices[0].message.content;
+  //   const action = JSON.parse(actionJson);
+
+  //   // Логируем действие и добавляем в историю
+  //   const actionString = `[Action]: ${action.action} - ${action.comment}`;
+  //   updateLog(actionString);
+  //   currentTask.history.push(actionString);
+
+  //   return action;
+  // } catch (error) {
+  //   console.error("LLM request failed:", error);
+  //   updateLog(`[Error]: LLM request failed: ${error instanceof Error ? error.message : String(error)}`);
+  //   return null;
+  // }
 }
 
 async function executeAction(action: any) {

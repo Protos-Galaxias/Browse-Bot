@@ -16,6 +16,12 @@ const commonManifest = {
     "notifications",
     "tabs"
   ],
+  web_accessible_resources: [
+    {
+      resources: ["content_script_parser.js"],
+      matches: ["<all_urls>"],
+    },
+  ],
   omnibox: {
     keyword: "@ai",
   },
@@ -26,21 +32,23 @@ const commonManifest = {
 
 const getManifest = () => {
   if (browser === 'firefox') {
+    // Firefox specific manifest properties are handled in manifest-firefox.ts
     return defineManifest({
       manifest_version: 3,
       ...commonManifest,
       background: {
         scripts: ["src/service_worker.ts"],
       },
-      browser_specific_settings: {
-        gecko: {
-          id: "web-walker@example.com",
-        },
-      },
-      sidebar_action: {
-        default_panel: "index.html",
-        default_title: "Web Walker",
-      },
+      // browser_specific_settings: {
+      //   gecko: {
+      //     id: "web-walker@example.com",
+      //   },
+      // },
+      // sidebar_action: {
+      //   default_panel: "index.html",
+      //   default_title: "Web Walker",
+      // },
+      // browser_specific_settings and sidebar_action are handled in manifest-firefox.ts
     });
   }
 

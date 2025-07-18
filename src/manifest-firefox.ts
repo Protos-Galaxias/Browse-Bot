@@ -11,7 +11,7 @@ export default defineManifest({
   },
   web_accessible_resources: [
     {
-      "resources": ["src/content.ts"], 
+      "resources": ["src/content.ts", "src/content_script_parser.ts"],
       "matches": ["<all_urls>"]
     }
   ],
@@ -24,15 +24,17 @@ export default defineManifest({
       js: ["src/content.ts"],
     }
   ],
-  sidebar_action: {
-    default_panel: "index.html",
-    default_title: "Web Walker",
-  },
-  browser_specific_settings: {
-    gecko: {
-      id: `web-walker@${new Date().getTime()}.org`,
+  ...({
+    sidebar_action: {
+      default_panel: "index.html",
+      default_title: "Web Walker",
     },
-  },
+    browser_specific_settings: {
+      gecko: {
+        id: `web-walker@${new Date().getTime()}.org`,
+      },
+    },
+  } as any),
   action: {
     default_title: "Открыть Web Walker",
   },
