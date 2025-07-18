@@ -2,12 +2,13 @@
     import { onMount } from 'svelte';
   
     let apiKey = '';
-    let model = 'openai/gpt-4o-mini';
+    let model = 'openai/gpt-4.1-mini';
   
     onMount(async () => {
       const settings = await chrome.storage.local.get(['apiKey', 'model']);
       apiKey = settings.apiKey || '';
-      model = settings.model || 'openai/gpt-4o-mini';
+      model = settings.model || 'openai/gpt-4.1-mini';
+      chrome.runtime.sendMessage({ type: "UPDATE_CONFIG" });
     });
   
     function saveSettings() {
