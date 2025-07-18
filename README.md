@@ -45,3 +45,10 @@ If you have state that's important to retain within a component, consider creati
 import { writable } from 'svelte/store'
 export default writable(0)
 ```
+
+# Использование в Firefox
+
+- Открой about:debugging в адресной строке
+- Нажми "This Firefox" (Этот Firefox)
+- Нажми "Load Temporary Add-on" (Загрузить временное дополнение)
+- Выбери файл manifest.json из папки твоего расширения
