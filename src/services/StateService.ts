@@ -1,0 +1,96 @@
+import { ConfigService } from './ConfigService';
+
+export interface ActionHistory {
+  type: string;
+  timestamp: number;
+  data?: any;
+  error?: string;
+}
+
+export interface WalkerState {
+  currentContent: string | null;
+  activeTabId: number | null;
+  history: ActionHistory[];
+  currentPlan: any[] | null;
+  lastError: string | null;
+}
+
+export class StateService {
+  private static instance: StateService;
+  private state: WalkerState = {
+    currentContent: null,
+    activeTabId: null,
+    history: [],
+    currentPlan: null,
+    lastError: null
+  };
+
+  private constructor() {}
+
+  static getInstance(): StateService {
+    if (!StateService.instance) {
+      StateService.instance = new StateService();
+    }
+    return StateService.instance;
+  }
+
+  getState(): WalkerState {
+    return { ...this.state };
+  }
+
+  async initialize(): Promise<void> {
+    try {
+      const config = await ConfigService.getInstance().getAll();
+      // Load any persisted state if needed
+    } catch (error) {
+      console.error('Failed to initialize StateService:', error);
+      throw error;
+    }
+  }
+
+  setActiveTab(tabId: number): void {
+    this.state.activeTabId = tabId;
+  }
+
+  setCurrentContent(content: string | null): void {
+    this.state.currentContent = content;
+  }
+
+  setCurrentPlan(plan: any[] | null): void {
+    this.state.currentPlan = plan;
+  }
+
+  addToHistory(action: Omit<ActionHistory, 'timestamp'>): void {
+    this.state.history.push({
+      ...action,
+      timestamp: Date.now()
+    });
+    // Keep history size manageable
+    if (this.state.history.length > 100) {
+      this.state.history.shift();
+    }
+  }
+
+  setError(error: string | Error): void {
+    const errorMessage = error instanceof Error ? error.message : error;
+    this.state.lastError = errorMessage;
+    this.addToHistory({
+      type: 'ERROR',
+      data: { error: errorMessage }
+    });
+  }
+
+  clearError(): void {
+    this.state.lastError = null;
+  }
+
+  reset(): void {
+    this.state = {
+      currentContent: null,
+      activeTabId: this.state.activeTabId, // Keep the active tab
+      history: [...this.state.history],
+      currentPlan: null,
+      lastError: null
+    };
+  }
+}
