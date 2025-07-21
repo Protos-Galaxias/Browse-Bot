@@ -1,57 +1,57 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { StateService } from '../services/StateService';
+    import { onMount } from 'svelte';
+    import { StateService } from '../services/StateService';
 
-  export let showDetails = false;
+    export let showDetails = false;
 
-  let error: Error | null = null;
-  let errorInfo: any = null;
-  let stateService: StateService;
+    let error: Error | null = null;
+    let errorInfo: any = null;
+    let stateService: StateService;
 
-  onMount(() => {
-    stateService = StateService.getInstance();
-  });
+    onMount(() => {
+        stateService = StateService.getInstance();
+    });
 
-  function handleReset() {
-    error = null;
-    errorInfo = null;
-    stateService.clearError();
-  }
+    function handleReset() {
+        error = null;
+        errorInfo = null;
+        stateService.clearError();
+    }
 
-  function toggleDetails() {
-    showDetails = !showDetails;
-  }
+    function toggleDetails() {
+        showDetails = !showDetails;
+    }
 </script>
 
 {#if $error}
-  <div class="error-boundary">
-    <div class="error-message">
-      <h2>Something went wrong</h2>
-      <p>{error.message}</p>
+    <div class="error-boundary">
+        <div class="error-message">
+            <h2>Something went wrong</h2>
+            <p>{error.message}</p>
 
-      <button on:click={toggleDetails} class="details-button">
-        {showDetails ? 'Hide Details' : 'Show Details'}
-      </button>
+            <button on:click={toggleDetails} class="details-button">
+                {showDetails ? 'Hide Details' : 'Show Details'}
+            </button>
 
-      {#if showDetails}
-        <div class="error-details">
-          <pre>{error.stack || 'No stack trace available'}</pre>
-          {#if errorInfo?.componentStack}
-            <h4>Component Stack:</h4>
-            <pre>{errorInfo.componentStack}</pre>
-          {/if}
+            {#if showDetails}
+                <div class="error-details">
+                    <pre>{error.stack || 'No stack trace available'}</pre>
+                    {#if errorInfo?.componentStack}
+                        <h4>Component Stack:</h4>
+                        <pre>{errorInfo.componentStack}</pre>
+                    {/if}
+                </div>
+            {/if}
+
+            <div class="actions">
+                <button on:click={handleReset} class="reset-button">
+                    Try Again
+                </button>
+            </div>
         </div>
-      {/if}
-
-      <div class="actions">
-        <button on:click={handleReset} class="reset-button">
-          Try Again
-        </button>
-      </div>
     </div>
-  </div>
 
-  <style>
+    <style>
     .error-boundary {
       padding: 1rem;
       border: 1px solid #ff6b6b;

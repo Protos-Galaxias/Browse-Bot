@@ -17,24 +17,24 @@ let currentTask: { prompt: string; history: string[] } | null = null;
 let activeTabId: number | null = null;
 
 chrome.runtime.onMessage.addListener(async (message) => {
-  if (message.type === 'START_TASK') {
-    if (currentTask) {
-      updateLog('[System]: A task is already running.');
-      return;
+    if (message.type === 'START_TASK') {
+        if (currentTask) {
+            updateLog('[System]: A task is already running.');
+            return;
+        }
+        console.log('Service Worker: Received START_TASK', message.prompt);
+        currentTask = { prompt: message.prompt, history: [] };
+        updateLog(`[System]: Starting Web Walker for: "${message.prompt}"`);
+        try {
+            const result = await webWalker(message.prompt);
+            updateLog(`[System]: Web Walker Finished with result: ${result}`);
+        } catch (error) {
+            updateLog(`[System]: Web Walker encountered an error: ${error instanceof Error ? error.message : String(error)}`);
+        } finally {
+            finishTask();
+        }
     }
-    console.log("Service Worker: Received START_TASK", message.prompt);
-    currentTask = { prompt: message.prompt, history: [] };
-    updateLog(`[System]: Starting Web Walker for: "${message.prompt}"`);
-    try {
-      const result = await webWalker(message.prompt);
-      updateLog(`[System]: Web Walker Finished with result: ${result}`);
-    } catch (error) {
-      updateLog(`[System]: Web Walker encountered an error: ${error instanceof Error ? error.message : String(error)}`);
-    } finally {
-      finishTask();
-    }
-  }
-  return true;
+    return true;
 });
 
 // async function runAgentLoop() {
@@ -184,9 +184,9 @@ chrome.runtime.onMessage.addListener(async (message) => {
 // }
 
 function finishTask() {
-  chrome.runtime.sendMessage({ type: 'TASK_COMPLETE' }).catch(e => console.error("Failed to send task complete to UI:", e));
-  currentTask = null;
-  activeTabId = null;
+    chrome.runtime.sendMessage({ type: 'TASK_COMPLETE' }).catch(e => console.error('Failed to send task complete to UI:', e));
+    currentTask = null;
+    activeTabId = null;
 }
 
 // chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {

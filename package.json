@@ -8,7 +8,8 @@
     "build:chrome": "vite build -c vite.config.chrome.ts",
     "dev:firefox": "vite -c vite.config.firefox.ts",
     "build:firefox": "vite build -c vite.config.firefox.ts",
-    "lint": "eslint . --ext .js,.ts,.svelte"
+    "lint": "eslint . --ext .js,.ts,.svelte",
+    "lint:fix": "eslint . --ext .js,.ts,.svelte --fix"
   },
   "devDependencies": {
     "@ai-sdk/openai": "^1.3.23",
