@@ -8,7 +8,7 @@ export interface ActionHistory {
 }
 
 export interface WalkerState {
-  currentContent: string | null;
+  currentContent: any | null;
   activeTabId: number | null;
   history: ActionHistory[];
   currentPlan: any[] | null;
@@ -52,7 +52,7 @@ export class StateService {
         this.state.activeTabId = tabId;
     }
 
-    setCurrentContent(content: string | null): void {
+    setCurrentContent(content: any | null): void {
         this.state.currentContent = content;
     }
 

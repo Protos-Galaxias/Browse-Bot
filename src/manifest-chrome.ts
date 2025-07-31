@@ -5,7 +5,7 @@ export default defineManifest({
     manifest_version: 3,
     name: 'Web Walker (Chrome)',
     version: packageJson.version,
-    permissions: ['storage', 'activeTab', 'scripting', 'notifications', 'tabs', 'sidePanel'],
+    permissions: ['storage', 'activeTab', 'scripting', 'notifications', 'webNavigation', 'tabs', 'sidePanel'],
     background: {
         service_worker: 'src/service_worker.ts',
         type: 'module'

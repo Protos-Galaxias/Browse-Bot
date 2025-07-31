@@ -2,12 +2,12 @@
     import { onMount } from 'svelte';
 
     let apiKey = '';
-    let model = 'openai/gpt-4.1-mini';
+    let model = 'google/gemini-2.5-pro';
 
     onMount(async () => {
         const settings = await chrome.storage.local.get(['apiKey', 'model']);
         apiKey = settings.apiKey || '';
-        model = settings.model || 'openai/gpt-4.1-mini';
+        model = settings.model || 'google/gemini-2.5-pro';
         chrome.runtime.sendMessage({ type: 'UPDATE_CONFIG' });
     });
 

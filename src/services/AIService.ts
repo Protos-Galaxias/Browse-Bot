@@ -55,7 +55,7 @@ export class OpenRouterAIService implements AIService {
     }
 
     async generateTextByPrompt(prompt: string, options: AIGenerateOptions = {}): Promise<string> {
-        const model = options.model || (await this.configService.get<string>('model')) || 'openai/gpt-3.5-turbo';
+        const model = options.model || (await this.configService.get<string>('model')) || 'google/gemini-2.5-pro';
 
         return generateText({
             model: this.getClient().chat(model),
@@ -65,7 +65,7 @@ export class OpenRouterAIService implements AIService {
 
     async generate<T>(schema: any, systemPrompt: string, prompt: string, options: AIGenerateOptions = {}): Promise<T> {
         try {
-            const model = options.model || (await this.configService.get<string>('model')) || 'openai/gpt-3.5-turbo';
+            const model = options.model || (await this.configService.get<string>('model')) || 'google/gemini-2.5-pro';
             const client = this.getClient();
             const result = await generateObject({
                 model: client.chat(model),

@@ -5,7 +5,7 @@ export default defineManifest({
     manifest_version: 3,
     name: 'Web Walker (Firefox)',
     version: packageJson.version,
-    permissions: ['storage', 'activeTab', 'scripting', 'notifications', 'tabs', '<all_urls>'],
+    permissions: ['storage', 'activeTab', 'scripting', 'notifications', 'webNavigation', 'tabs', '<all_urls>'],
     background: {
         scripts: ['src/service_worker.ts']
     },

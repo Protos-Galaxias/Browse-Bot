@@ -1,210 +1,118 @@
-// @ts-ignore
-import contentScript from './content?script';
-
-import { webWalker } from './walker';
+// @ts-expect-error: This is a Vite-specific import syntax, and the variable is used in executeScript which is currently commented out.
+// import contentScript from './content?script';
 import { updateLog } from './logger';
+import { plannerTool } from './tools';
+import { findElementIds } from './tools/findElement';
+import { OpenRouterAIService } from './services/AIService';
 
 if (chrome.sidePanel) {
     chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
-} else {
-    chrome.action.onClicked.addListener(() => {
-        // @ts-ignore
-        chrome.sidebarAction.toggle();
-    });
 }
 
 let currentTask: { prompt: string; history: string[] } | null = null;
-let activeTabId: number | null = null;
+const aiService = OpenRouterAIService.getInstance();
+
+async function parseCurrentPage(tabId: number): Promise<any[]> {
+    updateLog('[Action]: Parsing current page for interactive elements...');
+    const response = await chrome.tabs.sendMessage(tabId, { type: 'PARSE_CURRENT_PAGE' });
+
+    if (!response || !response.data) {
+        updateLog('[Warning]: Did not receive valid interactive elements from the page.');
+        return [];
+    }
+    updateLog(`[Action]: Found ${response.data.length} interactive elements.`);
+    return response.data;
+}
+
+async function findAndClickElements(tabId: number, elements: any[], description: string): Promise<void> {
+    updateLog(`[Action]: Finding elements to click: "${description}"`);
+    const elementIds = await findElementIds(elements, description, aiService);
+
+    if (!elementIds || elementIds.length === 0) {
+        updateLog(`[Warning]: No elements found for "${description}".`);
+        return;
+    }
+
+    updateLog(`[Action]: Found ${elementIds.length} elements. Clicking them...`);
+    for (const aid of elementIds) {
+        await chrome.tabs.sendMessage(tabId, {
+            type: 'CLICK_ON_ELEMENT',
+            aid: aid
+        });
+    }
+}
+
+function returnResult(message: string): void {
+    updateLog(`[Result]: ${message}`);
+    finishTask();
+}
 
 chrome.runtime.onMessage.addListener(async (message) => {
     if (message.type === 'START_TASK') {
         if (currentTask) {
             updateLog('[System]: A task is already running.');
-            return;
+            return true; // Stop execution
         }
-        console.log('Service Worker: Received START_TASK', message.prompt);
+
         currentTask = { prompt: message.prompt, history: [] };
-        updateLog(`[System]: Starting Web Walker for: "${message.prompt}"`);
+        updateLog(`[System]: Starting task: "${message.prompt}"`);
+
         try {
-            const result = await webWalker(message.prompt);
-            updateLog(`[System]: Web Walker Finished with result: ${result}`);
+            await aiService.initialize();
+
+            const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+            if (!tab?.id || !tab.url || tab.url.startsWith('chrome://')) {
+                throw new Error('Cannot run on the current page. Please use a standard http/https page.');
+            }
+
+            const plan = await plannerTool(message.prompt, aiService);
+            updateLog(`[System]: Generated plan with ${plan.length} steps.`);
+
+            let interactiveElements: any[] = [];
+            console.log(plan);
+
+            for (const action of plan) {
+                updateLog(`[Step]: Executing: ${action.description}`);
+                switch (action.type) {
+                    case 'parse_current_page':
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        interactiveElements = await parseCurrentPage(tab.id);
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        break;
+                    case 'find_and_click':
+                        if (!action.element_description) {
+                            throw new Error("Action 'find_and_click' is missing the 'element_description' parameter.");
+                        }
+                        await findAndClickElements(tab.id, interactiveElements, action.element_description);
+                        // A small delay to allow the page to react to the click
+                        await new Promise(resolve => setTimeout(resolve, 3000));
+                        break;
+                    case 'return_result':
+                        if (!action.data) {
+                            throw new Error("Action 'return_result' is missing the 'data' parameter.");
+                        }
+                        returnResult(action.data);
+                        break;
+                    default:
+                        // @ts-expect-error An unknown action type would be a planning failure.
+                        throw new Error(`Unknown action type in plan: ${action.type}`);
+                }
+            }
+            if (!plan.some(p => p.type === 'return_result')) {
+                finishTask();
+            }
+
         } catch (error) {
-            updateLog(`[System]: Web Walker encountered an error: ${error instanceof Error ? error.message : String(error)}`);
-        } finally {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            updateLog(`[System Error]: ${errorMessage}`);
             finishTask();
         }
     }
     return true;
 });
 
-// async function runAgentLoop() {
-//   if (!currentTask) return;
-
-//   updateLog('[Agent]: Thinking...');
-
-//   try {
-//     const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-//     if (!tab?.id || !tab.url || tab.url.startsWith("chrome://")) {
-//       updateLog('[Error]: Cannot run on the current page. Please use a standard http/https page.');
-//       finishTask();
-//       return;
-//     }
-//     activeTabId = tab.id;
-
-//     try {
-//         await chrome.scripting.executeScript({
-//           target: {
-//             tabId: activeTabId,
-//             allFrames: true,
-//           },
-//           files: [contentxScript],
-//         });
-//         await new Promise(resolve => setTimeout(resolve, 500));
-//       } catch (e) {
-//         console.error("Failed to inject content script:", e);
-//         if (e instanceof Error && e.message.includes('Cannot access a chrome:// URL')) {
-//            updateLog('[Error]: Cannot run on Chrome-specific pages.');
-//            finishTask();
-//            return;
-//         }
-//       }
-
-//     updateLog('[Agent]: Reading page content...');
-//     const contextResponse = await chrome.tabs.sendMessage(activeTabId, { type: 'GET_CONTEXT' });
-//     const pageContext = contextResponse.dom;
-
-//     const action = await getNextActionFromLLM(pageContext);
-//     if (!action) {
-//       updateLog('[Error]: Failed to get a valid action from LLM.');
-//       finishTask();
-//       return;
-//     }
-
-//     await executeAction(action);
-//   } catch (error) {
-//     console.error("Agent loop error:", error);
-//     updateLog(`[Error]: An unexpected error occurred: ${error instanceof Error ? error.message : String(error)}`);
-//     finishTask();
-//   }
-// }
-
-// async function getNextActionFromLLM(pageContext: string): Promise<any | null> {
-//   if (!currentTask) return null;
-
-//   updateLog('[Agent]: Asking LLM for the next step...');
-//   const { apiKey, model } = await chrome.storage.local.get(['apiKey', 'model']);
-
-//   if (!apiKey) {
-//     updateLog('[Error]: OpenRouter API Key is not set. Please set it in the settings.');
-//     return { action: 'FINISH', result: 'Task failed: API key not set.' };
-//   }
-
-//   const systemPrompt = `You are an autonomous web browsing agent. Your goal is to complete the user's request.
-// You can see a simplified version of the web page, containing only text and interactive elements.
-// Interactive elements are represented by <interactive id="some-id" type="button|input|textarea|etc">text</interactive>.
-// You have the following tools at your disposal:
-
-// 1. CLICK(id: string, comment: string) - Clicks an interactive element with the given id.
-// 2. TYPE(id: string, text: string, comment: string) - Types text into an input field or textarea.
-// 3. NAVIGATE(url: string, comment: string) - Navigates to a new URL.
-// 4. FINISH(result: string) - Finishes the task and provides the final result to the user.
-
-// RULES:
-// - Respond ONLY with a single JSON object representing your next action.
-// - Think step-by-step.
-// - The 'comment' field should explain your reasoning for the action.
-// - Do not hallucinate element IDs. Only use IDs present in the page context.
-// - If you can't find a way to proceed, use FINISH to report the issue.
-// `;
-
-//   const userPrompt = `
-// Task History:
-// ${currentTask.history.join('\n')}
-
-// Current Page Context:
-// ---
-// ${pageContext.substring(0, 8000)}
-// ---
-
-// User's Goal: "${currentTask.prompt}"
-
-// Based on the context and history, what is your next single action? Respond with a JSON object.`;
-
-//   const openrouter = createOpenRouter({ apiKey });
-
-//   try {
-//     const { text } = await generateText({
-//       model: openrouter.chat(model),
-//       prompt: userPrompt,
-//       system: systemPrompt,
-//     });
-
-//     const action = JSON.parse(text);
-
-//     const actionString = `[Action]: ${action.action} - ${action.comment}`;
-//     updateLog(actionString);
-//     currentTask.history.push(actionString);
-
-//     return action;
-//   } catch (error) {
-//     console.error("LLM request failed:", error);
-//     updateLog(`[Error]: LLM request failed: ${error instanceof Error ? error.message : String(error)}`);
-//     return null;
-//   }
-// }
-
-// async function executeAction(action: any) {
-//   if (!activeTabId) return;
-
-//   switch (action.action) {
-//     case 'CLICK':
-//     case 'TYPE':
-//       await chrome.tabs.sendMessage(activeTabId, {
-//         type: action.action === 'CLICK' ? 'EXECUTE_CLICK' : 'EXECUTE_TYPE',
-//         elementId: action.id,
-//         text: action.text,
-//       });
-//       setTimeout(runAgentLoop, 2000);
-//       break;
-
-//     case 'NAVIGATE':
-//       await chrome.tabs.update(activeTabId, { url: action.url });
-//       break;
-
-//     case 'FINISH':
-//       updateLog(`[Result]: ${action.result}`);
-//       finishTask();
-//       break;
-
-//     default:
-//       updateLog(`[Error]: Unknown action type "${action.action}"`);
-//       finishTask();
-//       break;
-//   }
-// }
-
 function finishTask() {
+    updateLog('[System]: Task finished.');
     chrome.runtime.sendMessage({ type: 'TASK_COMPLETE' }).catch(e => console.error('Failed to send task complete to UI:', e));
     currentTask = null;
-    activeTabId = null;
 }
-
-// chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-//   if (currentTask && tabId === activeTabId && changeInfo.status === 'complete') {
-//     console.log(`Tab ${tabId} updated, continuing agent loop.`);
-//     updateLog('[Agent]: Page loaded, continuing task...');
-//     setTimeout(runAgentLoop, 1000);
-//   }
-// });
-
-// if (chrome.sidePanel) {
-//     chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
-// } else {
-//     // @ts-ignore
-//     if (chrome.sidebarAction) {
-//         chrome.action.onClicked.addListener(() => {
-//             // @ts-ignore
-//             chrome.sidebarAction.toggle();
-//         });
-//     }
-// }
