@@ -13,11 +13,10 @@ let currentTask: { prompt: string; history: string[] } | null = null;
 const aiService = OpenRouterAIService.getInstance();
 
 async function parseCurrentPage(tabId: number): Promise<any[]> {
-    updateLog('[Action]: Parsing current page for interactive elements...');
+    updateLog('[Action]: Parsing current page...');
     const response = await chrome.tabs.sendMessage(tabId, { type: 'PARSE_CURRENT_PAGE' });
-
     if (!response || !response.data) {
-        updateLog('[Warning]: Did not receive valid interactive elements from the page.');
+        updateLog('[Warning]: Did not receive valid interactive elements.');
         return [];
     }
     updateLog(`[Action]: Found ${response.data.length} interactive elements.`);
@@ -27,19 +26,28 @@ async function parseCurrentPage(tabId: number): Promise<any[]> {
 async function findAndClickElements(tabId: number, elements: any[], description: string): Promise<void> {
     updateLog(`[Action]: Finding elements to click: "${description}"`);
     const elementIds = await findElementIds(elements, description, aiService);
-
     if (!elementIds || elementIds.length === 0) {
         updateLog(`[Warning]: No elements found for "${description}".`);
         return;
     }
-
-    updateLog(`[Action]: Found ${elementIds.length} elements. Clicking them...`);
+    updateLog(`[Action]: Found ${elementIds.length} elements. Clicking...`);
     for (const aid of elementIds) {
-        await chrome.tabs.sendMessage(tabId, {
-            type: 'CLICK_ON_ELEMENT',
-            aid: aid
-        });
+        await chrome.tabs.sendMessage(tabId, { type: 'CLICK_ON_ELEMENT', aid: aid });
     }
+}
+
+async function findAndInsertText(tabId: number, elements: any[], description: string, text: string): Promise<void> {
+    updateLog(`[Action]: Finding input for "${description}" to insert text.`);
+    const elementIds = await findElementIds(elements, description, aiService);
+    if (!elementIds || elementIds.length === 0) {
+        updateLog(`[Warning]: No input elements found for "${description}".`);
+        return;
+    }
+    // Assume the first found element is the correct one.
+    const targetId = elementIds[0];
+
+    updateLog(`[Action]: Found input ${targetId}. Inserting text: "${text}"`);
+    await chrome.tabs.sendMessage(tabId, { type: 'INSERT_TEXT', aid: targetId, text: text });
 }
 
 function returnResult(message: string): void {
@@ -51,7 +59,7 @@ chrome.runtime.onMessage.addListener(async (message) => {
     if (message.type === 'START_TASK') {
         if (currentTask) {
             updateLog('[System]: A task is already running.');
-            return true; // Stop execution
+            return true;
         }
 
         currentTask = { prompt: message.prompt, history: [] };
@@ -62,34 +70,35 @@ chrome.runtime.onMessage.addListener(async (message) => {
 
             const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
             if (!tab?.id || !tab.url || tab.url.startsWith('chrome://')) {
-                throw new Error('Cannot run on the current page. Please use a standard http/https page.');
+                throw new Error('Cannot run on the current page.');
             }
 
             const plan = await plannerTool(message.prompt, aiService);
             updateLog(`[System]: Generated plan with ${plan.length} steps.`);
 
             let interactiveElements: any[] = [];
-            console.log(plan);
 
             for (const action of plan) {
                 updateLog(`[Step]: Executing: ${action.description}`);
                 switch (action.type) {
                     case 'parse_current_page':
-                        await new Promise(resolve => setTimeout(resolve, 2000));
                         interactiveElements = await parseCurrentPage(tab.id);
-                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        break;
+                    case 'find_and_insert_text':
+                        if (!action.element_description || !action.text) {
+                            throw new Error("Action 'find_and_insert_text' is missing parameters.");
+                        }
+                        await findAndInsertText(tab.id, interactiveElements, action.element_description, action.text);
                         break;
                     case 'find_and_click':
                         if (!action.element_description) {
-                            throw new Error("Action 'find_and_click' is missing the 'element_description' parameter.");
+                            throw new Error("Action 'find_and_click' is missing 'element_description' parameter.");
                         }
                         await findAndClickElements(tab.id, interactiveElements, action.element_description);
-                        // A small delay to allow the page to react to the click
-                        await new Promise(resolve => setTimeout(resolve, 3000));
                         break;
                     case 'return_result':
                         if (!action.data) {
-                            throw new Error("Action 'return_result' is missing the 'data' parameter.");
+                            throw new Error("Action 'return_result' is missing 'data' parameter.");
                         }
                         returnResult(action.data);
                         break;
@@ -97,6 +106,8 @@ chrome.runtime.onMessage.addListener(async (message) => {
                         // @ts-expect-error An unknown action type would be a planning failure.
                         throw new Error(`Unknown action type in plan: ${action.type}`);
                 }
+                // Small delay to allow the page to react
+                await new Promise(resolve => setTimeout(resolve, 2000));
             }
             if (!plan.some(p => p.type === 'return_result')) {
                 finishTask();

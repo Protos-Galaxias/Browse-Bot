@@ -1,3 +1,5 @@
+console.log('Web Walker: Content script injected and running.');
+
 const elementCache = new Map<string, HTMLElement>();
 
 function nodeToMarkdown(node: HTMLElement): string {
@@ -5,12 +7,10 @@ function nodeToMarkdown(node: HTMLElement): string {
     let content = node.textContent?.trim().replace(/\s+/g, ' ') || '';
     const ariaLabel = node.getAttribute('aria-label');
 
-    // Отдаем приоритет aria-label
     if (ariaLabel) {
         content = ariaLabel;
     }
 
-    // Собираем атрибуты
     const id = node.id;
     const className = node.className;
     let attributes = '';
@@ -86,28 +86,39 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log('Web Walker: Message received in content script', message);
 
     switch (message.type) {
-    case 'PARSE_CURRENT_PAGE': {
-        const parsedElements = parsePageForInteractiveElements();
-        console.log(`Web Walker: Parsed ${parsedElements.length} interactive elements.`);
-        sendResponse({ type: 'PARSE_RESULT', data: parsedElements });
-        break;
-    }
-    case 'CLICK_ON_ELEMENT': {
-        const elementToClick = elementCache.get(String(message.aid));
-        if (elementToClick) {
-            elementToClick.click();
-            sendResponse({ status: 'ok' });
-        } else {
-            console.error(`Web Walker: Element with aid=${message.aid} not found in cache.`);
-            sendResponse({ status: 'error', message: `Element with aid=${message.aid} not found` });
+        case 'PARSE_CURRENT_PAGE': {
+            const parsedElements = parsePageForInteractiveElements();
+            console.log(`Web Walker: Parsed ${parsedElements.length} interactive elements.`);
+            sendResponse({ type: 'PARSE_RESULT', data: parsedElements });
+            break;
         }
-        break;
-    }
-    default: {
-        console.warn('Web Walker: Unknown message type received', message.type);
-        sendResponse({ status: 'error', message: 'Unknown message type' });
-        break;
-    }
+        case 'CLICK_ON_ELEMENT': {
+            const elementToClick = elementCache.get(String(message.aid));
+            if (elementToClick) {
+                elementToClick.click();
+                sendResponse({ status: 'ok' });
+            } else {
+                console.error(`Web Walker: Element with aid=${message.aid} not found.`);
+                sendResponse({ status: 'error', message: `Element with aid=${message.aid} not found` });
+            }
+            break;
+        }
+        case 'INSERT_TEXT': {
+            const elementToInsert = elementCache.get(String(message.aid));
+            if (elementToInsert && (elementToInsert instanceof HTMLInputElement || elementToInsert instanceof HTMLTextAreaElement)) {
+                elementToInsert.value = message.text;
+                sendResponse({ status: 'ok' });
+            } else {
+                console.error(`Web Walker: Input element with aid=${message.aid} not found.`);
+                sendResponse({ status: 'error', message: `Input element with aid=${message.aid} not found` });
+            }
+            break;
+        }
+        default: {
+            console.warn('Web Walker: Unknown message type received', message.type);
+            sendResponse({ status: 'error', message: 'Unknown message type' });
+            break;
+        }
     }
     return true;
 });
