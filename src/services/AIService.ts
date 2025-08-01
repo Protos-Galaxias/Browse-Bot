@@ -1,6 +1,7 @@
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { ConfigService } from './ConfigService';
 import { generateObject, generateText } from 'ai';
+import type { GenerateTextResult, LanguageModel, CoreMessage, ToolSet } from 'ai';
 
 export interface AIGenerateOptions {
   model?: string;
@@ -10,9 +11,15 @@ export interface AIGenerateOptions {
 }
 
 export interface AIService {
-  generateTextByPrompt(prompt: string, options?: AIGenerateOptions): Promise<string>;
+  generateTextByPrompt(prompt: string, options?: AIGenerateOptions): Promise<GenerateTextResult<any, any>>;
   generate<T>(schema: any, systemPrompt: string, prompt: string, options?: AIGenerateOptions): Promise<T>;
   isConfigured(): Promise<boolean>;
+  getChatModel(): Promise<LanguageModel>;
+  generateWithTools(params: {
+    messages: CoreMessage[],
+    tools: ToolSet,
+    maxToolRoundtrips?: number
+  }): Promise<GenerateTextResult<any, any>>;
 }
 
 export class OpenRouterAIService implements AIService {
@@ -34,7 +41,6 @@ export class OpenRouterAIService implements AIService {
         if (!apiKey) {
             throw new Error('API key not configured');
         }
-        console.log('API key:', apiKey);
         this.client = createOpenRouter({ apiKey });
     }
 
@@ -42,7 +48,7 @@ export class OpenRouterAIService implements AIService {
         try {
             const apiKey = await this.configService.get<string>('apiKey');
             return !!apiKey;
-        } catch (error) {
+        } catch {
             return false;
         }
     }
@@ -54,8 +60,13 @@ export class OpenRouterAIService implements AIService {
         return this.client;
     }
 
-    async generateTextByPrompt(prompt: string, options: AIGenerateOptions = {}): Promise<string> {
-        const model = options.model || (await this.configService.get<string>('model')) || 'google/gemini-2.5-pro';
+    async getChatModel(): Promise<LanguageModel> {
+        const modelName = await this.configService.get<string>('model') || 'google/gemini-2.5-pro';
+        return this.getClient().chat(modelName);
+    }
+
+    async generateTextByPrompt(prompt: string, options: AIGenerateOptions = {}): Promise<GenerateTextResult<any, any>> {
+        const model = options.model || await this.configService.get<string>('model') || 'google/gemini-2.5-pro';
 
         return generateText({
             model: this.getClient().chat(model),
@@ -65,7 +76,7 @@ export class OpenRouterAIService implements AIService {
 
     async generate<T>(schema: any, systemPrompt: string, prompt: string, options: AIGenerateOptions = {}): Promise<T> {
         try {
-            const model = options.model || (await this.configService.get<string>('model')) || 'google/gemini-2.5-pro';
+            const model = options.model || await this.configService.get<string>('model') || 'google/gemini-2.5-pro';
             const client = this.getClient();
             const result = await generateObject({
                 model: client.chat(model),
@@ -79,5 +90,17 @@ export class OpenRouterAIService implements AIService {
             console.error('Error in generate:', error);
             throw new Error('Invalid JSON response from AI');
         }
+    }
+
+    async generateWithTools(params: {
+        messages: CoreMessage[];
+        tools: ToolSet;
+        maxToolRoundtrips?: number;
+    }): Promise<GenerateTextResult<any, any>> {
+        const model = await this.getChatModel();
+        return generateText({
+            model,
+            ...params
+        });
     }
 }

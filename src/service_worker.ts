@@ -1,59 +1,15 @@
-// @ts-expect-error: This is a Vite-specific import syntax, and the variable is used in executeScript which is currently commented out.
-// import contentScript from './content?script';
 import { updateLog } from './logger';
-import { plannerTool } from './tools';
-import { findElementIds } from './tools/findElement';
 import { OpenRouterAIService } from './services/AIService';
+import { agentTools } from './tools/agent-tools';
+import type { ToolContext } from './tools/agent-tools';
+import type { CoreMessage } from 'ai';
 
 if (chrome.sidePanel) {
     chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 }
 
-let currentTask: { prompt: string; history: string[] } | null = null;
+let currentTask: { prompt: string; history: CoreMessage[] } | null = null;
 const aiService = OpenRouterAIService.getInstance();
-
-async function parseCurrentPage(tabId: number): Promise<any[]> {
-    updateLog('[Action]: Parsing current page...');
-    const response = await chrome.tabs.sendMessage(tabId, { type: 'PARSE_CURRENT_PAGE' });
-    if (!response || !response.data) {
-        updateLog('[Warning]: Did not receive valid interactive elements.');
-        return [];
-    }
-    updateLog(`[Action]: Found ${response.data.length} interactive elements.`);
-    return response.data;
-}
-
-async function findAndClickElements(tabId: number, elements: any[], description: string): Promise<void> {
-    updateLog(`[Action]: Finding elements to click: "${description}"`);
-    const elementIds = await findElementIds(elements, description, aiService);
-    if (!elementIds || elementIds.length === 0) {
-        updateLog(`[Warning]: No elements found for "${description}".`);
-        return;
-    }
-    updateLog(`[Action]: Found ${elementIds.length} elements. Clicking...`);
-    for (const aid of elementIds) {
-        await chrome.tabs.sendMessage(tabId, { type: 'CLICK_ON_ELEMENT', aid: aid });
-    }
-}
-
-async function findAndInsertText(tabId: number, elements: any[], description: string, text: string): Promise<void> {
-    updateLog(`[Action]: Finding input for "${description}" to insert text.`);
-    const elementIds = await findElementIds(elements, description, aiService);
-    if (!elementIds || elementIds.length === 0) {
-        updateLog(`[Warning]: No input elements found for "${description}".`);
-        return;
-    }
-    // Assume the first found element is the correct one.
-    const targetId = elementIds[0];
-
-    updateLog(`[Action]: Found input ${targetId}. Inserting text: "${text}"`);
-    await chrome.tabs.sendMessage(tabId, { type: 'INSERT_TEXT', aid: targetId, text: text });
-}
-
-function returnResult(message: string): void {
-    updateLog(`[Result]: ${message}`);
-    finishTask();
-}
 
 chrome.runtime.onMessage.addListener(async (message) => {
     if (message.type === 'START_TASK') {
@@ -62,60 +18,61 @@ chrome.runtime.onMessage.addListener(async (message) => {
             return true;
         }
 
-        currentTask = { prompt: message.prompt, history: [] };
+        const systemPrompt = `You are a web agent. Your only job is to complete the user's request by calling tools.
+NEVER respond with text. ALWAYS call a tool.
+Your workflow is a strict loop:
+1.  Call \`parseCurrentPage\` to see the page.
+2.  Review the \`elements\` from the result.
+3.  Based on the user's goal, call the next logical tool (\`findAndClick\` or \`findAndInsertText\`).
+4.  When the task is 100% complete, call the \`finishTask\` tool with a summary. This is your ONLY way to finish the task.`;
+        
+        currentTask = { 
+            prompt: message.prompt, 
+            history: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: message.prompt }
+            ]
+        };
         updateLog(`[System]: Starting task: "${message.prompt}"`);
 
         try {
             await aiService.initialize();
-
             const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-            if (!tab?.id || !tab.url || tab.url.startsWith('chrome://')) {
-                throw new Error('Cannot run on the current page.');
-            }
-
-            const plan = await plannerTool(message.prompt, aiService);
-            updateLog(`[System]: Generated plan with ${plan.length} steps.`);
+            if (!tab?.id) { throw new Error('Active tab not found.'); }
+            const tabId = tab.id;
 
             let interactiveElements: any[] = [];
 
-            for (const action of plan) {
-                updateLog(`[Step]: Executing: ${action.description}`);
-                switch (action.type) {
-                    case 'parse_current_page':
-                        interactiveElements = await parseCurrentPage(tab.id);
-                        break;
-                    case 'find_and_insert_text':
-                        if (!action.element_description || !action.text) {
-                            throw new Error("Action 'find_and_insert_text' is missing parameters.");
-                        }
-                        await findAndInsertText(tab.id, interactiveElements, action.element_description, action.text);
-                        break;
-                    case 'find_and_click':
-                        if (!action.element_description) {
-                            throw new Error("Action 'find_and_click' is missing 'element_description' parameter.");
-                        }
-                        await findAndClickElements(tab.id, interactiveElements, action.element_description);
-                        break;
-                    case 'return_result':
-                        if (!action.data) {
-                            throw new Error("Action 'return_result' is missing 'data' parameter.");
-                        }
-                        returnResult(action.data);
-                        break;
-                    default:
-                        // @ts-expect-error An unknown action type would be a planning failure.
-                        throw new Error(`Unknown action type in plan: ${action.type}`);
-                }
-                // Small delay to allow the page to react
-                await new Promise(resolve => setTimeout(resolve, 2000));
+            const toolContext: ToolContext = {
+                aiService,
+                tabId: tabId,
+                getInteractiveElements: () => interactiveElements,
+                setInteractiveElements: (elements) => { interactiveElements = elements; },
+                sendMessageToTab: (msg) => chrome.tabs.sendMessage(tabId, msg)
+            };
+
+            const tools = agentTools(toolContext);
+
+            const { text, toolCalls } = await aiService.generateWithTools({
+                messages: currentTask.history,
+                tools: tools,
+                maxToolRoundtrips: 10,
+            });
+            
+            let finalMessage = text;
+            if (toolCalls?.some(call => call.toolName === 'finishTask')) {
+                const finishCall = toolCalls.find(call => call.toolName === 'finishTask');
+                finalMessage = finishCall?.args?.final_answer || "Task completed successfully.";
+            } else if (!text) {
+                finalMessage = "Task ended without a final answer.";
             }
-            if (!plan.some(p => p.type === 'return_result')) {
-                finishTask();
-            }
+
+            updateLog(`[Result]: ${finalMessage}`);
 
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             updateLog(`[System Error]: ${errorMessage}`);
+        } finally {
             finishTask();
         }
     }
