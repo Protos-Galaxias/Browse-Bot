@@ -95,7 +95,7 @@ export class OpenRouterAIService implements AIService {
     async generateWithTools(params: {
         messages: CoreMessage[];
         tools: ToolSet;
-        maxToolRoundtrips?: number;
+        maxRetries?: number;
     }): Promise<GenerateTextResult<any, any>> {
         const model = await this.getChatModel();
         return generateText({

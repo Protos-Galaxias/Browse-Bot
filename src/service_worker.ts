@@ -2,85 +2,111 @@ import { updateLog } from './logger';
 import { OpenRouterAIService } from './services/AIService';
 import { agentTools } from './tools/agent-tools';
 import type { ToolContext } from './tools/agent-tools';
-import type { CoreMessage } from 'ai';
+import type { CoreMessage, ToolSet, ToolResultPart } from 'ai';
+import type { AIService } from './services/AIService';
 
 if (chrome.sidePanel) {
     chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 }
 
-let currentTask: { prompt: string; history: CoreMessage[] } | null = null;
 const aiService = OpenRouterAIService.getInstance();
+
+async function runAgentTask(
+    prompt: string,
+    tools: ToolSet,
+    aiService: AIService,
+    toolContext: ToolContext,
+    systemPrompt: string,
+    maxSteps: number = 10
+) {
+    const history: CoreMessage[] = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: prompt }
+    ];
+
+    for (let step = 0; step < maxSteps; step++) {
+        updateLog(`[Agent] Step ${step + 1}`);
+
+        const { toolCalls, text } = await aiService.generateWithTools({
+            messages: history,
+            tools
+        });
+
+        if (!toolCalls || toolCalls.length === 0) {
+            updateLog(`[Agent] No more tool calls. Final Answer: ${text}`);
+            return text || "Task completed without a final text answer.";
+        }
+
+        history.push({ role: 'assistant', content: [{ type: 'tool-call', toolCallId: toolCalls[0].toolCallId, toolName: toolCalls[0].toolName, input: toolCalls[0].input }] });
+
+        const toolResults: CoreMessage[] = [];
+        for (const call of toolCalls) {
+            const tool = tools[call.toolName];
+            if (!tool) {
+                updateLog(`[Agent] Unknown tool: ${call.toolName}`);
+                continue;
+            }
+
+            try {
+                const result = await tool.execute(call.args);
+                console.log('Tool result:', result);
+
+                toolResults.push({
+                    role: 'tool',
+                    content: [{ type: 'tool-result', toolCallId: call.toolCallId, toolName: call.toolName, output: result }],
+                });
+
+                updateLog(`[Agent] Called ${call.toolName}.`);
+
+                if (call.toolName === 'finishTask') {
+                    return (result as { answer: string }).answer;
+                }
+            } catch (err) {
+                updateLog(`[Agent] Error calling ${call.toolName}: ${err instanceof Error ? err.message : String(err)}`);
+            }
+        }
+        history.push(...toolResults);
+    }
+    return "Agent reached max steps without finishing.";
+}
 
 chrome.runtime.onMessage.addListener(async (message) => {
     if (message.type === 'START_TASK') {
-        if (currentTask) {
-            updateLog('[System]: A task is already running.');
-            return true;
-        }
-
-        const systemPrompt = `You are a web agent. Your only job is to complete the user's request by calling tools.
-NEVER respond with text. ALWAYS call a tool.
-Your workflow is a strict loop:
-1.  Call \`parseCurrentPage\` to see the page.
-2.  Review the \`elements\` from the result.
-3.  Based on the user's goal, call the next logical tool (\`findAndClick\` or \`findAndInsertText\`).
-4.  When the task is 100% complete, call the \`finishTask\` tool with a summary. This is your ONLY way to finish the task.`;
-        
-        currentTask = { 
-            prompt: message.prompt, 
-            history: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: message.prompt }
-            ]
-        };
-        updateLog(`[System]: Starting task: "${message.prompt}"`);
+        const { prompt } = message;
+        updateLog(`[System]: Starting task: "${prompt}"`);
 
         try {
             await aiService.initialize();
             const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-            if (!tab?.id) { throw new Error('Active tab not found.'); }
+            if (!tab?.id) throw new Error('No active tab');
             const tabId = tab.id;
 
-            let interactiveElements: any[] = [];
+            let elements: any[] = [];
 
             const toolContext: ToolContext = {
                 aiService,
                 tabId: tabId,
-                getInteractiveElements: () => interactiveElements,
-                setInteractiveElements: (elements) => { interactiveElements = elements; },
+                getInteractiveElements: () => elements,
+                setInteractiveElements: (e) => { elements = e; },
                 sendMessageToTab: (msg) => chrome.tabs.sendMessage(tabId, msg)
             };
 
             const tools = agentTools(toolContext);
 
-            const { text, toolCalls } = await aiService.generateWithTools({
-                messages: currentTask.history,
-                tools: tools,
-                maxToolRoundtrips: 10,
-            });
-            
-            let finalMessage = text;
-            if (toolCalls?.some(call => call.toolName === 'finishTask')) {
-                const finishCall = toolCalls.find(call => call.toolName === 'finishTask');
-                finalMessage = finishCall?.args?.final_answer || "Task completed successfully.";
-            } else if (!text) {
-                finalMessage = "Task ended without a final answer.";
-            }
+            const systemPrompt = `You are a browser automation agent. You MUST call tools to perform any action.
+                1. Call "parseCurrentPage" to inspect the page.
+                2. Then use "findAndClick" or "findAndInsertText" as needed.
+                3. When the task is 100% done, call "finishTask".
+                NEVER respond with plain text.`;
 
-            updateLog(`[Result]: ${finalMessage}`);
+            const finalAnswer = await runAgentTask(prompt, tools, aiService, toolContext, systemPrompt);
+            updateLog(`[Result]: ${finalAnswer}`);
 
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            updateLog(`[System Error]: ${errorMessage}`);
+        } catch (err) {
+            updateLog(`[Error]: ${err instanceof Error ? err.message : String(err)}`);
         } finally {
-            finishTask();
+            chrome.runtime.sendMessage({ type: 'TASK_COMPLETE' }).catch(console.error);
         }
     }
     return true;
 });
-
-function finishTask() {
-    updateLog('[System]: Task finished.');
-    chrome.runtime.sendMessage({ type: 'TASK_COMPLETE' }).catch(e => console.error('Failed to send task complete to UI:', e));
-    currentTask = null;
-}
