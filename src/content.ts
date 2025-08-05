@@ -22,25 +22,30 @@ function nodeToMarkdown(node: HTMLElement): string {
     }
 
     switch (tagName) {
-        case 'a': {
+        case 'a':
+        {
             const href = node.getAttribute('href') || '#';
             return `[${content}](${href})${attributes}`;
         }
-        case 'button': {
+        case 'button':
+        {
             return `[button: ${content}${attributes}]`;
         }
         case 'input':
-        case 'textarea': {
+        case 'textarea':
+        {
             const placeholder = node.getAttribute('placeholder') || '';
             const value = (node as HTMLInputElement).value || '';
             return `[input: ${placeholder || content}, current value: "${value}"${attributes}]`;
         }
         case 'h1':
         case 'h2':
-        case 'h3': {
+        case 'h3':
+        {
             return `### ${content}`;
         }
-        default: {
+        default:
+        {
             if (node.getAttribute('role')?.match(/button|link/)) {
                 return `[interactive: ${content}${attributes}]`;
             }
@@ -86,13 +91,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log('Web Walker: Message received in content script', message);
 
     switch (message.type) {
-        case 'PARSE_CURRENT_PAGE': {
+        case 'PARSE_CURRENT_PAGE':
+        {
             const parsedElements = parsePageForInteractiveElements();
             console.log(`Web Walker: Parsed ${parsedElements.length} interactive elements.`);
             sendResponse({ type: 'PARSE_RESULT', data: parsedElements });
             break;
         }
-        case 'CLICK_ON_ELEMENT': {
+        case 'CLICK_ON_ELEMENT':
+        {
             const elementToClick = elementCache.get(String(message.aid));
             if (elementToClick) {
                 elementToClick.click();
@@ -103,21 +110,23 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             }
             break;
         }
-        case 'INSERT_TEXT': {
+        case 'INSERT_TEXT':
+        {
             const elementToInsert = elementCache.get(String(message.aid));
             if (elementToInsert && (elementToInsert instanceof HTMLInputElement || elementToInsert instanceof HTMLTextAreaElement)) {
                 elementToInsert.value = message.text;
                 sendResponse({ status: 'ok' });
-            } else {
+                } else {
                 console.error(`Web Walker: Input element with aid=${message.aid} not found.`);
                 sendResponse({ status: 'error', message: `Input element with aid=${message.aid} not found` });
-            }
+                }
             break;
         }
-        default: {
-            console.warn('Web Walker: Unknown message type received', message.type);
+    default:
+        {
+        console.warn('Web Walker: Unknown message type received', message.type);
             sendResponse({ status: 'error', message: 'Unknown message type' });
-            break;
+        break;
         }
     }
     return true;

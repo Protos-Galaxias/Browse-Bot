@@ -2,7 +2,7 @@ import { updateLog } from './logger';
 import { OpenRouterAIService } from './services/AIService';
 import { agentTools } from './tools/agent-tools';
 import type { ToolContext } from './tools/agent-tools';
-import type { CoreMessage, ToolSet, ToolResultPart } from 'ai';
+import type { ModelMessage, ToolSet } from 'ai';
 import type { AIService } from './services/AIService';
 
 if (chrome.sidePanel) {
@@ -19,7 +19,7 @@ async function runAgentTask(
     systemPrompt: string,
     maxSteps: number = 10
 ) {
-    const history: CoreMessage[] = [
+    const history: ModelMessage[] = [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: prompt }
     ];
@@ -36,11 +36,15 @@ async function runAgentTask(
             updateLog(`[Agent] No more tool calls. Final Answer: ${text}`);
             return text || "Task completed without a final text answer.";
         }
+        console.log('toolCalls', toolCalls);
 
         history.push({ role: 'assistant', content: [{ type: 'tool-call', toolCallId: toolCalls[0].toolCallId, toolName: toolCalls[0].toolName, input: toolCalls[0].input }] });
 
-        const toolResults: CoreMessage[] = [];
+        console.log('history', history);
+        const toolResults: ModelMessage[] = [];
         for (const call of toolCalls) {
+            console.log('call111111111', call);
+
             const tool = tools[call.toolName];
             if (!tool) {
                 updateLog(`[Agent] Unknown tool: ${call.toolName}`);
@@ -48,12 +52,15 @@ async function runAgentTask(
             }
 
             try {
-                const result = await tool.execute(call.args);
+                const result = await tool.execute(call.input ?? {});
                 console.log('Tool result:', result);
 
                 toolResults.push({
                     role: 'tool',
-                    content: [{ type: 'tool-result', toolCallId: call.toolCallId, toolName: call.toolName, output: result }],
+                    content: [{ type: 'tool-result', toolCallId: call.toolCallId, toolName: call.toolName, output: {
+                        type: 'json',
+                        value: result
+                    } }],
                 });
 
                 updateLog(`[Agent] Called ${call.toolName}.`);
@@ -67,7 +74,8 @@ async function runAgentTask(
         }
         history.push(...toolResults);
     }
-    return "Agent reached max steps without finishing.";
+
+    return 'Agent reached max steps without finishing.';
 }
 
 chrome.runtime.onMessage.addListener(async (message) => {
@@ -93,11 +101,16 @@ chrome.runtime.onMessage.addListener(async (message) => {
 
             const tools = agentTools(toolContext);
 
-            const systemPrompt = `You are a browser automation agent. You MUST call tools to perform any action.
-                1. Call "parseCurrentPage" to inspect the page.
-                2. Then use "findAndClick" or "findAndInsertText" as needed.
-                3. When the task is 100% done, call "finishTask".
-                NEVER respond with plain text.`;
+            const systemPrompt = `You are a web automation agent. Your goal is to complete the user's request by breaking it down into smaller sub-tasks.
+Your workflow:
+1.  **Analyze**: Look at the user's request and the history. Identify the very next sub-task to perform.
+2.  **Act**: Call a tool to complete that sub-task. Your first tool call MUST be \`parseCurrentPage\`.
+3.  **Reflect**: After a tool is used, the history will be updated. Look at the new state and decide if the sub-task is complete.
+4.  **Repeat**: If the main task is not complete, go back to step 1 and identify the next sub-task.
+5.  **Finish**: Once all sub-tasks are done, call \`finishTask\`.
+Example sub-tasks for "add items from favorites to cart":
+- Sub-task 1: Navigate to the favorites page.
+- Sub-task 2: Add all items on the favorites page to the cart.`;
 
             const finalAnswer = await runAgentTask(prompt, tools, aiService, toolContext, systemPrompt);
             updateLog(`[Result]: ${finalAnswer}`);

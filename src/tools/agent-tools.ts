@@ -19,9 +19,11 @@ type ToolOutput = {
 
 export const agentTools = (context: ToolContext) => ({
     parseCurrentPage: tool({
-        description: 'MUST BE CALLED FIRST to see the page. Scan the page to get a list of items that can be used by other tools.this function converts the scale elements to indicate the form {id: "3", markdown value: [button: Use search class="p-button, p-button-clean button-button without filling -search button without borders"] }',
+        description: 'MUST BE CALLED FIRST to see the page. Scans the page to get a list of elements that other tools can use. Example result format: { "id": "3", "markdownValue": "[button: Search]" }',
         inputSchema: z.object({}),
-        async execute({}): Promise<ToolOutput> {
+        // eslint-disable-next-line @typescript-eslint/ban-types
+        async execute({}: {}): Promise<ToolOutput> {
+            console.log('parseCurrentPage');
             const response = await context.sendMessageToTab({ type: 'PARSE_CURRENT_PAGE' });
             if (!response || !response.data) {
                 return { success: false, error: 'Failed to parse page.' };
@@ -36,18 +38,17 @@ export const agentTools = (context: ToolContext) => ({
     }),
 
     findAndClick: tool({
-        description: 'Use this tool to click an element AFTER getting the `elements` list from `parseCurrentPage`.',
+        description: 'Clicks an element. CRITICAL: After this action, the page will change. You MUST call `parseCurrentPage` again in the next step.',
         inputSchema: z.object({
-            reasoning: z.string().describe('Why you are clicking this element.'),
-            element_description: z.string().describe('Description of the element to click, based on the `elements` from `parseCurrentPage` output.')
+            reasoning: z.string().describe("First, state the SUB-TASK you are currently working on (e.g., 'Navigate to favorites page'). Then, explain why clicking this element completes this sub-task."),
+            element_description: z.string().describe("A specific description of the element to click, taken from the `elements` array.For example: 'the link with text \"Favorites\"' or 'button with class \"add-to-cart\".'")
         }),
-        async execute({ element_description, reasoning }): Promise<ToolOutput> {
-            console.log('findAndClick', element_description, reasoning);
+        async execute({ reasoning, element_description }): Promise<ToolOutput> {
+            console.log(`findAndClick with reasoning: ${reasoning}`, element_description);
             const elements = context.getInteractiveElements();
-
             if (elements.length === 0) return { success: false, error: 'Context is empty. Call `parseCurrentPage` first.' };
 
-            const elementIds = await findElementIds(elements, element_description, context.aiService);
+            const elementIds = await findElementIds(elements, `Reason: ${reasoning}. Element description: ${element_description}`, context.aiService);
 
             if (!elementIds || elementIds.length === 0) return { success: false, error: `No element found for: ${element_description}` };
 
@@ -60,14 +61,14 @@ export const agentTools = (context: ToolContext) => ({
     }),
 
     findAndInsertText: tool({
-        description: 'Use this tool to type into an input AFTER getting the `elements` list from `parseCurrentPage`.',
+        description: 'Types text into an input. CRITICAL: After this action, you will likely need to click a search button and then call `parseCurrentPage` again.',
         inputSchema: z.object({
-            reasoning: z.string().describe('Why you are inserting text here.'),
-            element_description: z.string().describe('Description of the target input, based on the `elements` from `parseCurrentPage` output.'),
+            reasoning: z.string().describe('First, state the SUB-TASK you are currently working on. Then, explain why you are typing into this input.'),
+            element_description: z.string().describe('A specific description of the target input, taken from the `elements` array.'),
             text: z.string().describe('The text to insert.')
         }),
-        async execute({ element_description, text }): Promise<ToolOutput> {
-            console.log('findAndInsertText');
+        async execute({ reasoning, element_description, text }): Promise<ToolOutput> {
+            console.log(`findAndInsertText with reasoning: ${reasoning}`);
             const elements = context.getInteractiveElements();
             if (elements.length === 0) return { success: false, error: 'Context is empty. Call `parseCurrentPage` first.' };
             const elementIds = await findElementIds(elements, element_description, context.aiService);
@@ -79,9 +80,9 @@ export const agentTools = (context: ToolContext) => ({
     }),
 
     finishTask: tool({
-        description: 'Call this tool ONLY when the user\'s request has been fully completed. This is the final step.',
+        description: 'Call this tool ONLY when all sub-tasks of the user\'s request have been fully completed.',
         inputSchema: z.object({
-            final_answer: z.string().describe("The final summary of the task's completion.")
+            final_answer: z.string().describe("A summary of the task's completion.")
         }),
         async execute({ final_answer }): Promise<ToolOutput> {
             return { success: true, answer: final_answer };
