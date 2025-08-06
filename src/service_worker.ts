@@ -11,6 +11,24 @@ if (chrome.sidePanel) {
 
 const aiService = OpenRouterAIService.getInstance();
 
+let agentHistory: ModelMessage[] = [];
+let lastTaskPrompt = '';
+
+function isBrowserAction(prompt: string): boolean {
+    const browserKeywords = [
+        'добавь', 'найди', 'кликни', 'нажми', 'перейди', 'открой', 'заполни', 'введи',
+        'поставь', 'убери', 'удали', 'сохрани', 'загрузи', 'скачай', 'зарегистрируйся',
+        'войди', 'выйди', 'подпишись', 'отпишись', 'добавить', 'найти', 'кликнуть',
+        'нажать', 'перейти', 'открыть', 'заполнить', 'ввести', 'поставить', 'убрать',
+        'удалить', 'сохранить', 'загрузить', 'скачать', 'зарегистрироваться', 'войти',
+        'выйти', 'подписаться', 'отписаться', 'корзина', 'избранное', 'поиск', 'фильтр',
+        'сортировка', 'каталог', 'товар', 'продукт', 'купить', 'заказать', 'оформить'
+    ];
+
+    const lowerPrompt = prompt.toLowerCase();
+    return browserKeywords.some(keyword => lowerPrompt.includes(keyword));
+}
+
 async function runAgentTask(
     prompt: string,
     tools: ToolSet,
@@ -24,6 +42,8 @@ async function runAgentTask(
         { role: 'user', content: prompt }
     ];
 
+    agentHistory = [...history];
+
     for (let step = 0; step < maxSteps; step++) {
         updateLog(`[Agent] Step ${step + 1}`);
 
@@ -34,17 +54,15 @@ async function runAgentTask(
 
         if (!toolCalls || toolCalls.length === 0) {
             updateLog(`[Agent] No more tool calls. Final Answer: ${text}`);
-            return text || "Task completed without a final text answer.";
+            return text || 'Task completed without a final text answer.';
         }
-        console.log('toolCalls', toolCalls);
 
         history.push({ role: 'assistant', content: [{ type: 'tool-call', toolCallId: toolCalls[0].toolCallId, toolName: toolCalls[0].toolName, input: toolCalls[0].input }] });
 
-        console.log('history', history);
+        agentHistory = [...history];
+
         const toolResults: ModelMessage[] = [];
         for (const call of toolCalls) {
-            console.log('call111111111', call);
-
             const tool = tools[call.toolName];
             if (!tool) {
                 updateLog(`[Agent] Unknown tool: ${call.toolName}`);
@@ -60,7 +78,7 @@ async function runAgentTask(
                     content: [{ type: 'tool-result', toolCallId: call.toolCallId, toolName: call.toolName, output: {
                         type: 'json',
                         value: result
-                    } }],
+                    } }]
                 });
 
                 updateLog(`[Agent] Called ${call.toolName}.`);
@@ -73,9 +91,50 @@ async function runAgentTask(
             }
         }
         history.push(...toolResults);
+
+        agentHistory = [...history];
     }
 
     return 'Agent reached max steps without finishing.';
+}
+
+async function analyzeWork(prompt: string): Promise<string> {
+    if (!agentHistory.length || !lastTaskPrompt) {
+        return 'Нет данных о проделанной работе. Сначала выполните какое-либо действие в браузере.';
+    }
+
+    const analysisPrompt = `Проанализируй проделанную работу агента.
+
+Исходный запрос пользователя: "${lastTaskPrompt}"
+Текущий вопрос: "${prompt}"
+
+История действий агента:
+${agentHistory.map((msg, index) => {
+        if (msg.role === 'user') return `Шаг ${index}: Пользователь: ${msg.content}`;
+        if (msg.role === 'assistant' && Array.isArray(msg.content)) {
+            const toolCall = msg.content[0];
+            if (toolCall.type === 'tool-call') {
+                return `Шаг ${index}: Агент вызвал инструмент "${toolCall.toolName}"`;
+            }
+        }
+        if (msg.role === 'tool' && Array.isArray(msg.content)) {
+            const toolResult = msg.content[0];
+            if (toolResult.type === 'tool-result') {
+                return `Шаг ${index}: Результат инструмента "${toolResult.toolName}": ${JSON.stringify(toolResult.output)}`;
+            }
+        }
+        return `Шаг ${index}: ${msg.role}: ${JSON.stringify(msg.content)}`;
+    }).join('\n')}
+
+Ответь на вопрос пользователя, основываясь на этой истории.`;
+
+    try {
+        await aiService.initialize();
+        const response = await aiService.generateTextByPrompt(analysisPrompt);
+        return response.text || 'Не удалось проанализировать работу.';
+    } catch (err) {
+        return `Ошибка при анализе: ${err instanceof Error ? err.message : String(err)}`;
+    }
 }
 
 chrome.runtime.onMessage.addListener(async (message) => {
@@ -85,23 +144,27 @@ chrome.runtime.onMessage.addListener(async (message) => {
 
         try {
             await aiService.initialize();
-            const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-            if (!tab?.id) throw new Error('No active tab');
-            const tabId = tab.id;
 
-            let elements: any[] = [];
+            if (isBrowserAction(prompt)) {
+                updateLog(`[System]: Browser action detected, starting agent`);
 
-            const toolContext: ToolContext = {
-                aiService,
-                tabId: tabId,
-                getInteractiveElements: () => elements,
-                setInteractiveElements: (e) => { elements = e; },
-                sendMessageToTab: (msg) => chrome.tabs.sendMessage(tabId, msg)
-            };
+                const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+                if (!tab?.id) throw new Error('No active tab');
+                const tabId = tab.id;
 
-            const tools = agentTools(toolContext);
+                let elements: any[] = [];
 
-            const systemPrompt = `You are a web automation agent. Your goal is to complete the user's request by breaking it down into smaller sub-tasks.
+                const toolContext: ToolContext = {
+                    aiService,
+                    tabId: tabId,
+                    getInteractiveElements: () => elements,
+                    setInteractiveElements: (e) => { elements = e; },
+                    sendMessageToTab: (msg) => chrome.tabs.sendMessage(tabId, msg)
+                };
+
+                const tools = agentTools(toolContext);
+
+                const systemPrompt = `You are a web automation agent. Your goal is to complete the user's request by breaking it down into smaller sub-tasks.
 Your workflow:
 1.  **Analyze**: Look at the user's request and the history. Identify the very next sub-task to perform.
 2.  **Act**: Call a tool to complete that sub-task. Your first tool call MUST be \`parseCurrentPage\`.
@@ -112,9 +175,35 @@ Example sub-tasks for "add items from favorites to cart":
 - Sub-task 1: Navigate to the favorites page.
 - Sub-task 2: Add all items on the favorites page to the cart.`;
 
-            const finalAnswer = await runAgentTask(prompt, tools, aiService, toolContext, systemPrompt);
-            updateLog(`[Result]: ${finalAnswer}`);
+                agentHistory = [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: prompt }
+                ];
+                lastTaskPrompt = prompt;
 
+                const finalAnswer = await runAgentTask(prompt, tools, aiService, toolContext, systemPrompt);
+
+                updateLog(`[Result]: ${finalAnswer}`);
+
+            } else {
+                updateLog(`[System]: Regular question detected, sending to LLM`);
+
+                const response = await aiService.generateTextByPrompt(prompt);
+                const answer = response.text || 'Не удалось получить ответ.';
+                updateLog(`[Result]: ${answer}`);
+            }
+        } catch (err) {
+            updateLog(`[Error]: ${err instanceof Error ? err.message : String(err)}`);
+        } finally {
+            chrome.runtime.sendMessage({ type: 'TASK_COMPLETE' }).catch(console.error);
+        }
+    } else if (message.type === 'ANALYZE_WORK') {
+        const { prompt } = message;
+        updateLog(`[System]: Analyzing work: "${prompt}"`);
+
+        try {
+            const analysis = await analyzeWork(prompt);
+            updateLog(`[Analysis]: ${analysis}`);
         } catch (err) {
             updateLog(`[Error]: ${err instanceof Error ? err.message : String(err)}`);
         } finally {
