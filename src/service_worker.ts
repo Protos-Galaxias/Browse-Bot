@@ -14,20 +14,75 @@ const aiService = OpenRouterAIService.getInstance();
 let agentHistory: ModelMessage[] = [];
 let lastTaskPrompt = '';
 
-function isBrowserAction(prompt: string): boolean {
-    const browserKeywords = [
-        'добавь', 'найди', 'кликни', 'нажми', 'перейди', 'открой', 'заполни', 'введи',
-        'поставь', 'убери', 'удали', 'сохрани', 'загрузи', 'скачай', 'зарегистрируйся',
-        'войди', 'выйди', 'подпишись', 'отпишись', 'добавить', 'найти', 'кликнуть',
-        'нажать', 'перейти', 'открыть', 'заполнить', 'ввести', 'поставить', 'убрать',
-        'удалить', 'сохранить', 'загрузить', 'скачать', 'зарегистрироваться', 'войти',
-        'выйти', 'подписаться', 'отписаться', 'корзина', 'избранное', 'поиск', 'фильтр',
-        'сортировка', 'каталог', 'товар', 'продукт', 'купить', 'заказать', 'оформить'
-    ];
+type PromptType = 'BROWSER_ACTION' | 'DIRECT_QUESTION' | 'HISTORY_ANALYSIS';
 
-    const lowerPrompt = prompt.toLowerCase();
-    return browserKeywords.some(keyword => lowerPrompt.includes(keyword));
+async function classifyPrompt(prompt: string): Promise<PromptType> {
+    const classificationPrompt = `Классифицируй запрос пользователя как один из трех типов:
+
+BROWSER_ACTION — если запрос требует действий на сайте (клик, поиск, добавить в корзину и т.д.)
+DIRECT_QUESTION — если это просто вопрос к ИИ (погода, анекдот, как дела и т.д.)
+HISTORY_ANALYSIS — если пользователь спрашивает о проделанной работе агента (сколько шагов, что делал и т.д.)
+
+Примеры:
+Запрос: "добавь товары из избранного в корзину"
+Ответ: BROWSER_ACTION
+
+Запрос: "найди молоко"
+Ответ: BROWSER_ACTION
+
+Запрос: "кликни на кнопку поиска"
+Ответ: BROWSER_ACTION
+
+Запрос: "как дела?"
+Ответ: DIRECT_QUESTION
+
+Запрос: "какая погода в Москве?"
+Ответ: DIRECT_QUESTION
+
+Запрос: "расскажи анекдот"
+Ответ: DIRECT_QUESTION
+
+Запрос: "за сколько шагов ты это сделал?"
+Ответ: HISTORY_ANALYSIS
+
+Запрос: "что ты делал?"
+Ответ: HISTORY_ANALYSIS
+
+Запрос: "какие инструменты использовал?"
+Ответ: HISTORY_ANALYSIS
+
+Запрос: "${prompt}"
+Ответ:`;
+
+    try {
+        await aiService.initialize();
+        const response = await aiService.generateTextBySmallModel(classificationPrompt);
+        const result = response.text?.trim().toUpperCase();
+        console.log('Classification result:', result);
+
+        if (result === 'BROWSER_ACTION' || result === 'DIRECT_QUESTION' || result === 'HISTORY_ANALYSIS') {
+            return result as PromptType;
+        }
+
+        const browserKeywords = ['добавь', 'найди', 'кликни', 'нажми', 'перейди', 'открой', 'заполни', 'введи', 'корзина', 'избранное', 'поиск', 'товар', 'купить'];
+        const historyKeywords = ['шагов', 'делал', 'использовал', 'инструменты', 'анализ', 'что делал'];
+        const lowerPrompt = prompt.toLowerCase();
+
+        if (historyKeywords.some(keyword => lowerPrompt.includes(keyword))) {
+            return 'HISTORY_ANALYSIS';
+        }
+
+        if (browserKeywords.some(keyword => lowerPrompt.includes(keyword))) {
+            return 'BROWSER_ACTION';
+        }
+
+        return 'DIRECT_QUESTION';
+    } catch (err) {
+        updateLog(`[Error] Failed to classify prompt: ${err instanceof Error ? err.message : String(err)}`);
+        return 'DIRECT_QUESTION';
+    }
 }
+
 
 async function runAgentTask(
     prompt: string,
@@ -70,7 +125,8 @@ async function runAgentTask(
             }
 
             try {
-                const result = await tool.execute(call.input ?? {});
+                const args = call.input || {};
+                const result = await (tool as any).execute(args);
                 console.log('Tool result:', result);
 
                 toolResults.push({
@@ -114,13 +170,13 @@ ${agentHistory.map((msg, index) => {
         if (msg.role === 'assistant' && Array.isArray(msg.content)) {
             const toolCall = msg.content[0];
             if (toolCall.type === 'tool-call') {
-                return `Шаг ${index}: Агент вызвал инструмент "${toolCall.toolName}"`;
+                return `Шаг ${index}: Агент вызвал инструмент '${toolCall.toolName}'`;
             }
         }
         if (msg.role === 'tool' && Array.isArray(msg.content)) {
             const toolResult = msg.content[0];
             if (toolResult.type === 'tool-result') {
-                return `Шаг ${index}: Результат инструмента "${toolResult.toolName}": ${JSON.stringify(toolResult.output)}`;
+                return `Шаг ${index}: Результат инструмента '${toolResult.toolName}': ${JSON.stringify(toolResult.output)}`;
             }
         }
         return `Шаг ${index}: ${msg.role}: ${JSON.stringify(msg.content)}`;
@@ -145,7 +201,11 @@ chrome.runtime.onMessage.addListener(async (message) => {
         try {
             await aiService.initialize();
 
-            if (isBrowserAction(prompt)) {
+            // Классифицируем промпт с помощью LLM
+            const promptType = await classifyPrompt(prompt);
+            updateLog(`[System]: Prompt classified as: ${promptType}`);
+
+            if (promptType === 'BROWSER_ACTION') {
                 updateLog(`[System]: Browser action detected, starting agent`);
 
                 const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
@@ -185,25 +245,19 @@ Example sub-tasks for "add items from favorites to cart":
 
                 updateLog(`[Result]: ${finalAnswer}`);
 
+            } else if (promptType === 'HISTORY_ANALYSIS') {
+                updateLog(`[System]: History analysis requested`);
+                const analysis = await analyzeWork(prompt);
+                updateLog(`[Analysis]: ${analysis}`);
+
             } else {
-                updateLog(`[System]: Regular question detected, sending to LLM`);
+                // DIRECT_QUESTION
+                updateLog(`[System]: Direct question detected, sending to LLM`);
 
                 const response = await aiService.generateTextByPrompt(prompt);
                 const answer = response.text || 'Не удалось получить ответ.';
                 updateLog(`[Result]: ${answer}`);
             }
-        } catch (err) {
-            updateLog(`[Error]: ${err instanceof Error ? err.message : String(err)}`);
-        } finally {
-            chrome.runtime.sendMessage({ type: 'TASK_COMPLETE' }).catch(console.error);
-        }
-    } else if (message.type === 'ANALYZE_WORK') {
-        const { prompt } = message;
-        updateLog(`[System]: Analyzing work: "${prompt}"`);
-
-        try {
-            const analysis = await analyzeWork(prompt);
-            updateLog(`[Analysis]: ${analysis}`);
         } catch (err) {
             updateLog(`[Error]: ${err instanceof Error ? err.message : String(err)}`);
         } finally {

@@ -74,6 +74,13 @@ export class OpenRouterAIService implements AIService {
         });
     }
 
+    async generateTextBySmallModel(prompt: string): Promise<GenerateTextResult<any, any>> {
+        return generateText({
+            model: this.getClient().chat('openai/gpt-4.1-mini'),
+            prompt
+        });
+    }
+
     async generate<T>(schema: any, systemPrompt: string, prompt: string, options: AIGenerateOptions = {}): Promise<T> {
         try {
             const model = options.model || await this.configService.get<string>('model') || 'google/gemini-2.5-pro';
