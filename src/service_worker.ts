@@ -56,7 +56,7 @@ HISTORY_ANALYSIS — если пользователь спрашивает о �
 
     try {
         await aiService.initialize();
-        const response = await aiService.generateTextBySmallModel(classificationPrompt);
+        const response = await aiService.generateTextByPrompt(classificationPrompt);
         const result = response.text?.trim().toUpperCase();
         console.log('Classification result:', result);
 
@@ -196,7 +196,7 @@ ${agentHistory.map((msg, index) => {
 chrome.runtime.onMessage.addListener(async (message) => {
     if (message.type === 'START_TASK') {
         const { prompt } = message;
-        updateLog(`[System]: Starting task: "${prompt}"`);
+        // updateLog(`[System]: Starting task: "${prompt}"`);
 
         try {
             await aiService.initialize();
@@ -206,7 +206,7 @@ chrome.runtime.onMessage.addListener(async (message) => {
             updateLog(`[System]: Prompt classified as: ${promptType}`);
 
             if (promptType === 'BROWSER_ACTION') {
-                updateLog(`[System]: Browser action detected, starting agent`);
+                updateLog('Browser action detected, starting agent');
 
                 const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
                 if (!tab?.id) throw new Error('No active tab');
@@ -251,7 +251,6 @@ Example sub-tasks for "add items from favorites to cart":
                 updateLog(`[Analysis]: ${analysis}`);
 
             } else {
-                // DIRECT_QUESTION
                 updateLog(`[System]: Direct question detected, sending to LLM`);
 
                 const response = await aiService.generateTextByPrompt(prompt);

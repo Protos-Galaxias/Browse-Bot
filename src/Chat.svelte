@@ -1,73 +1,506 @@
 <script lang="ts">
+    import { onMount } from 'svelte';
+
     let prompt = '';
     let log: string[] = [];
+    let isTyping = false;
+    let models: string[] = [];
+    let activeModel = '';
+    let showModelDropdown = false;
+
+    onMount(async () => {
+        const settings = await chrome.storage.local.get(['models', 'activeModel']);
+        models = settings.models || ['google/gemini-2.5-pro'];
+        activeModel = settings.activeModel || models[0];
+    });
 
     function startTask() {
-        if (!prompt) return;
-        log = [`[User]: ${prompt}`];
+        if (!prompt.trim()) return;
+        
+        isTyping = true;
+        log = [...log, `[User]: ${prompt}`];
+        
+        // Отправляем задачу в Service Worker
         chrome.runtime.sendMessage({ type: 'START_TASK', prompt });
+        
+        // Очищаем поле ввода
+        prompt = '';
+    }
+
+    function handleKeyPress(event: KeyboardEvent) {
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            startTask();
+        }
+    }
+
+    function selectModel(model: string) {
+        activeModel = model;
+        showModelDropdown = false;
+        chrome.storage.local.set({ activeModel });
+    }
+
+    function toggleModelDropdown() {
+        showModelDropdown = !showModelDropdown;
     }
 
     chrome.runtime.onMessage.addListener((message) => {
         if (message.type === 'UPDATE_LOG') {
             log = [...log, message.data];
+            isTyping = false;
         }
         return true;
     });
 </script>
 
-<div class="chat">
-    <div class="log-container">
-        {#each log as entry}
-            <p>{entry}</p>
-        {/each}
-    </div>
+<div class="chat-container">
+    {#if log.length === 0}
+        <div class="welcome-screen">
+            <div class="logo">
+                <div class="logo-icon">✦</div>
+            </div>
+            <h1 class="greeting">Добрый день, пользователь</h1>
+            <div class="input-card">
+                <input 
+                    type="text" 
+                    bind:value={prompt} 
+                    placeholder="Чем могу помочь сегодня?" 
+                    on:keypress={handleKeyPress}
+                    class="welcome-input"
+                />
+                <div class="input-controls">
+                    <div class="left-controls">
+                        <button class="control-btn">+</button>
+                        <button class="control-btn">⋮</button>
+                    </div>
+                    <div class="right-controls">
+                        <div class="model-selector" on:click={toggleModelDropdown}>
+                            <span>{activeModel}</span>
+                            <span class="chevron">▼</span>
+                            {#if showModelDropdown}
+                                <div class="model-dropdown">
+                                    {#each models as model}
+                                        <div class="model-option {activeModel === model ? 'active' : ''}" 
+                                             on:click={() => selectModel(model)}>
+                                            {model}
+                                        </div>
+                                    {/each}
+                                </div>
+                            {/if}
+                        </div>
+                        <button class="send-btn" on:click={startTask} disabled={!prompt.trim()}>
+                            <span class="send-icon">↑</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="quick-actions">
+                <div class="action-row">
+                    <button class="action-btn primary" on:click={() => window.location.hash = '#capabilities'}>
+                        <span class="action-icon">💡</span>
+                        <span>Возможности</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    {:else}
+        <div class="chat-messages">
+            {#each log as entry, index}
+                <div class="message {entry.startsWith('[User]') ? 'user' : 'assistant'}">
+                    {#if entry.startsWith('[User]')}
+                        <div class="message-avatar">U</div>
+                        <div class="message-bubble user-bubble">
+                            {entry.replace('[User]: ', '')}
+                        </div>
+                    {:else}
+                        <div class="message-content">
+                            {entry}
+                        </div>
+                    {/if}
+                </div>
+            {/each}
+            
+            {#if isTyping}
+                <div class="message assistant">
+                    <div class="typing-indicator">
+                        <div class="logo-icon">✦</div>
+                        <span>Агент думает...</span>
+                    </div>
+                </div>
+            {/if}
+        </div>
+    {/if}
+    
+    {#if log.length !== 0}
     <div class="input-area">
-        <input type="text" bind:value={prompt} placeholder="Что мне сделать?" />
-        <button on:click={startTask}>► Выполнить</button>
+        <div class="input-container">
+            <div class="left-controls">
+                <button class="control-btn">+</button>
+                <button class="control-btn">⋮</button>
+            </div>
+            <input 
+                type="text" 
+                bind:value={prompt} 
+                placeholder="Ответить агенту..." 
+                on:keypress={handleKeyPress}
+                class="message-input"
+            />
+            <div class="right-controls">
+                <div class="model-selector" on:click={toggleModelDropdown}>
+                    <span>{activeModel}</span>
+                    <span class="chevron">▼</span>
+                    {#if showModelDropdown}
+                        <div class="model-dropdown">
+                            {#each models as model}
+                                <div class="model-option {activeModel === model ? 'active' : ''}" 
+                                     on:click={() => selectModel(model)}>
+                                    {model}
+                                </div>
+                            {/each}
+                        </div>
+                    {/if}
+                </div>
+                <button class="send-btn" on:click={startTask} disabled={!prompt.trim()}>
+                    <span class="send-icon">↑</span>
+                </button>
+            </div>
+        </div>
+        <div class="disclaimer">
+            Агент может допускать ошибки. Пожалуйста, проверяйте результаты.
+        </div>
     </div>
+    {/if}
+
 </div>
 
 <style>
-    .chat {
+    .chat-container {
         display: flex;
         flex-direction: column;
-        height: 90vh;
-        padding: 1rem;
+        height: 100vh;
+        background: #2a2a2a;
+        padding: 0;
+        margin: 0;
+    }
+    .welcome-input {
+        width: 100%;
+        background: transparent;
+        border: none;
+        color: #e0e0e0;
+        font-size: 0.9rem;
+        outline: none;
+        margin-bottom: 0.5rem;
+        padding: 0.5rem 0;
     }
 
-    .log-container {
+    .welcome-input::placeholder {
+        color: #a0a0a0;
+    }
+
+    .welcome-screen {
         flex: 1;
-        overflow-y: auto;
-        border: 1px solid #ccc;
-        padding: 3px;
-        margin-bottom: 1rem;
-        background: #f9f9f9;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 0.5rem;
+        text-align: center;
     }
 
-    .input-area {
+    .logo {
+        margin-bottom: 2rem;
+    }
+
+    .logo-icon {
+        font-size: 3rem;
+        color: #ff6b35;
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.4; }
+    }
+
+    .greeting {
+        font-size: 1.2rem;
+        color: #e0e0e0;
+        margin-bottom: 1.5rem;
+        font-weight: 300;
+    }
+
+    .input-card {
+        background: #1a1a1a;
+        border-radius: 8px;
+        padding: 0.5rem;
+        margin-bottom: 0.75rem;
+        width: 100%;
+        max-width: 350px;
+        border: 1px solid #3a3a3a;
+    }
+
+    .input-controls {
         display: flex;
-        gap: 0.5rem;
+        justify-content: space-between;
         align-items: center;
     }
 
-    .input-area input {
-        flex: 1;
-        padding: 0.5rem;
-        border: 1px solid #ccc;
-        border-radius: 4px;
+    .left-controls, .right-controls {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
     }
 
-    .input-area button {
-        padding: 0.5rem 0.1rem;
+    .control-btn {
+        background: transparent;
         border: none;
-        border-radius: 4px;
+        color: #a0a0a0;
+        font-size: 1rem;
         cursor: pointer;
-        background: #007bff;
+        padding: 0.25rem;
+        border-radius: 4px;
+        transition: all 0.2s;
+    }
+
+    .control-btn:hover {
+        background: #3a3a3a;
+        color: #e0e0e0;
+    }
+
+    .model-selector {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        color: #a0a0a0;
+        font-size: 0.8rem;
+        cursor: pointer;
+        padding: 0.25rem;
+        border-radius: 6px;
+        transition: background-color 0.2s;
+        position: relative;
+    }
+
+    .model-selector:hover {
+        background: #3a3a3a;
+    }
+
+    .chevron {
+        font-size: 0.8rem;
+    }
+
+    .model-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: #1a1a1a;
+        border: 1px solid #3a3a3a;
+        border-radius: 6px;
+        z-index: 1000;
+        margin-top: 0.25rem;
+        max-height: 150px;
+        overflow-y: auto;
+    }
+
+    .model-option {
+        padding: 0.5rem;
+        cursor: pointer;
+        transition: background-color 0.2s;
+        font-size: 0.8rem;
+        color: #e0e0e0;
+    }
+
+    .model-option:hover {
+        background: #3a3a3a;
+    }
+
+    .model-option.active {
+        background: #ff6b35;
         color: white;
     }
 
-    .input-area button:hover {
-        background: #0056b3;
+    .send-btn {
+        background: #ff6b35;
+        border: none;
+        color: white;
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+
+    .send-btn:hover:not(:disabled) {
+        background: #ff5722;
+        transform: scale(1.05);
+    }
+
+    .send-btn:disabled {
+        background: #4a4a4a;
+        cursor: not-allowed;
+    }
+
+    .send-icon {
+        font-size: 1rem;
+        font-weight: bold;
+    }
+
+    /* Быстрые действия */
+    .quick-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        width: 100%;
+        max-width: 350px;
+    }
+
+    .action-row {
+        display: flex;
+        gap: 0.25rem;
+        justify-content: center;
+    }
+
+    .action-btn {
+        background: #1a1a1a;
+        border: 1px solid #3a3a3a;
+        color: #e0e0e0;
+        padding: 0.4rem 0.5rem;
+        border-radius: 6px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.2rem;
+        font-size: 0.75rem;
+        transition: all 0.2s;
+        flex: 1;
+        max-width: 120px;
+    }
+
+    .action-btn:hover {
+        background: #3a3a3a;
+        border-color: #4a4a4a;
+    }
+
+    .action-btn.primary {
+        background: #ff6b35;
+        border-color: #ff6b35;
+        color: white;
+    }
+
+    .action-btn.primary:hover {
+        background: #ff5722;
+        border-color: #ff5722;
+    }
+
+    .action-icon {
+        font-size: 0.8rem;
+    }
+
+    /* Чат */
+    .chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .message {
+        display: flex;
+        gap: 1rem;
+        align-items: flex-start;
+    }
+
+    .message.user {
+        flex-direction: row;
+    }
+
+    .message.assistant {
+        flex-direction: column;
+    }
+
+    .message-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: #ff6b35;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 0.9rem;
+        flex-shrink: 0;
+    }
+
+    .message-bubble {
+        background: #2a2a2a;
+        padding: 0.75rem 1rem;
+        border-radius: 12px;
+        max-width: 80%;
+        word-wrap: break-word;
+    }
+
+    .user-bubble {
+        background: #ff6b35;
+        color: white;
+    }
+
+    .message-content {
+        color: #e0e0e0;
+        line-height: 1.5;
+        white-space: pre-wrap;
+    }
+
+    .typing-indicator {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #a0a0a0;
+        font-style: italic;
+    }
+
+    /* Поле ввода */
+    .input-area {
+        background: #2a2a2a;
+        padding: 0;
+    }
+
+    .input-container {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        background: #1a1a1a;
+        border-radius: 6px;
+        padding: 0.25rem;
+    }
+
+    .message-input {
+        flex: 1;
+        background: transparent;
+        border: none;
+        color: #e0e0e0;
+        font-size: 0.9rem;
+        outline: none;
+        resize: none;
+        min-height: 20px;
+        max-height: 80px;
+    }
+
+    .message-input::placeholder {
+        color: #a0a0a0;
+    }
+
+    .disclaimer {
+        text-align: center;
+        color: #a0a0a0;
+        font-size: 0.7rem;
+        margin-top: 0.25rem;
+        line-height: 1.3;
     }
 </style>
