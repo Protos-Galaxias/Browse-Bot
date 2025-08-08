@@ -2,6 +2,7 @@ import { tool } from 'ai';
 import { z } from 'zod';
 import { findElementIds } from './findElement';
 import type { AIService as AIServiceType } from '../services/AIService';
+import { updateLog } from '../logger';
 
 export interface ToolContext {
     aiService: AIServiceType;
@@ -45,6 +46,7 @@ export const agentTools = (context: ToolContext) => ({
         }),
         async execute({ reasoning, element_description }): Promise<ToolOutput> {
             console.log(`findAndClick with reasoning: ${reasoning}`, element_description);
+            updateLog(`${reasoning}. ${element_description}`);
             const elements = context.getInteractiveElements();
             if (elements.length === 0) return { success: false, error: 'Context is empty. Call `parseCurrentPage` first.' };
 

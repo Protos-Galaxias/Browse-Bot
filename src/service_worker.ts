@@ -159,6 +159,14 @@ async function analyzeWork(prompt: string): Promise<string> {
         return 'Нет данных о проделанной работе. Сначала выполните какое-либо действие в браузере.';
     }
 
+    const hasToolCalls = agentHistory.some(msg =>
+        msg.role === 'assistant' && Array.isArray(msg.content) && msg.content[0]?.type === 'tool-call'
+    );
+
+    if (!hasToolCalls) {
+        return 'Нет данных о проделанной работе. Сначала выполните какое-либо действие в браузере.';
+    }
+
     const analysisPrompt = `Проанализируй проделанную работу агента.
 
 Исходный запрос пользователя: "${lastTaskPrompt}"
@@ -196,12 +204,9 @@ ${agentHistory.map((msg, index) => {
 chrome.runtime.onMessage.addListener(async (message) => {
     if (message.type === 'START_TASK') {
         const { prompt } = message;
-        // updateLog(`[System]: Starting task: "${prompt}"`);
 
         try {
             await aiService.initialize();
-
-            // Классифицируем промпт с помощью LLM
             const promptType = await classifyPrompt(prompt);
             updateLog(`[System]: Prompt classified as: ${promptType}`);
 
@@ -235,6 +240,7 @@ Example sub-tasks for "add items from favorites to cart":
 - Sub-task 1: Navigate to the favorites page.
 - Sub-task 2: Add all items on the favorites page to the cart.`;
 
+                // Start fresh history for new browser action task
                 agentHistory = [
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: prompt }
