@@ -68,10 +68,13 @@ export class OpenRouterAIService implements AIService {
 
     async generateTextByPrompt(prompt: string, options: AIGenerateOptions = {}): Promise<GenerateTextResult<any, any>> {
         const model = options.model || await this.configService.get<string>('model') || 'google/gemini-2.5-pro';
+        const globalPrompt = await this.configService.get<string>('globalPrompt', '');
+
+        const finalPrompt = globalPrompt ? `${globalPrompt}\n\n${prompt}` : prompt;
 
         return generateText({
             model: this.getClient().chat(model),
-            prompt
+            prompt: finalPrompt
         });
     }
 
@@ -86,10 +89,12 @@ export class OpenRouterAIService implements AIService {
         try {
             const model = options.model || await this.configService.get<string>('model') || 'google/gemini-2.5-pro';
             const client = this.getClient();
+            const globalPrompt = await this.configService.get<string>('globalPrompt', '');
+            const finalSystem = globalPrompt ? `${globalPrompt}\n\n${systemPrompt}` : systemPrompt;
             const result = await generateObject({
                 model: client.chat(model),
                 schema,
-                system: systemPrompt,
+                system: finalSystem,
                 prompt
             });
 
@@ -107,9 +112,19 @@ export class OpenRouterAIService implements AIService {
         abortSignal?: AbortSignal;
     }): Promise<GenerateTextResult<any, any>> {
         const model = await this.getChatModel();
+        const globalPrompt = await this.configService.get<string>('globalPrompt', '');
+
+        // If there's a global prompt, inject it as a leading system message
+        const messagesWithGlobal: CoreMessage[] = globalPrompt
+            ? [{ role: 'system', content: globalPrompt }, ...params.messages]
+            : params.messages;
+
         return generateText({
             model,
-            ...params
+            messages: messagesWithGlobal,
+            tools: params.tools,
+            maxRetries: params.maxRetries,
+            abortSignal: params.abortSignal
         });
     }
 }

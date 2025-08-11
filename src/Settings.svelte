@@ -5,12 +5,14 @@
     let models: string[] = [];
     let newModel = '';
     let activeModel = '';
+    let globalPrompt = '';
 
     onMount(async () => {
-        const settings = await chrome.storage.local.get(['apiKey', 'models', 'activeModel']);
+        const settings = await chrome.storage.local.get(['apiKey', 'models', 'activeModel', 'globalPrompt']);
         apiKey = settings.apiKey || '';
         models = settings.models || ['google/gemini-2.5-pro'];
         activeModel = settings.activeModel || models[0];
+        globalPrompt = typeof settings.globalPrompt === 'string' ? settings.globalPrompt : '';
         chrome.runtime.sendMessage({ type: 'UPDATE_CONFIG' });
     });
 
@@ -38,7 +40,7 @@
     }
 
     function saveSettings() {
-        chrome.storage.local.set({ apiKey, models, activeModel });
+        chrome.storage.local.set({ apiKey, models, activeModel, globalPrompt });
         alert('Настройки сохранены!');
     }
 </script>
@@ -86,6 +88,18 @@
                     />
                     <button class="add-btn" on:click={addModel}>+</button>
                 </div>
+            </label>
+        </div>
+
+        <div class="setting-group">
+            <label class="setting-label">
+                Глобальный промт / информация о вас
+                <textarea
+                    bind:value={globalPrompt}
+                    class="setting-textarea"
+                    placeholder="Этот текст будет добавляться ко всем запросам в LLM как системная подсказка."
+                    rows="6"
+                ></textarea>
             </label>
         </div>
         
@@ -158,6 +172,25 @@
 
     .setting-input::placeholder {
         color: #a0a0a0;
+    }
+
+    .setting-textarea {
+        width: 100%;
+        padding: 0.75rem;
+        background: #1a1a1a;
+        border: 1px solid #3a3a3a;
+        border-radius: 8px;
+        color: #e0e0e0;
+        font-size: 0.95rem;
+        outline: none;
+        transition: border-color 0.2s;
+        box-sizing: border-box;
+        resize: vertical;
+        min-height: 120px;
+    }
+
+    .setting-textarea:focus {
+        border-color: #ff6b35;
     }
 
     .models-container {
