@@ -24,7 +24,7 @@ export const agentTools = (context: ToolContext) => ({
         inputSchema: z.object({}),
         // eslint-disable-next-line @typescript-eslint/ban-types
         async execute({}: {}): Promise<ToolOutput> {
-            console.log('parseCurrentPage');
+            console.log('разбор текущей страницы');
             const response = await context.sendMessageToTab({ type: 'PARSE_CURRENT_PAGE' });
             if (!response || !response.data) {
                 return { success: false, error: 'Failed to parse page.' };

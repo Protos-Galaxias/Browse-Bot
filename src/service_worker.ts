@@ -13,6 +13,7 @@ const aiService = OpenRouterAIService.getInstance();
 
 let agentHistory: ModelMessage[] = [];
 let lastTaskPrompt = '';
+let currentController: AbortController | null = null;
 
 type PromptType = 'BROWSER_ACTION' | 'DIRECT_QUESTION' | 'HISTORY_ANALYSIS';
 
@@ -58,7 +59,6 @@ HISTORY_ANALYSIS — если пользователь спрашивает о �
         await aiService.initialize();
         const response = await aiService.generateTextByPrompt(classificationPrompt);
         const result = response.text?.trim().toUpperCase();
-        console.log('Classification result:', result);
 
         if (result === 'BROWSER_ACTION' || result === 'DIRECT_QUESTION' || result === 'HISTORY_ANALYSIS') {
             return result as PromptType;
@@ -78,7 +78,7 @@ HISTORY_ANALYSIS — если пользователь спрашивает о �
 
         return 'DIRECT_QUESTION';
     } catch (err) {
-        updateLog(`[Error] Failed to classify prompt: ${err instanceof Error ? err.message : String(err)}`);
+        updateLog(`[Ошибка] Не удалось классифицировать запрос: ${err instanceof Error ? err.message : String(err)}`);
         return 'DIRECT_QUESTION';
     }
 }
@@ -88,7 +88,6 @@ async function runAgentTask(
     prompt: string,
     tools: ToolSet,
     aiService: AIService,
-    toolContext: ToolContext,
     systemPrompt: string,
     maxSteps: number = 10
 ) {
@@ -99,59 +98,72 @@ async function runAgentTask(
 
     agentHistory = [...history];
 
+    // Create new AbortController for this task
+    currentController = new AbortController();
+    const signal = currentController.signal;
+
     for (let step = 0; step < maxSteps; step++) {
-        updateLog(`[Agent] Step ${step + 1}`);
+        updateLog(`[Агент] Шаг ${step + 1}`);
 
-        const { toolCalls, text } = await aiService.generateWithTools({
-            messages: history,
-            tools
-        });
+        try {
+            const { toolCalls, text } = await aiService.generateWithTools({
+                messages: history,
+                tools,
+                abortSignal: signal
+            });
 
-        if (!toolCalls || toolCalls.length === 0) {
-            updateLog(`[Agent] No more tool calls. Final Answer: ${text}`);
-            return text || 'Task completed without a final text answer.';
-        }
-
-        history.push({ role: 'assistant', content: [{ type: 'tool-call', toolCallId: toolCalls[0].toolCallId, toolName: toolCalls[0].toolName, input: toolCalls[0].input }] });
-
-        agentHistory = [...history];
-
-        const toolResults: ModelMessage[] = [];
-        for (const call of toolCalls) {
-            const tool = tools[call.toolName];
-            if (!tool) {
-                updateLog(`[Agent] Unknown tool: ${call.toolName}`);
-                continue;
+            if (!toolCalls || toolCalls.length === 0) {
+                updateLog(`[Агент] Больше нет вызовов инструментов. Финальный ответ: ${text}`);
+                return text || 'Task completed without a final text answer.';
             }
 
-            try {
-                const args = call.input || {};
-                const result = await (tool as any).execute(args);
-                console.log('Tool result:', result);
+            history.push({ role: 'assistant', content: [{ type: 'tool-call', toolCallId: toolCalls[0].toolCallId, toolName: toolCalls[0].toolName, input: toolCalls[0].input }] });
 
-                toolResults.push({
-                    role: 'tool',
-                    content: [{ type: 'tool-result', toolCallId: call.toolCallId, toolName: call.toolName, output: {
-                        type: 'json',
-                        value: result
-                    } }]
-                });
+            agentHistory = [...history];
 
-                updateLog(`[Agent] Called ${call.toolName}.`);
-
-                if (call.toolName === 'finishTask') {
-                    return (result as { answer: string }).answer;
+            const toolResults: ModelMessage[] = [];
+            for (const call of toolCalls) {
+                const tool = tools[call.toolName];
+                if (!tool) {
+                    updateLog(`[Агент] Неизвестный инструмент: ${call.toolName}`);
+                    continue;
                 }
-            } catch (err) {
-                updateLog(`[Agent] Error calling ${call.toolName}: ${err instanceof Error ? err.message : String(err)}`);
-            }
-        }
-        history.push(...toolResults);
 
-        agentHistory = [...history];
+                try {
+                    const args = call.input || {};
+                    const result = await (tool as any).execute(args);
+                    console.log('Результат инструмента:', result);
+
+                    toolResults.push({
+                        role: 'tool',
+                        content: [{ type: 'tool-result', toolCallId: call.toolCallId, toolName: call.toolName, output: {
+                            type: 'json',
+                            value: result
+                        } }]
+                    });
+
+                    updateLog(`[Агент] Вызвал ${call.toolName}.`);
+
+                    if (call.toolName === 'finishTask') {
+                        return (result as { answer: string }).answer;
+                    }
+                } catch (err) {
+                    updateLog(`[Агент] Ошибка при вызове ${call.toolName}: ${err instanceof Error ? err.message : String(err)}`);
+                }
+            }
+            history.push(...toolResults);
+
+            agentHistory = [...history];
+        } catch (error) {
+            if (error instanceof Error && error.name === 'AbortError') {
+                updateLog('[Агент] Задача была прервана пользователем');
+                return 'Задача была остановлена пользователем';
+            }
+            throw error;
+        }
     }
 
-    return 'Agent reached max steps without finishing.';
+    return 'Агент достиг максимального количества шагов без завершения.';
 }
 
 async function analyzeWork(prompt: string): Promise<string> {
@@ -208,10 +220,10 @@ chrome.runtime.onMessage.addListener(async (message) => {
         try {
             await aiService.initialize();
             const promptType = await classifyPrompt(prompt);
-            updateLog(`[System]: Prompt classified as: ${promptType}`);
+            updateLog(`[Система]: Запрос классифицирован как: ${promptType}`);
 
             if (promptType === 'BROWSER_ACTION') {
-                updateLog('Browser action detected, starting agent');
+                updateLog('Обнаружено действие в браузере, запускаю агента');
 
                 const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
                 if (!tab?.id) throw new Error('No active tab');
@@ -247,25 +259,32 @@ Example sub-tasks for "add items from favorites to cart":
                 ];
                 lastTaskPrompt = prompt;
 
-                const finalAnswer = await runAgentTask(prompt, tools, aiService, toolContext, systemPrompt);
+                const finalAnswer = await runAgentTask(prompt, tools, aiService, systemPrompt);
 
-                updateLog(`[Result]: ${finalAnswer}`);
-
+                updateLog(`[Результат]: ${finalAnswer}`);
             } else if (promptType === 'HISTORY_ANALYSIS') {
-                updateLog(`[System]: History analysis requested`);
+                updateLog('[Система]: Запрошен анализ истории');
                 const analysis = await analyzeWork(prompt);
-                updateLog(`[Analysis]: ${analysis}`);
+                updateLog(`[Анализ]: ${analysis}`);
 
             } else {
-                updateLog(`[System]: Direct question detected, sending to LLM`);
+                updateLog('[Система]: Обнаружен прямой вопрос, отправляю в LLM');
 
                 const response = await aiService.generateTextByPrompt(prompt);
                 const answer = response.text || 'Не удалось получить ответ.';
-                updateLog(`[Result]: ${answer}`);
+                updateLog(`[Результат]: ${answer}`);
             }
         } catch (err) {
-            updateLog(`[Error]: ${err instanceof Error ? err.message : String(err)}`);
+            updateLog(`[Ошибка]: ${err instanceof Error ? err.message : String(err)}`);
         } finally {
+            chrome.runtime.sendMessage({ type: 'TASK_COMPLETE' }).catch(console.error);
+        }
+    } else if (message.type === 'STOP_TASK') {
+        if (currentController) {
+            currentController.abort();
+            currentController = null;
+            updateLog('[Система]: Задача остановлена пользователем');
+            // Send message to update UI
             chrome.runtime.sendMessage({ type: 'TASK_COMPLETE' }).catch(console.error);
         }
     }

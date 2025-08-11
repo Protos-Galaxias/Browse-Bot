@@ -18,7 +18,8 @@ export interface AIService {
   generateWithTools(params: {
     messages: CoreMessage[],
     tools: ToolSet,
-    maxToolRoundtrips?: number
+    maxToolRoundtrips?: number,
+    abortSignal?: AbortSignal
   }): Promise<GenerateTextResult<any, any>>;
 }
 
@@ -103,6 +104,7 @@ export class OpenRouterAIService implements AIService {
         messages: CoreMessage[];
         tools: ToolSet;
         maxRetries?: number;
+        abortSignal?: AbortSignal;
     }): Promise<GenerateTextResult<any, any>> {
         const model = await this.getChatModel();
         return generateText({

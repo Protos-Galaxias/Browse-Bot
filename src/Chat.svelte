@@ -6,6 +6,7 @@
     let prompt = '';
     let log: string[] = [];
     let isTyping = false;
+    let isTaskRunning = false;
     let models: string[] = [];
     let activeModel = '';
     let showModelDropdown = false;
@@ -28,12 +29,19 @@
         if (!prompt.trim()) return;
         
         isTyping = true;
+        isTaskRunning = true;
         log = [...log, `[User]: ${prompt}`];
         saveChatState();
         
         chrome.runtime.sendMessage({ type: 'START_TASK', prompt });
         prompt = '';
         saveChatState();
+    }
+
+    function stopTask() {
+        isTaskRunning = false;
+        isTyping = false;
+        chrome.runtime.sendMessage({ type: 'STOP_TASK' });
     }
 
     $: (async () => {
@@ -62,6 +70,9 @@
     chrome.runtime.onMessage.addListener((message) => {
         if (message.type === 'UPDATE_LOG') {
             log = [...log, message.data];
+            isTyping = false;
+        } else if (message.type === 'TASK_COMPLETE') {
+            isTaskRunning = false;
             isTyping = false;
         }
         return true;
@@ -117,8 +128,8 @@
                                 </div>
                             {/if}
                         </div>
-                        <button class="send-btn" on:click={startTask} disabled={!prompt.trim()}>
-                            <span class="send-icon">↑</span>
+                        <button class="send-btn {isTaskRunning ? 'stop-mode' : ''}" on:click={isTaskRunning ? stopTask : startTask} disabled={!isTaskRunning && !prompt.trim()}>
+                            <span class="send-icon">{isTaskRunning ? '■' : '↑'}</span>
                         </button>
                     </div>
                 </div>
@@ -192,8 +203,8 @@
                         </div>
                     {/if}
                 </div>
-                <button class="send-btn" on:click={startTask} disabled={!prompt.trim()}>
-                    <span class="send-icon">↑</span>
+                <button class="send-btn {isTaskRunning ? 'stop-mode' : ''}" on:click={isTaskRunning ? stopTask : startTask} disabled={!isTaskRunning && !prompt.trim()}>
+                    <span class="send-icon">{isTaskRunning ? '■' : '↑'}</span>
                 </button>
             </div>
         </div>
@@ -379,6 +390,14 @@
     .send-btn:disabled {
         background: #4a4a4a;
         cursor: not-allowed;
+    }
+
+    .send-btn.stop-mode {
+        background: #dc3545;
+    }
+
+    .send-btn.stop-mode:hover:not(:disabled) {
+        background: #c82333;
     }
     
     .send-icon {
