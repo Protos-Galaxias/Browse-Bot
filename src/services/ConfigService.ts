@@ -1,6 +1,9 @@
+export type Theme = 'light' | 'dark' | 'system';
+
 interface Config {
   apiKey: string;
   model: string;
+  theme?: Theme;
   [key: string]: any;
 }
 

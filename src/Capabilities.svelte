@@ -1,6 +1,6 @@
 <div class="capabilities-container">
     <h2>Возможности Web Walker</h2>
-    
+
     <div class="capability-section">
         <h3>🤖 Автоматизация браузера</h3>
         <ul>
@@ -56,14 +56,14 @@
         display: flex;
         flex-direction: column;
         min-height: 100vh;
-        background: #2a2a2a;
+        background: var(--bg-primary);
         padding: 1rem;
         overflow-y: auto;
         text-align: left;
     }
 
     h2 {
-        color: #e0e0e0;
+        color: var(--text-primary);
         margin: 0 0 1.5rem 0;
         font-size: 1.2rem;
         font-weight: 300;
@@ -75,7 +75,7 @@
     }
 
     h3 {
-        color: #ff6b35;
+        color: var(--accent-color);
         font-size: 1rem;
         margin: 0 0 0.5rem 0;
         font-weight: 500;
@@ -84,7 +84,7 @@
     ul {
         margin: 0;
         padding-left: 0;
-        color: #e0e0e0;
+        color: var(--text-primary);
         font-size: 0.9rem;
         line-height: 1.4;
         list-style: none;
@@ -94,4 +94,4 @@
         margin-bottom: 0.25rem;
         padding-left: 0;
     }
-</style> 
+</style>
