@@ -8,6 +8,7 @@
     let activeModel = '';
     let globalPrompt = '';
     let theme: Theme = 'system';
+    let saveStatus: 'idle' | 'saving' | 'saved' = 'idle';
 
     onMount(async () => {
         const settings = await chrome.storage.local.get(['apiKey', 'models', 'activeModel', 'globalPrompt', 'theme']);
@@ -60,9 +61,13 @@
         saveSettings();
     }
 
-    function saveSettings() {
-        chrome.storage.local.set({ apiKey, models, activeModel, globalPrompt, theme });
-        alert('Настройки сохранены!');
+    async function saveSettings() {
+        saveStatus = 'saving';
+        await chrome.storage.local.set({ apiKey, models, activeModel, globalPrompt, theme });
+        saveStatus = 'saved';
+        setTimeout(() => {
+            saveStatus = 'idle';
+        }, 2000);
     }
 </script>
 
@@ -150,8 +155,14 @@
             </label>
         </div>
 
-        <button class="save-btn" on:click={saveSettings}>
-            Сохранить настройки
+        <button class="save-btn {saveStatus}" on:click={saveSettings} disabled={saveStatus === 'saving'}>
+            {#if saveStatus === 'saving'}
+                Сохранение...
+            {:else if saveStatus === 'saved'}
+                ✓ Сохранено
+            {:else}
+                Сохранить настройки
+            {/if}
         </button>
 
         <div class="help-text">
@@ -418,6 +429,19 @@
 
     .save-btn:active {
         transform: translateY(0);
+    }
+
+    .save-btn.saving {
+        opacity: 0.7;
+        cursor: wait;
+    }
+
+    .save-btn.saved {
+        background: #28a745;
+    }
+
+    .save-btn.saved:hover {
+        background: #218838;
     }
 
     .help-text {
