@@ -31,7 +31,7 @@ export default defineManifest({
         },
         browser_specific_settings: {
             gecko: {
-                id: `web-walker@${new Date().getTime()}.org`
+                id: 'web-walker@example.org'
             }
         }
     } as any),
