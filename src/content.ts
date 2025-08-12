@@ -22,30 +22,25 @@ function nodeToMarkdown(node: HTMLElement): string {
     }
 
     switch (tagName) {
-    case 'a':
-    {
+    case 'a': {
         const href = node.getAttribute('href') || '#';
         return `[${content}](${href})${attributes}`;
     }
-    case 'button':
-    {
+    case 'button': {
         return `[button: ${content}${attributes}]`;
     }
     case 'input':
-    case 'textarea':
-    {
+    case 'textarea': {
         const placeholder = node.getAttribute('placeholder') || '';
         const value = (node as HTMLInputElement).value || '';
         return `[input: ${placeholder || content}, current value: "${value}"${attributes}]`;
     }
     case 'h1':
     case 'h2':
-    case 'h3':
-    {
+    case 'h3': {
         return `### ${content}`;
     }
-    default:
-    {
+    default: {
         if (node.getAttribute('role')?.match(/button|link/)) {
             return `[interactive: ${content}${attributes}]`;
         }
@@ -91,15 +86,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log('Web Walker: Message received in content script', message);
 
     switch (message.type) {
-    case 'PARSE_CURRENT_PAGE':
-    {
+    case 'PARSE_CURRENT_PAGE': {
         const parsedElements = parsePageForInteractiveElements();
         console.log(`Web Walker: Parsed ${parsedElements.length} interactive elements.`);
         sendResponse({ type: 'PARSE_RESULT', data: parsedElements });
         break;
     }
-    case 'CLICK_ON_ELEMENT':
-    {
+    case 'CLICK_ON_ELEMENT': {
         const elementToClick = elementCache.get(String(message.aid));
         if (elementToClick) {
             elementToClick.click();
@@ -110,8 +103,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
         break;
     }
-    case 'INSERT_TEXT':
-    {
+    case 'INSERT_TEXT': {
         const elementToInsert = elementCache.get(String(message.aid));
         if (elementToInsert && (elementToInsert instanceof HTMLInputElement || elementToInsert instanceof HTMLTextAreaElement)) {
             elementToInsert.value = message.text;
@@ -122,8 +114,61 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
         break;
     }
-    default:
-    {
+    case 'SELECT_OPTION': {
+        const el = elementCache.get(String(message.aid));
+        if (el && el instanceof HTMLSelectElement) {
+            const matchBy: 'label' | 'value' | undefined = message.matchBy;
+            const target = String(message.option ?? '');
+            let matched: HTMLOptionElement | undefined;
+            for (const opt of Array.from(el.options)) {
+                if ((matchBy === 'value' && opt.value === target) ||
+                    (matchBy === 'label' && opt.text.trim() === target) ||
+                    (!matchBy && (opt.text.trim() === target || opt.value === target))) {
+                    matched = opt; break;
+                }
+            }
+            if (matched) {
+                el.value = matched.value;
+                el.dispatchEvent(new Event('change', { bubbles: true }));
+                sendResponse({ status: 'ok' });
+            } else {
+                sendResponse({ status: 'error', message: `Option not found: ${target}` });
+            }
+        } else {
+            sendResponse({ status: 'error', message: `Select with aid=${message.aid} not found` });
+        }
+        break;
+    }
+    case 'SET_CHECKBOX': {
+        const el = elementCache.get(String(message.aid));
+        if (el && el instanceof HTMLInputElement && el.type === 'checkbox') {
+            el.checked = Boolean(message.checked);
+            el.dispatchEvent(new Event('change', { bubbles: true }));
+            sendResponse({ status: 'ok' });
+        } else {
+            sendResponse({ status: 'error', message: `Checkbox with aid=${message.aid} not found` });
+        }
+        break;
+    }
+    case 'SET_RADIO': {
+        const el = elementCache.get(String(message.aid));
+        if (el && el instanceof HTMLInputElement && el.type === 'radio') {
+            if (el.name) {
+                const group = document.querySelectorAll(`input[type="radio"][name="${CSS.escape(el.name)}"]`);
+                group.forEach((n) => {
+                    if (n instanceof HTMLInputElement) n.checked = (n === el);
+                });
+            } else {
+                el.checked = true;
+            }
+            el.dispatchEvent(new Event('change', { bubbles: true }));
+            sendResponse({ status: 'ok' });
+        } else {
+            sendResponse({ status: 'error', message: `Radio with aid=${message.aid} not found` });
+        }
+        break;
+    }
+    default: {
         console.warn('Web Walker: Unknown message type received', message.type);
         sendResponse({ status: 'error', message: 'Unknown message type' });
         break;

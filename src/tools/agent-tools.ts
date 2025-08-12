@@ -22,8 +22,7 @@ export const agentTools = (context: ToolContext) => ({
     parseCurrentPage: tool({
         description: 'MUST BE CALLED FIRST to see the page. Scans the page to get a list of elements that other tools can use. Example result format: { "id": "3", "markdownValue": "[button: Search]" }',
         inputSchema: z.object({}),
-        // eslint-disable-next-line @typescript-eslint/ban-types
-        async execute({}: {}): Promise<ToolOutput> {
+        async execute(): Promise<ToolOutput> {
             console.log('разбор текущей страницы');
             const response = await context.sendMessageToTab({ type: 'PARSE_CURRENT_PAGE' });
             if (!response || !response.data) {
@@ -76,7 +75,64 @@ export const agentTools = (context: ToolContext) => ({
             const elementIds = await findElementIds(elements, element_description, context.aiService);
             if (!elementIds || elementIds.length === 0) return { success: false, error: `No input found for: ${element_description}` };
             const targetId = elementIds[0];
-            await context.sendMessageToTab({ type: 'INSERT_TEXT_AND_SEARCH', aid: targetId, text });
+            await context.sendMessageToTab({ type: 'INSERT_TEXT', aid: targetId, text });
+            return { success: true, elementId: targetId };
+        }
+    }),
+
+    selectOption: tool({
+        description: 'Selects an option in a <select> element by visible label or value.',
+        inputSchema: z.object({
+            reasoning: z.string().describe('Explain why you need to select this option.'),
+            element_description: z.string().describe('Description of the target select element, from elements list.'),
+            option: z.string().describe('Option label or value to select.'),
+            matchBy: z.enum(['label', 'value']).optional().describe('Match by label (default) or value.')
+        }),
+        async execute({ reasoning, element_description, option, matchBy }): Promise<ToolOutput> {
+            updateLog(`${reasoning}. Выбор опции "${option}".`);
+            const elements = context.getInteractiveElements();
+            if (elements.length === 0) return { success: false, error: 'Context is empty. Call `parseCurrentPage` first.' };
+            const elementIds = await findElementIds(elements, element_description, context.aiService);
+            if (!elementIds || elementIds.length === 0) return { success: false, error: `No select found for: ${element_description}` };
+            const targetId = elementIds[0];
+            await context.sendMessageToTab({ type: 'SELECT_OPTION', aid: targetId, option, matchBy });
+            return { success: true, elementId: targetId };
+        }
+    }),
+
+    setCheckbox: tool({
+        description: 'Sets a checkbox to checked or unchecked.',
+        inputSchema: z.object({
+            reasoning: z.string().describe('Explain why you need to set this checkbox.'),
+            element_description: z.string().describe('Description of the checkbox.'),
+            checked: z.boolean().describe('Whether the checkbox should be checked.')
+        }),
+        async execute({ reasoning, element_description, checked }): Promise<ToolOutput> {
+            updateLog(`${reasoning}. Установка чекбокса: ${checked ? 'включен' : 'выключен'}.`);
+            const elements = context.getInteractiveElements();
+            if (elements.length === 0) return { success: false, error: 'Context is empty. Call `parseCurrentPage` first.' };
+            const elementIds = await findElementIds(elements, element_description, context.aiService);
+            if (!elementIds || elementIds.length === 0) return { success: false, error: `No checkbox found for: ${element_description}` };
+            const targetId = elementIds[0];
+            await context.sendMessageToTab({ type: 'SET_CHECKBOX', aid: targetId, checked });
+            return { success: true, elementId: targetId };
+        }
+    }),
+
+    setRadio: tool({
+        description: 'Selects a radio button in a radio group.',
+        inputSchema: z.object({
+            reasoning: z.string().describe('Explain why you need to select this radio.'),
+            element_description: z.string().describe('Description of the radio to select.')
+        }),
+        async execute({ reasoning, element_description }): Promise<ToolOutput> {
+            updateLog(`${reasoning}. Выбор радио-кнопки.`);
+            const elements = context.getInteractiveElements();
+            if (elements.length === 0) return { success: false, error: 'Context is empty. Call `parseCurrentPage` first.' };
+            const elementIds = await findElementIds(elements, element_description, context.aiService);
+            if (!elementIds || elementIds.length === 0) return { success: false, error: `No radio found for: ${element_description}` };
+            const targetId = elementIds[0];
+            await context.sendMessageToTab({ type: 'SET_RADIO', aid: targetId });
             return { success: true, elementId: targetId };
         }
     }),

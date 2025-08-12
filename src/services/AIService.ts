@@ -1,7 +1,7 @@
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { ConfigService } from './ConfigService';
 import { generateObject, generateText } from 'ai';
-import type { GenerateTextResult, LanguageModel, CoreMessage, ToolSet } from 'ai';
+import type { GenerateTextResult, LanguageModel, ModelMessage, ToolSet } from 'ai';
 
 export interface AIGenerateOptions {
   model?: string;
@@ -16,7 +16,7 @@ export interface AIService {
   isConfigured(): Promise<boolean>;
   getChatModel(): Promise<LanguageModel>;
   generateWithTools(params: {
-    messages: CoreMessage[],
+    messages: ModelMessage[],
     tools: ToolSet,
     maxToolRoundtrips?: number,
     abortSignal?: AbortSignal
@@ -62,12 +62,12 @@ export class OpenRouterAIService implements AIService {
     }
 
     async getChatModel(): Promise<LanguageModel> {
-        const modelName = await this.configService.get<string>('model') || 'google/gemini-2.5-pro';
+        const modelName = await this.configService.get<string>('activeModel') || 'google/gemini-2.5-pro';
         return this.getClient().chat(modelName);
     }
 
     async generateTextByPrompt(prompt: string, options: AIGenerateOptions = {}): Promise<GenerateTextResult<any, any>> {
-        const model = options.model || await this.configService.get<string>('model') || 'google/gemini-2.5-pro';
+        const model = options.model || await this.configService.get<string>('activeModel') || 'google/gemini-2.5-pro';
         const globalPrompt = await this.configService.get<string>('globalPrompt', '');
 
         const finalPrompt = globalPrompt ? `${globalPrompt}\n\n${prompt}` : prompt;
@@ -87,7 +87,7 @@ export class OpenRouterAIService implements AIService {
 
     async generate<T>(schema: any, systemPrompt: string, prompt: string, options: AIGenerateOptions = {}): Promise<T> {
         try {
-            const model = options.model || await this.configService.get<string>('model') || 'google/gemini-2.5-pro';
+            const model = options.model || await this.configService.get<string>('activeModel') || 'google/gemini-2.5-pro';
             const client = this.getClient();
             const globalPrompt = await this.configService.get<string>('globalPrompt', '');
             const finalSystem = globalPrompt ? `${globalPrompt}\n\n${systemPrompt}` : systemPrompt;
@@ -106,7 +106,7 @@ export class OpenRouterAIService implements AIService {
     }
 
     async generateWithTools(params: {
-        messages: CoreMessage[];
+        messages: ModelMessage[];
         tools: ToolSet;
         maxRetries?: number;
         abortSignal?: AbortSignal;
@@ -114,8 +114,7 @@ export class OpenRouterAIService implements AIService {
         const model = await this.getChatModel();
         const globalPrompt = await this.configService.get<string>('globalPrompt', '');
 
-        // If there's a global prompt, inject it as a leading system message
-        const messagesWithGlobal: CoreMessage[] = globalPrompt
+        const messagesWithGlobal: ModelMessage[] = globalPrompt
             ? [{ role: 'system', content: globalPrompt }, ...params.messages]
             : params.messages;
 
