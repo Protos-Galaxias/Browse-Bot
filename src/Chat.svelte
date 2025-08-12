@@ -10,13 +10,16 @@
     let models: string[] = [];
     let activeModel = '';
     let showModelDropdown = false;
+    let sendOnEnter: boolean = true;
+    let textareaElement: HTMLTextAreaElement | null = null;
 
     onMount(async () => {
-        const settings = await chrome.storage.local.get(['models', 'activeModel', 'chatLog', 'chatPrompt']);
-        models = settings.models || ['google/gemini-2.5-pro'];
+        const settings = await chrome.storage.local.get(['models', 'activeModel', 'chatLog', 'chatPrompt', 'sendOnEnter']);
+        models = settings.models || ['google/gemini-2.5-pro', 'openai/gpt-5-mini'];
         activeModel = settings.activeModel || models[0];
         log = Array.isArray(settings.chatLog) ? settings.chatLog : [];
         prompt = typeof settings.chatPrompt === 'string' ? settings.chatPrompt : '';
+        sendOnEnter = typeof settings.sendOnEnter === 'boolean' ? settings.sendOnEnter : true;
     });
 
     function saveChatState() {
@@ -51,9 +54,20 @@
     })();
 
     function handleKeyPress(event: KeyboardEvent) {
-        if (event.key === 'Enter' && !event.shiftKey) {
-            event.preventDefault();
-            startTask();
+        const isMeta = event.ctrlKey || event.metaKey;
+        if (sendOnEnter) {
+            if (event.key === 'Enter' && !isMeta) {
+                event.preventDefault();
+                startTask();
+            } else if (event.key === 'Enter' && isMeta) {
+                event.preventDefault();
+                prompt = prompt + '\n';
+            }
+        } else {
+            if (event.key === 'Enter' && isMeta) {
+                event.preventDefault();
+                startTask();
+            }
         }
     }
 
@@ -91,6 +105,27 @@
         const rawHtml = marked.parse(input) as string;
         return DOMPurify.sanitize(rawHtml, { USE_PROFILES: { html: true } });
     }
+
+    
+    $: if (textareaElement && prompt !== undefined) {
+        autoResize();
+    }
+
+    function autoResize() {
+        if (!textareaElement) return;
+        
+        textareaElement.style.height = 'auto';
+        const scrollHeight = textareaElement.scrollHeight;
+        const maxHeight = 300;
+        
+        if (scrollHeight <= maxHeight) {
+            textareaElement.style.height = scrollHeight + 'px';
+            textareaElement.style.overflowY = 'hidden';
+        } else {
+            textareaElement.style.height = maxHeight + 'px';
+            textareaElement.style.overflowY = 'auto';
+        }
+  }
 </script>
 
 <div class="chat-container">
@@ -101,33 +136,33 @@
             </div>
             <h1 class="greeting">Добрый день, пользователь</h1>
             <div class="input-card">
-                <input
-                    type="text"
+                <textarea
                     bind:value={prompt}
+                    bind:this={textareaElement}
+                    on:paste={() => setTimeout(autoResize, 0)}
                     placeholder="Чем могу помочь сегодня?"
-                    on:keypress={handleKeyPress}
+                    on:keydown={handleKeyPress}
                     class="welcome-input"
-                />
+                    rows="3"
+                ></textarea>
                 <div class="input-controls">
                     <div class="left-controls">
-                        <button class="control-btn">+</button>
-                        <button class="control-btn">⋮</button>
+                        <div class="model-selector" on:click={toggleModelDropdown}>
+                            <p class="model-name">{activeModel}</p>
+                                <span class="chevron">▼</span>
+                                {#if showModelDropdown}
+                                    <div class="model-dropdown">
+                                        {#each models as model}
+                                            <div class="model-option {activeModel === model ? 'active' : ''}"
+                                                on:click={() => selectModel(model)}>
+                                                {model}
+                                            </div>
+                                        {/each}
+                                    </div>
+                                {/if}
+                            </div>
                     </div>
                     <div class="right-controls">
-                        <div class="model-selector" on:click={toggleModelDropdown}>
-                            <span>{activeModel}</span>
-                            <span class="chevron">▼</span>
-                            {#if showModelDropdown}
-                                <div class="model-dropdown">
-                                    {#each models as model}
-                                        <div class="model-option {activeModel === model ? 'active' : ''}"
-                                            on:click={() => selectModel(model)}>
-                                            {model}
-                                        </div>
-                                    {/each}
-                                </div>
-                            {/if}
-                        </div>
                         <button class="send-btn {isTaskRunning ? 'stop-mode' : ''}" on:click={isTaskRunning ? stopTask : startTask} disabled={!isTaskRunning && !prompt.trim()}>
                             <span class="send-icon">{isTaskRunning ? '■' : '↑'}</span>
                         </button>
@@ -146,7 +181,7 @@
         </div>
     {:else}
         <div class="chat-messages">
-            {#each log as entry, index}
+            {#each log as entry}
                 <div class="message {entry.startsWith('[User]') ? 'user' : 'assistant'}">
                     {#if entry.startsWith('[User]')}
                         <div class="message-avatar">U</div>
@@ -155,9 +190,7 @@
                         </div>
                     {:else}
                         <div class="message-content">
-
                             {@html renderMarkdownSafe(entry)}
-
                         </div>
                     {/if}
                 </div>
@@ -177,20 +210,17 @@
     {#if log.length !== 0}
         <div class="input-area">
             <div class="input-container">
-                <div class="left-controls">
-                    <button class="control-btn">+</button>
-                    <button class="control-btn">⋮</button>
-                </div>
-                <input
-                    type="text"
+                <textarea
                     bind:value={prompt}
-                    placeholder="Ответить агенту..."
-                    on:keypress={handleKeyPress}
-                    class="message-input"
-                />
-                <div class="right-controls">
+                    bind:this={textareaElement}
+                    on:paste={() => setTimeout(autoResize, 0)}
+                    on:keydown={handleKeyPress}
+                    class="welcome-input"
+                    rows="1"
+                ></textarea>
+                <div class="input-controls">
                     <div class="model-selector" on:click={toggleModelDropdown}>
-                        <span>{activeModel}</span>
+                        <p class="model-name">{activeModel}</p>
                         <span class="chevron">▼</span>
                         {#if showModelDropdown}
                             <div class="model-dropdown">
@@ -217,6 +247,15 @@
 </div>
 
 <style>
+    .model-name {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        width: 100%; 
+        padding: .2rem;
+        margin: 0;
+    }
+
     .chat-container {
         display: flex;
         flex-direction: column;
@@ -230,11 +269,10 @@
         width: 100%;
         background: transparent;
         border: none;
+        resize: none;
         color: var(--text-primary);
         font-size: 0.9rem;
         outline: none;
-        margin-bottom: 0.5rem;
-        padding: 0.5rem 0;
     }
 
     .welcome-input::placeholder {
@@ -558,7 +596,7 @@
 
     .input-container {
         display: flex;
-        align-items: center;
+        flex-direction: column;
         gap: 0.25rem;
         background: var(--bg-secondary);
         border-radius: 6px;
@@ -574,7 +612,7 @@
         outline: none;
         resize: none;
         min-height: 20px;
-        max-height: 80px;
+        /* max-height: 80px; */
     }
 
     .message-input::placeholder {

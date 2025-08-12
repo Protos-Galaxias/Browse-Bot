@@ -7,16 +7,18 @@
     let newModel = '';
     let activeModel = '';
     let globalPrompt = '';
+    let sendOnEnter: boolean = true;
     let theme: Theme = 'system';
     let saveStatus: 'idle' | 'saving' | 'saved' = 'idle';
 
     onMount(async () => {
-        const settings = await chrome.storage.local.get(['apiKey', 'models', 'activeModel', 'globalPrompt', 'theme']);
+        const settings = await chrome.storage.local.get(['apiKey', 'models', 'activeModel', 'globalPrompt', 'theme', 'sendOnEnter']);
         apiKey = settings.apiKey || '';
         models = settings.models || ['google/gemini-2.5-pro'];
         activeModel = settings.activeModel || models[0];
         globalPrompt = typeof settings.globalPrompt === 'string' ? settings.globalPrompt : '';
         theme = settings.theme || 'system';
+        sendOnEnter = typeof settings.sendOnEnter === 'boolean' ? settings.sendOnEnter : true;
         applyTheme(theme);
         chrome.runtime.sendMessage({ type: 'UPDATE_CONFIG' });
     });
@@ -63,7 +65,7 @@
 
     async function saveSettings() {
         saveStatus = 'saving';
-        await chrome.storage.local.set({ apiKey, models, activeModel, globalPrompt, theme });
+        await chrome.storage.local.set({ apiKey, models, activeModel, globalPrompt, theme, sendOnEnter });
         saveStatus = 'saved';
         setTimeout(() => {
             saveStatus = 'idle';
@@ -152,6 +154,16 @@
                     placeholder="Этот текст будет добавляться ко всем запросам в LLM как системная подсказка."
                     rows="6"
                 ></textarea>
+            </label>
+        </div>
+
+        <div class="setting-group">
+            <label class="setting-label">
+                Отправка по Enter
+                <div class="toggle-row">
+                    <input id="sendOnEnter" type="checkbox" bind:checked={sendOnEnter} />
+                    <label for="sendOnEnter">Enter — отправка, Ctrl/Cmd+Enter — новая строка</label>
+                </div>
             </label>
         </div>
 
@@ -309,6 +321,14 @@
 
     .setting-textarea:focus {
         border-color: var(--accent-color);
+    }
+
+    .toggle-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--text-primary);
+        font-size: 0.9rem;
     }
 
     .setting-textarea::placeholder {
