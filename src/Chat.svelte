@@ -31,7 +31,17 @@
     function saveChatState() {
         try {
             chrome.storage.local.set({ chatLog: log, chatPrompt: prompt });
-        } catch (e) {}
+        } catch {
+        // Error handled silently
+        }
+    }
+
+    function clearHistory() {
+        if (confirm('Вы уверены, что хотите очистить историю чата?')) {
+            log = [];
+            saveChatState();
+            mentionedTabIds.clear();
+        }
     }
 
     function startTask() {
@@ -61,7 +71,9 @@
     $: (async () => {
         try {
             await chrome.storage.local.set({ chatPrompt: prompt });
-        } catch (e) {}
+        } catch {
+        // Error handled silently
+        }
     })();
 
     function handleKeyPress(event: KeyboardEvent) {
@@ -132,18 +144,18 @@
         return DOMPurify.sanitize(rawHtml, { USE_PROFILES: { html: true } });
     }
 
-    
+
     $: if (textareaElement && prompt !== undefined) {
         autoResize();
     }
 
     function autoResize() {
         if (!textareaElement) return;
-        
+
         textareaElement.style.height = 'auto';
         const scrollHeight = textareaElement.scrollHeight;
         const maxHeight = 300;
-        
+
         if (scrollHeight <= maxHeight) {
             textareaElement.style.height = scrollHeight + 'px';
             textareaElement.style.overflowY = 'hidden';
@@ -151,7 +163,7 @@
             textareaElement.style.height = maxHeight + 'px';
             textareaElement.style.overflowY = 'auto';
         }
-  }
+    }
 
     function handleInput() {
         if (!textareaElement) return;
@@ -173,12 +185,14 @@
             const tabs = await chrome.tabs.query({});
             console.log('tabs', tabs);
             openTabs = tabs.map(t => ({ id: t.id as number, title: t.title || '', url: t.url, favIconUrl: (t as any).favIconUrl }));
-        } catch (e) {
+        } catch {
             try {
                 chrome.tabs.query({}, (tabs) => {
                     openTabs = tabs.map(t => ({ id: t.id as number, title: t.title || '', url: t.url, favIconUrl: (t as any).favIconUrl }));
                 });
-            } catch (_) {}
+            } catch {
+            // Error handled silently
+            }
         }
     }
 
@@ -225,7 +239,9 @@
                     range.setStart(startContainer, range.startOffset - 1);
                 }
             }
-        } catch (_) {}
+        } catch {
+        // Error handled silently
+        }
 
         const chip = document.createElement('span');
         chip.className = 'mention-chip';
@@ -370,19 +386,19 @@
                     <div class="left-controls">
                         <div class="model-selector" role="button" tabindex="0" on:click={toggleModelDropdown} on:keydown={(e) => onKeyActivate(e, toggleModelDropdown)}>
                             <p class="model-name">{activeModel}</p>
-                                <span class="chevron">▼</span>
-                                {#if showModelDropdown}
-                                    <div class="model-dropdown">
-                                        {#each models as model}
-                                            <div class="model-option {activeModel === model ? 'active' : ''}" role="button" tabindex="0"
-                                                on:click={() => selectModel(model)}
-                                                on:keydown={(e) => onKeyActivate(e, () => selectModel(model))}>
-                                                {model}
-                                            </div>
-                                        {/each}
-                                    </div>
-                                {/if}
-                            </div>
+                            <span class="chevron">▼</span>
+                            {#if showModelDropdown}
+                                <div class="model-dropdown">
+                                    {#each models as model}
+                                        <div class="model-option {activeModel === model ? 'active' : ''}" role="button" tabindex="0"
+                                            on:click={() => selectModel(model)}
+                                            on:keydown={(e) => onKeyActivate(e, () => selectModel(model))}>
+                                            {model}
+                                        </div>
+                                    {/each}
+                                </div>
+                            {/if}
+                        </div>
                     </div>
                     <div class="right-controls">
                         <button class="send-btn {isTaskRunning ? 'stop-mode' : ''}" on:click={isTaskRunning ? stopTask : startTask} disabled={!isTaskRunning && !prompt.trim()}>
@@ -402,6 +418,20 @@
             </div>
         </div>
     {:else}
+        <div class="chat-header">
+            <div class="header-left">
+                <div class="logo-icon-small">✦</div>
+                <span class="header-title">Чат с агентом</span>
+            </div>
+            <button class="clear-btn" on:click={clearHistory} title="Очистить историю" aria-label="Очистить историю чата">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    <line x1="10" y1="11" x2="10" y2="17"></line>
+                    <line x1="14" y1="11" x2="14" y2="17"></line>
+                </svg>
+            </button>
+        </div>
         <div class="chat-messages">
             {#each log as entry}
                 <div class="message {entry.startsWith('[User]') ? 'user' : 'assistant'}">
@@ -497,7 +527,7 @@
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        width: 100%; 
+        width: 100%;
         padding: .2rem;
         margin: 0;
     }
@@ -947,5 +977,55 @@
         font-size: 0.7rem;
         margin-top: 0.25rem;
         line-height: 1.3;
+    }
+
+    .chat-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        background: var(--bg-secondary);
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .header-left {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .logo-icon-small {
+        font-size: 1.2rem;
+        color: var(--accent-color);
+    }
+
+    .header-title {
+        font-size: 0.9rem;
+        color: var(--text-primary);
+        font-weight: 500;
+    }
+
+    .clear-btn {
+        background: transparent;
+        border: 1px solid var(--border-color);
+        color: var(--text-secondary);
+        padding: 0.4rem;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .clear-btn:hover {
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        border-color: var(--accent-color);
+    }
+
+    .clear-btn svg {
+        width: 16px;
+        height: 16px;
     }
     </style>

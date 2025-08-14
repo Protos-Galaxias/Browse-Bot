@@ -85,7 +85,7 @@ export class ConfigService {
         try {
             const result = await chrome.storage.local.get(null);
             const config = result as Config;
-            this.config = config
+            this.config = config;
             return config;
         } catch (error) {
             console.error('Failed to get all config values', error);
