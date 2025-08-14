@@ -11,7 +11,13 @@
     let activeModel = '';
     let showModelDropdown = false;
     let sendOnEnter: boolean = true;
-    let textareaElement: HTMLTextAreaElement | null = null;
+    let textareaElement: HTMLDivElement | null = null;
+    let showTabsDropdown = false;
+    let tabsDropdownPosition = { top: 0, left: 0 };
+    let openTabs: Array<{ id: number; title: string; url?: string; favIconUrl?: string }> = [];
+    let activeEditorElement: HTMLElement | null = null;
+    let lastCaretRange: Range | null = null;
+    const mentionedTabIds: Set<number> = new Set();
 
     onMount(async () => {
         const settings = await chrome.storage.local.get(['models', 'activeModel', 'chatLog', 'chatPrompt', 'sendOnEnter']);
@@ -36,9 +42,14 @@
         log = [...log, `[User]: ${prompt}`];
         saveChatState();
 
-        chrome.runtime.sendMessage({ type: 'START_TASK', prompt });
+        chrome.runtime.sendMessage({ type: 'START_TASK', prompt, mentionedTabIds });
         prompt = '';
         saveChatState();
+        if (textareaElement) {
+            textareaElement.innerText = '';
+            autoResize();
+            mentionedTabIds.clear();
+        }
     }
 
     function stopTask() {
@@ -55,6 +66,16 @@
 
     function handleKeyPress(event: KeyboardEvent) {
         const isMeta = event.ctrlKey || event.metaKey;
+        if (event.key === '@') {
+            activeEditorElement = event.currentTarget as HTMLElement;
+            queueMicrotask(async () => {
+                await ensureOpenTabs();
+                positionDropdownAtCaret();
+                showTabsDropdown = true;
+            });
+        } else if (event.key === 'Escape') {
+            showTabsDropdown = false;
+        }
         if (sendOnEnter) {
             if (event.key === 'Enter' && !isMeta) {
                 event.preventDefault();
@@ -62,6 +83,11 @@
             } else if (event.key === 'Enter' && isMeta) {
                 event.preventDefault();
                 prompt = prompt + '\n';
+                if (textareaElement) {
+                    textareaElement.innerText = prompt;
+                    placeCaretAtEnd(textareaElement);
+                    autoResize();
+                }
             }
         } else {
             if (event.key === 'Enter' && isMeta) {
@@ -126,6 +152,198 @@
             textareaElement.style.overflowY = 'auto';
         }
   }
+
+    function handleInput() {
+        if (!textareaElement) return;
+        prompt = (textareaElement.innerText || '').replace(/\r/g, '');
+        autoResize();
+    }
+
+    function handlePaste(e: ClipboardEvent) {
+        if (!textareaElement) return;
+        e.preventDefault();
+        const text = e.clipboardData?.getData('text/plain') || '';
+        document.execCommand('insertText', false, text);
+        handleInput();
+        setTimeout(autoResize, 0);
+    }
+
+    async function ensureOpenTabs() {
+        try {
+            const tabs = await chrome.tabs.query({});
+            console.log('tabs', tabs);
+            openTabs = tabs.map(t => ({ id: t.id as number, title: t.title || '', url: t.url, favIconUrl: (t as any).favIconUrl }));
+        } catch (e) {
+            try {
+                chrome.tabs.query({}, (tabs) => {
+                    openTabs = tabs.map(t => ({ id: t.id as number, title: t.title || '', url: t.url, favIconUrl: (t as any).favIconUrl }));
+                });
+            } catch (_) {}
+        }
+    }
+
+    function positionDropdownAtCaret() {
+        const selection = window.getSelection();
+        if (!selection || selection.rangeCount === 0) return;
+        const range = selection.getRangeAt(0).cloneRange();
+        lastCaretRange = range.cloneRange();
+        range.collapse(true);
+        let rect: DOMRect | null = null;
+        if (range.getClientRects().length > 0) {
+            rect = range.getClientRects()[0] as DOMRect;
+        } else {
+            const dummy = document.createElement('span');
+            dummy.textContent = '\u200C';
+            range.insertNode(dummy);
+            rect = dummy.getBoundingClientRect();
+            dummy.parentNode?.removeChild(dummy);
+        }
+        if (rect) {
+            tabsDropdownPosition = { top: rect.bottom + 4, left: rect.left };
+        }
+    }
+
+    function insertTabMention(tab: { id: number; title: string }) {
+        mentionedTabIds.add(tab.id);
+        console.log(tab.id);
+        const selection = window.getSelection();
+        if (activeEditorElement instanceof HTMLElement) {
+            activeEditorElement.focus();
+        }
+        if (selection && lastCaretRange) {
+            selection.removeAllRanges();
+            selection.addRange(lastCaretRange);
+        }
+        if (!selection || selection.rangeCount === 0) return;
+        const range = selection.getRangeAt(0);
+
+        try {
+            const startContainer = range.startContainer as Text;
+            if (startContainer.nodeType === Node.TEXT_NODE && range.startOffset > 0) {
+                const textContent = startContainer.textContent || '';
+                if (textContent.charAt(range.startOffset - 1) === '@') {
+                    range.setStart(startContainer, range.startOffset - 1);
+                }
+            }
+        } catch (_) {}
+
+        const chip = document.createElement('span');
+        chip.className = 'mention-chip';
+        chip.setAttribute('contenteditable', 'false');
+        chip.setAttribute('data-tab-id', String(tab.id));
+        const label = document.createElement('span');
+        label.className = 'chip-label';
+        label.textContent = `@tab:${tab.title}`;
+        if ((tab as any).favIconUrl) {
+            const icon = document.createElement('img');
+            icon.className = 'chip-favicon';
+            icon.src = (tab as any).favIconUrl;
+            icon.alt = '';
+            chip.appendChild(icon);
+        }
+        const close = document.createElement('span');
+        close.className = 'chip-close';
+        close.setAttribute('role', 'button');
+        close.tabIndex = 0;
+        close.textContent = '×';
+        const removeChip = (e: Event) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const chipEl = (e.currentTarget as HTMLElement).closest('.mention-chip') as HTMLElement | null;
+            if (!chipEl) return;
+            const parent = chipEl.parentNode;
+            const tabIdStr = chipEl.getAttribute('data-tab-id') || '';
+            const next = chipEl.nextSibling;
+            if (next && next.nodeType === Node.TEXT_NODE) {
+                const t = next as Text;
+                if (t.data.startsWith(' ')) {
+                    if (t.data.length > 1) {
+                        t.data = t.data.slice(1);
+                    } else {
+                        parent?.removeChild(next);
+                    }
+                }
+            }
+            parent?.removeChild(chipEl);
+            if (activeEditorElement instanceof HTMLElement) {
+                activeEditorElement.focus();
+            }
+            if (parent) {
+                const newRange = document.createRange();
+                if (next && parent.contains(next)) {
+                    newRange.setStart(next, 0);
+                } else if (parent.lastChild) {
+                    newRange.setStartAfter(parent.lastChild as Node);
+                } else {
+                    newRange.selectNode(parent as Node);
+                    newRange.collapse(false);
+                }
+                const sel = window.getSelection();
+                sel?.removeAllRanges();
+                sel?.addRange(newRange);
+            }
+            if (tabIdStr) {
+                const remaining = textareaElement?.querySelectorAll(`.mention-chip[data-tab-id="${tabIdStr}"]`).length || 0;
+                if (remaining === 0) {
+                    mentionedTabIds.delete(Number(tabIdStr));
+                }
+            }
+            handleInput();
+        };
+        close.addEventListener('mousedown', (e) => { e.preventDefault(); e.stopPropagation(); });
+        close.addEventListener('click', removeChip);
+        close.addEventListener('keydown', (e) => { const k = (e as KeyboardEvent).key; if (k === 'Enter' || k === ' ') removeChip(e); });
+        chip.append(label, close);
+        range.deleteContents();
+        range.insertNode(chip);
+
+        const space = document.createTextNode(' ');
+        chip.after(space);
+        const newRange = document.createRange();
+        newRange.setStartAfter(space);
+        newRange.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(newRange);
+
+        handleInput();
+        autoResize();
+    }
+
+    function onClickOutside(event: MouseEvent) {
+        const target = event.target as Node;
+        const dropdownEl = document.getElementById('tabs-mention-dropdown');
+        if (dropdownEl && !dropdownEl.contains(target) && activeEditorElement && !activeEditorElement.contains(target)) {
+            showTabsDropdown = false;
+        }
+    }
+
+    onMount(() => {
+        document.addEventListener('click', onClickOutside, true);
+        return () => document.removeEventListener('click', onClickOutside, true);
+    });
+
+    function placeCaretAtEnd(el: HTMLElement) {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        range.collapse(false);
+        const selection = window.getSelection();
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+    }
+
+    function onKeyActivate(event: KeyboardEvent, callback: () => void) {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            callback();
+        }
+    }
+
+    $: if (textareaElement && document.activeElement !== textareaElement) {
+        if ((textareaElement.innerText || '') !== (prompt || '')) {
+            textareaElement.innerText = prompt || '';
+            autoResize();
+        }
+    }
 </script>
 
 <div class="chat-container">
@@ -136,25 +354,29 @@
             </div>
             <h1 class="greeting">Добрый день, пользователь</h1>
             <div class="input-card">
-                <textarea
-                    bind:value={prompt}
+                <div
+                    contenteditable="true"
+                    role="textbox"
+                    aria-multiline="true"
+                    tabindex="0"
                     bind:this={textareaElement}
-                    on:paste={() => setTimeout(autoResize, 0)}
-                    placeholder="Чем могу помочь сегодня?"
+                    on:input={handleInput}
+                    on:paste={handlePaste}
+                    data-placeholder="Чем могу помочь сегодня?"
                     on:keydown={handleKeyPress}
-                    class="welcome-input"
-                    rows="3"
-                ></textarea>
+                    class="welcome-input welcome-editor"
+                ></div>
                 <div class="input-controls">
                     <div class="left-controls">
-                        <div class="model-selector" on:click={toggleModelDropdown}>
+                        <div class="model-selector" role="button" tabindex="0" on:click={toggleModelDropdown} on:keydown={(e) => onKeyActivate(e, toggleModelDropdown)}>
                             <p class="model-name">{activeModel}</p>
                                 <span class="chevron">▼</span>
                                 {#if showModelDropdown}
                                     <div class="model-dropdown">
                                         {#each models as model}
-                                            <div class="model-option {activeModel === model ? 'active' : ''}"
-                                                on:click={() => selectModel(model)}>
+                                            <div class="model-option {activeModel === model ? 'active' : ''}" role="button" tabindex="0"
+                                                on:click={() => selectModel(model)}
+                                                on:keydown={(e) => onKeyActivate(e, () => selectModel(model))}>
                                                 {model}
                                             </div>
                                         {/each}
@@ -210,23 +432,27 @@
     {#if log.length !== 0}
         <div class="input-area">
             <div class="input-container">
-                <textarea
-                    bind:value={prompt}
+                <div
+                    contenteditable="true"
+                    role="textbox"
+                    aria-multiline="true"
+                    tabindex="0"
                     bind:this={textareaElement}
-                    on:paste={() => setTimeout(autoResize, 0)}
+                    on:input={handleInput}
+                    on:paste={handlePaste}
                     on:keydown={handleKeyPress}
-                    class="welcome-input"
-                    rows="1"
-                ></textarea>
+                    class="welcome-input inline-editor"
+                ></div>
                 <div class="input-controls">
-                    <div class="model-selector" on:click={toggleModelDropdown}>
+                    <div class="model-selector" role="button" tabindex="0" on:click={toggleModelDropdown} on:keydown={(e) => onKeyActivate(e, toggleModelDropdown)}>
                         <p class="model-name">{activeModel}</p>
                         <span class="chevron">▼</span>
                         {#if showModelDropdown}
                             <div class="model-dropdown">
                                 {#each models as model}
-                                    <div class="model-option {activeModel === model ? 'active' : ''}"
-                                        on:click={() => selectModel(model)}>
+                                    <div class="model-option {activeModel === model ? 'active' : ''}" role="button" tabindex="0"
+                                        on:click={() => selectModel(model)}
+                                        on:keydown={(e) => onKeyActivate(e, () => selectModel(model))}>
                                         {model}
                                     </div>
                                 {/each}
@@ -245,6 +471,26 @@
     {/if}
 
 </div>
+
+{#if showTabsDropdown}
+    <div id="tabs-mention-dropdown" class="tabs-dropdown" style="top: {tabsDropdownPosition.top}px; left: {tabsDropdownPosition.left}px;">
+        {#if openTabs.length === 0}
+            <div class="tabs-dropdown-item empty">Нет открытых вкладок</div>
+        {:else}
+            {#each openTabs as t}
+                <div class="tabs-dropdown-item" role="button" tabindex="0"
+                    on:mousedown|preventDefault
+                    on:click={() => { insertTabMention(t); showTabsDropdown = false; }}
+                    on:keydown={(e) => { if (e.key === 'Enter') { insertTabMention(t); showTabsDropdown = false; } }}>
+                    {#if t.favIconUrl}
+                        <img class="tab-favicon" alt="" src={t.favIconUrl} />
+                    {/if}
+                    {t.title}
+                </div>
+            {/each}
+        {/if}
+    </div>
+{/if}
 
 <style>
     .model-name {
@@ -273,6 +519,20 @@
         color: var(--text-primary);
         font-size: 0.9rem;
         outline: none;
+    }
+
+    /* Placeholder for contenteditable */
+    .welcome-editor:empty:before {
+        content: attr(data-placeholder);
+        color: var(--text-secondary);
+        pointer-events: none;
+    }
+
+    .welcome-editor, .inline-editor {
+        min-height: 20px;
+        white-space: pre-wrap;
+        word-break: break-word;
+        text-align: left;
     }
 
     .welcome-input::placeholder {
@@ -587,6 +847,68 @@
         gap: 0.5rem;
         color: var(--text-secondary);
         font-style: italic;
+    }
+
+    .tabs-dropdown {
+        position: fixed;
+        z-index: 10000;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+        min-width: 220px;
+        max-width: 400px;
+        max-height: 240px;
+        overflow-y: auto;
+    }
+
+    .tabs-dropdown-item {
+        padding: 0.4rem 0.6rem;
+        cursor: pointer;
+        color: var(--text-primary);
+        font-size: 0.85rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+
+    .tabs-dropdown-item:hover {
+        background: var(--border-color);
+    }
+
+    .tabs-dropdown-item.empty {
+        color: var(--text-secondary);
+        cursor: default;
+    }
+
+    :global(.mention-chip) {
+        display: inline-block;
+        padding: 0 0.25rem;
+        border: 1px solid var(--accent-color);
+        border-radius: 4px;
+        background: rgba(0,0,0,0.05);
+        color: var(--text-primary);
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .tab-favicon { width: 16px; height: 16px; border-radius: 2px; }
+    :global(.mention-chip .chip-favicon) { width: 14px; height: 14px; border-radius: 2px; }
+
+    :global(.mention-chip .chip-close) {
+        margin-left: 0.25rem;
+        cursor: pointer;
+        color: var(--text-secondary);
+        user-select: none;
+        -webkit-user-select: none;
+    }
+
+    :global(.mention-chip .chip-close:hover) {
+        color: var(--text-primary);
     }
 
     .input-area {

@@ -215,7 +215,8 @@ ${agentHistory.map((msg, index) => {
 
 chrome.runtime.onMessage.addListener(async (message) => {
     if (message.type === 'START_TASK') {
-        const { prompt } = message;
+        const { prompt, mentionedTabIds } = message;
+        console.log('mentionedTabIds back', mentionedTabIds);
 
         try {
             await aiService.initialize();
