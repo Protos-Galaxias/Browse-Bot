@@ -98,7 +98,6 @@ async function runAgentTask(
 
     agentHistory = [...history];
 
-    // Create new AbortController for this task
     currentController = new AbortController();
     const signal = currentController.signal;
 
@@ -106,54 +105,55 @@ async function runAgentTask(
         updateLog(`[Агент] Шаг ${step + 1}`);
 
         try {
-            const { toolCalls, text } = await aiService.generateWithTools({
+            const res: any = await aiService.generateWithTools({
                 messages: history,
                 tools,
                 abortSignal: signal
             });
+
+            const toolCalls = res.toolCalls as Array<any> | undefined;
+            const text = res.text as string | undefined;
+            const sdkToolResults = res.toolResults as Array<any> | undefined;
 
             if (!toolCalls || toolCalls.length === 0) {
                 updateLog(`[Агент] Больше нет вызовов инструментов. Финальный ответ: ${text}`);
                 return text || 'Task completed without a final text answer.';
             }
 
-            history.push({ role: 'assistant', content: [{ type: 'tool-call', toolCallId: toolCalls[0].toolCallId, toolName: toolCalls[0].toolName, input: toolCalls[0].input }] });
-
-            agentHistory = [...history];
-
-            const toolResults: ModelMessage[] = [];
             for (const call of toolCalls) {
-                const tool = tools[call.toolName];
-                if (!tool) {
-                    updateLog(`[Агент] Неизвестный инструмент: ${call.toolName}`);
-                    continue;
-                }
-
-                try {
-                    const args = call.input || {};
-                    const result = await (tool as any).execute(args);
-                    console.log('Результат инструмента:', result);
-
-                    toolResults.push({
-                        role: 'tool',
-                        content: [{ type: 'tool-result', toolCallId: call.toolCallId, toolName: call.toolName, output: {
-                            type: 'json',
-                            value: result
-                        } }]
-                    });
-
-                    updateLog(`[Агент] Вызвал ${call.toolName}.`);
-
-                    if (call.toolName === 'finishTask') {
-                        return (result as { answer: string }).answer;
-                    }
-                } catch (err) {
-                    updateLog(`[Агент] Ошибка при вызове ${call.toolName}: ${err instanceof Error ? err.message : String(err)}`);
-                }
+                history.push({
+                    role: 'assistant',
+                    content: [{
+                        type: 'tool-call',
+                        toolCallId: call.toolCallId,
+                        toolName: call.toolName,
+                        input: call.input
+                    }]
+                });
+                updateLog(`[Агент] Вызвал ${call.toolName}.`);
             }
-            history.push(...toolResults);
+
+            if (Array.isArray(sdkToolResults) && sdkToolResults.length > 0) {
+                const toolResultsMsgs: ModelMessage[] = sdkToolResults.map((tr: any) => ({
+                    role: 'tool',
+                    content: [{
+                        type: 'tool-result',
+                        toolCallId: tr.toolCallId,
+                        toolName: tr.toolName,
+                        output: { type: 'json', value: tr.output }
+                    }]
+                }));
+
+                history.push(...toolResultsMsgs);
+            }
 
             agentHistory = [...history];
+            console.log('agentHistory', agentHistory);
+
+            const finish = (sdkToolResults || []).find((tr: any) => tr.toolName === 'finishTask');
+            if (finish && finish.output && typeof finish.output.answer === 'string') {
+                return finish.output.answer as string;
+            }
         } catch (error) {
             if (error instanceof Error && error.name === 'AbortError') {
                 updateLog('[Агент] Задача была прервана пользователем');
@@ -252,7 +252,6 @@ Example sub-tasks for "add items from favorites to cart":
 - Sub-task 1: Navigate to the favorites page.
 - Sub-task 2: Add all items on the favorites page to the cart.`;
 
-                // Start fresh history for new browser action task
                 agentHistory = [
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: prompt }
@@ -284,7 +283,6 @@ Example sub-tasks for "add items from favorites to cart":
             currentController.abort();
             currentController = null;
             updateLog('[Система]: Задача остановлена пользователем');
-            // Send message to update UI
             chrome.runtime.sendMessage({ type: 'TASK_COMPLETE' }).catch(console.error);
         }
     }
