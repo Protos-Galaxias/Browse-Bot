@@ -44,7 +44,7 @@
         if (confirm('Вы уверены, что хотите очистить историю чата?')) {
             log = [];
             saveChatState();
-            mentionedTabIds.clear();
+            mentionedTabs.clear();
         }
     }
 
@@ -116,7 +116,6 @@
         } else if (event.key === 'Escape') {
             showTabsDropdown = false;
         }
-        // While typing, update mention filter when dropdown is open
         if (showTabsDropdown) {
             setTimeout(updateMentionQueryFromCaret, 0);
         }
@@ -126,12 +125,9 @@
                 startTask();
             } else if (event.key === 'Enter' && isMeta) {
                 event.preventDefault();
-                prompt = prompt + '\n';
-                if (textareaElement) {
-                    textareaElement.innerText = prompt;
-                    placeCaretAtEnd(textareaElement);
-                    autoResize();
-                }
+                document.execCommand('insertLineBreak');
+                handleInput();
+                setTimeout(autoResize, 0);
             }
         } else {
             if (event.key === 'Enter' && isMeta) {
@@ -176,6 +172,49 @@
         return DOMPurify.sanitize(rawHtml, { USE_PROFILES: { html: true } });
     }
 
+    function escapeHtml(text: string): string {
+        const div = document.createElement('div');
+        div.innerText = text;
+        return div.innerHTML;
+    }
+
+    function sanitizePromptText(text: string): string {
+        // Remove the chip close character '×' if present in innerText
+        return (text || '').replace(/\u00D7/g, '');
+    }
+
+    function renderUserMessage(input: string): string {
+        // Remove any trailing whitespace/newlines so we don't render extra <br>
+        const trimmed = (input || '').replace(/\s+$/g, '');
+        const lines = trimmed.split('\n');
+        // Also drop trailing empty/whitespace-only lines
+        while (lines.length > 0 && /^\s*$/.test(lines[lines.length - 1] || '')) {
+            lines.pop();
+        }
+        const parts: string[] = [];
+        const tokenRe = /@tab:([^@\n]+)/g; // match @tab: until next @ or EOL within the same line
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            let lastIndex = 0;
+            tokenRe.lastIndex = 0;
+            let m: RegExpExecArray | null;
+            while ((m = tokenRe.exec(line)) !== null) {
+                const start = m.index;
+                const end = tokenRe.lastIndex;
+                const before = line.slice(lastIndex, start);
+                if (before) parts.push(escapeHtml(before));
+                const title = (m[1] || '').trim();
+                const safeTitle = escapeHtml(title);
+                parts.push(`<span class="mention-chip"><span class="chip-label">@tab:${safeTitle}</span></span>`);
+                lastIndex = end;
+            }
+            const tail = line.slice(lastIndex);
+            if (tail) parts.push(escapeHtml(tail));
+            if (i < lines.length - 1) parts.push('<br>');
+        }
+        return DOMPurify.sanitize(parts.join(''), { USE_PROFILES: { html: true } });
+    }
+
 
     $: if (textareaElement && prompt !== undefined) {
         autoResize();
@@ -199,7 +238,7 @@
 
     function handleInput() {
         if (!textareaElement) return;
-        prompt = (textareaElement.innerText || '').replace(/\r/g, '');
+        prompt = sanitizePromptText((textareaElement.innerText || '').replace(/\r/g, ''));
         autoResize();
         if (showTabsDropdown) updateMentionQueryFromCaret();
     }
@@ -549,7 +588,7 @@
                     {#if entry.startsWith('[User]')}
                         <div class="message-avatar">U</div>
                         <div class="message-bubble user-bubble">
-                            {entry.replace('[User]: ', '')}
+                            {@html renderUserMessage(entry.replace('[User]: ', ''))}
                         </div>
                     {:else}
                         <div class="message-content">
@@ -627,7 +666,7 @@
                     {#if t.favIconUrl}
                         <img class="tab-favicon" alt="" src={t.favIconUrl} />
                     {/if}
-                    {t.title}
+                    <span class="tab-title">{t.title}</span>
                 </div>
             {/each}
         {/if}
@@ -1007,6 +1046,7 @@
         max-width: 400px;
         max-height: 240px;
         overflow-y: auto;
+        text-align: left;
     }
 
     .tabs-dropdown-item {
@@ -1020,10 +1060,35 @@
         display: flex;
         align-items: center;
         gap: 0.4rem;
+        justify-content: flex-start;
+        text-align: left;
     }
 
-    .tabs-dropdown-item:hover {
-        background: var(--border-color);
+    .tabs-dropdown-item:nth-child(even):not(.empty) {
+        background: var(--bg-primary);
+    }
+
+    .tabs-dropdown-item:nth-child(even):not(.empty):hover {
+        background: var(--accent-color);
+        color: white;
+    }
+    .tabs-dropdown-item:nth-child(even).active {
+        background: var(--accent-color);
+        color: white;
+    }
+
+    .tabs-dropdown-item .tab-title {
+        display: inline-block;
+        flex: 1 1 auto;
+        min-width: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .tabs-dropdown-item:hover:not(.empty) {
+        background: var(--accent-color);
+        color: white;
     }
 
     .tabs-dropdown-item.active {
@@ -1046,10 +1111,20 @@
         display: inline-flex;
         align-items: center;
         gap: 0.25rem;
+        white-space: nowrap;
+        max-width: 280px;
+        overflow: hidden;
     }
 
     .tab-favicon { width: 16px; height: 16px; border-radius: 2px; }
     :global(.mention-chip .chip-favicon) { width: 14px; height: 14px; border-radius: 2px; }
+    :global(.mention-chip .chip-label) {
+        display: inline-block;
+        max-width: 260px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
 
     :global(.mention-chip .chip-close) {
         margin-left: 0.25rem;
