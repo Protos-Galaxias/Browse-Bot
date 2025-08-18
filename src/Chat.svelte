@@ -17,7 +17,11 @@
     let openTabs: Array<{ id: number; title: string; url?: string; favIconUrl?: string }> = [];
     let activeEditorElement: HTMLElement | null = null;
     let lastCaretRange: Range | null = null;
-    const mentionedTabIds: Set<number> = new Set();
+    let lastCaretRect: { top: number; bottom: number; left: number; right: number } | null = null;
+    const mentionedTabs: Map<number, { id: number; title: string; url?: string; favIconUrl?: string }> = new Map();
+    let mentionQuery: string = '';
+    let filteredTabs: Array<{ id: number; title: string; url?: string; favIconUrl?: string }> = [];
+    let selectedMentionIdx: number = 0;
 
     onMount(async () => {
         const settings = await chrome.storage.local.get(['models', 'activeModel', 'chatLog', 'chatPrompt', 'sendOnEnter']);
@@ -42,13 +46,14 @@
         log = [...log, `[User]: ${prompt}`];
         saveChatState();
 
-        chrome.runtime.sendMessage({ type: 'START_TASK', prompt, mentionedTabIds });
+        const tabs = Array.from(mentionedTabs.values()).map(t => ({ id: t.id, title: t.title, url: t.url }));
+        chrome.runtime.sendMessage({ type: 'START_TASK', prompt, tabs });
         prompt = '';
         saveChatState();
         if (textareaElement) {
             textareaElement.innerText = '';
             autoResize();
-            mentionedTabIds.clear();
+            mentionedTabs.clear();
         }
     }
 
@@ -66,15 +71,42 @@
 
     function handleKeyPress(event: KeyboardEvent) {
         const isMeta = event.ctrlKey || event.metaKey;
+        // Handle keyboard navigation within mention dropdown
+        if (showTabsDropdown && (event.key === 'ArrowDown' || event.key === 'ArrowUp' || event.key === 'Enter' || event.key === 'Tab')) {
+            if (filteredTabs.length > 0) {
+                event.preventDefault();
+                if (event.key === 'ArrowDown') {
+                    selectedMentionIdx = (selectedMentionIdx + 1) % filteredTabs.length;
+                } else if (event.key === 'ArrowUp') {
+                    selectedMentionIdx = (selectedMentionIdx - 1 + filteredTabs.length) % filteredTabs.length;
+                } else if (event.key === 'Enter' || event.key === 'Tab') {
+                    const picked = filteredTabs[selectedMentionIdx];
+                    if (picked) {
+                        insertTabMention(picked);
+                        showTabsDropdown = false;
+                    }
+                }
+                return;
+            }
+        }
+
         if (event.key === '@') {
             activeEditorElement = event.currentTarget as HTMLElement;
             queueMicrotask(async () => {
                 await ensureOpenTabs();
                 positionDropdownAtCaret();
                 showTabsDropdown = true;
+                setTimeout(adjustDropdownToViewport, 0);
+                mentionQuery = '';
+                updateFilteredTabs();
+                selectedMentionIdx = 0;
             });
         } else if (event.key === 'Escape') {
             showTabsDropdown = false;
+        }
+        // While typing, update mention filter when dropdown is open
+        if (showTabsDropdown) {
+            setTimeout(updateMentionQueryFromCaret, 0);
         }
         if (sendOnEnter) {
             if (event.key === 'Enter' && !isMeta) {
@@ -157,6 +189,7 @@
         if (!textareaElement) return;
         prompt = (textareaElement.innerText || '').replace(/\r/g, '');
         autoResize();
+        if (showTabsDropdown) updateMentionQueryFromCaret();
     }
 
     function handlePaste(e: ClipboardEvent) {
@@ -200,11 +233,77 @@
         }
         if (rect) {
             tabsDropdownPosition = { top: rect.bottom + 4, left: rect.left };
+            lastCaretRect = { top: rect.top, bottom: rect.bottom, left: rect.left, right: rect.right };
         }
     }
 
-    function insertTabMention(tab: { id: number; title: string }) {
-        mentionedTabIds.add(tab.id);
+    function adjustDropdownToViewport() {
+        const el = document.getElementById('tabs-mention-dropdown');
+        if (!el || !lastCaretRect) return;
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const rect = lastCaretRect;
+        const ddWidth = el.offsetWidth || 260;
+        const ddHeight = el.offsetHeight || 200;
+
+        let top = rect.bottom + 4;
+        let left = rect.left;
+
+        // Flip above if overflow bottom
+        if (top + ddHeight > vh - 8) {
+            top = Math.max(8, rect.top - ddHeight - 4);
+        }
+        // Clamp horizontally if overflow right
+        if (left + ddWidth > vw - 8) {
+            left = Math.max(8, vw - ddWidth - 8);
+        }
+        // Also clamp to min margin
+        left = Math.max(8, left);
+
+        tabsDropdownPosition = { top, left };
+    }
+
+    function updateFilteredTabs() {
+        const q = (mentionQuery || '').toLowerCase();
+        if (!q) {
+            filteredTabs = openTabs.slice();
+        } else {
+            filteredTabs = openTabs.filter(t => (t.title || '').toLowerCase().includes(q));
+        }
+        if (filteredTabs.length === 0) {
+            selectedMentionIdx = 0;
+        } else if (selectedMentionIdx >= filteredTabs.length) {
+            selectedMentionIdx = 0;
+        }
+    }
+
+    function updateMentionQueryFromCaret() {
+        try {
+            const editor = (activeEditorElement || textareaElement) as HTMLElement | null;
+            const selection = window.getSelection();
+            if (!editor || !selection || selection.rangeCount === 0) return;
+            const range = selection.getRangeAt(0).cloneRange();
+            const preRange = document.createRange();
+            preRange.selectNodeContents(editor);
+            preRange.setEnd(range.endContainer, range.endOffset);
+            const upToCaret = preRange.toString();
+            const match = upToCaret.match(/@([^\s@]*)$/);
+            if (match) {
+                mentionQuery = match[1] || '';
+                updateFilteredTabs();
+                // Keep dropdown open and reposition if needed
+                positionDropdownAtCaret();
+                setTimeout(adjustDropdownToViewport, 0);
+            } else {
+                // No active mention token → close dropdown
+                showTabsDropdown = false;
+                mentionQuery = '';
+            }
+        } catch (_) {}
+    }
+
+    function insertTabMention(tab: { id: number; title: string; url?: string; favIconUrl?: string }) {
+        mentionedTabs.set(tab.id, { id: tab.id, title: tab.title, url: tab.url, favIconUrl: tab.favIconUrl });
         console.log(tab.id);
         const selection = window.getSelection();
         if (activeEditorElement instanceof HTMLElement) {
@@ -217,12 +316,25 @@
         if (!selection || selection.rangeCount === 0) return;
         const range = selection.getRangeAt(0);
 
+        // Expand range to cover the entire mention token: from '@' up to caret (no whitespace)
         try {
-            const startContainer = range.startContainer as Text;
-            if (startContainer.nodeType === Node.TEXT_NODE && range.startOffset > 0) {
-                const textContent = startContainer.textContent || '';
-                if (textContent.charAt(range.startOffset - 1) === '@') {
-                    range.setStart(startContainer, range.startOffset - 1);
+            const node = range.startContainer;
+            if (node.nodeType === Node.TEXT_NODE) {
+                const textNode = node as Text;
+                const textContent = textNode.textContent || '';
+                let start = range.startOffset;
+                // move left while not at start and previous char isn't whitespace
+                while (start > 0 && !/\s/.test(textContent.charAt(start - 1))) {
+                    start--;
+                }
+                // ensure token starts with '@'
+                if (textContent.charAt(start) === '@') {
+                    range.setStart(textNode, start);
+                } else {
+                    // fallback: include preceding '@' if immediately before
+                    if (range.startOffset > 0 && textContent.charAt(range.startOffset - 1) === '@') {
+                        range.setStart(textNode, range.startOffset - 1);
+                    }
                 }
             }
         } catch (_) {}
@@ -234,10 +346,10 @@
         const label = document.createElement('span');
         label.className = 'chip-label';
         label.textContent = `@tab:${tab.title}`;
-        if ((tab as any).favIconUrl) {
+        if (tab.favIconUrl) {
             const icon = document.createElement('img');
             icon.className = 'chip-favicon';
-            icon.src = (tab as any).favIconUrl;
+            icon.src = tab.favIconUrl;
             icon.alt = '';
             chip.appendChild(icon);
         }
@@ -285,7 +397,7 @@
             if (tabIdStr) {
                 const remaining = textareaElement?.querySelectorAll(`.mention-chip[data-tab-id="${tabIdStr}"]`).length || 0;
                 if (remaining === 0) {
-                    mentionedTabIds.delete(Number(tabIdStr));
+                    mentionedTabs.delete(Number(tabIdStr));
                 }
             }
             handleInput();
@@ -372,7 +484,7 @@
                             <p class="model-name">{activeModel}</p>
                                 <span class="chevron">▼</span>
                                 {#if showModelDropdown}
-                                    <div class="model-dropdown">
+                                    <div class="model-dropdown" on:click|stopPropagation>
                                         {#each models as model}
                                             <div class="model-option {activeModel === model ? 'active' : ''}" role="button" tabindex="0"
                                                 on:click={() => selectModel(model)}
@@ -448,7 +560,7 @@
                         <p class="model-name">{activeModel}</p>
                         <span class="chevron">▼</span>
                         {#if showModelDropdown}
-                            <div class="model-dropdown">
+                            <div class="model-dropdown" on:click|stopPropagation>
                                 {#each models as model}
                                     <div class="model-option {activeModel === model ? 'active' : ''}" role="button" tabindex="0"
                                         on:click={() => selectModel(model)}
@@ -474,12 +586,13 @@
 
 {#if showTabsDropdown}
     <div id="tabs-mention-dropdown" class="tabs-dropdown" style="top: {tabsDropdownPosition.top}px; left: {tabsDropdownPosition.left}px;">
-        {#if openTabs.length === 0}
+        {#if filteredTabs.length === 0}
             <div class="tabs-dropdown-item empty">Нет открытых вкладок</div>
         {:else}
-            {#each openTabs as t}
-                <div class="tabs-dropdown-item" role="button" tabindex="0"
+            {#each filteredTabs as t, i}
+                <div class="tabs-dropdown-item {i === selectedMentionIdx ? 'active' : ''}" role="button" tabindex="0"
                     on:mousedown|preventDefault
+                    on:mouseenter={() => selectedMentionIdx = i}
                     on:click={() => { insertTabMention(t); showTabsDropdown = false; }}
                     on:keydown={(e) => { if (e.key === 'Enter') { insertTabMention(t); showTabsDropdown = false; } }}>
                     {#if t.favIconUrl}
@@ -647,6 +760,11 @@
         max-height: 200px;
         overflow-y: auto;
         box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+
+    .input-container .model-dropdown {
+        top: auto;
+        bottom: calc(100% + 4px);
     }
 
     .model-option {
@@ -877,6 +995,11 @@
 
     .tabs-dropdown-item:hover {
         background: var(--border-color);
+    }
+
+    .tabs-dropdown-item.active {
+        background: var(--accent-color);
+        color: white;
     }
 
     .tabs-dropdown-item.empty {

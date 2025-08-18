@@ -82,6 +82,60 @@ function parsePageForInteractiveElements(): { id: string, markdownValue: string 
     return results;
 }
 
+function parsePageForMeaningfulText(): string[] {
+    const excludeContainers = new Set(['SCRIPT', 'STYLE']);
+    const selector = [
+        'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+        'p', 'li', 'dt', 'dd', 'figcaption', 'blockquote',
+        'article', 'section', 'main',
+        'span', 'strong', 'em',
+        '[itemprop="name"]', '[itemprop="description"]'
+    ].join(', ');
+
+    const isVisible = (el: HTMLElement) => {
+        const rect = el.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) return false;
+        const style = window.getComputedStyle(el);
+        if (style.visibility === 'hidden' || style.display === 'none') return false;
+        let node: HTMLElement | null = el;
+        while (node) {
+            if (excludeContainers.has(node.tagName)) return false;
+            node = node.parentElement;
+        }
+        return true;
+    };
+
+    const collapse = (s: string) => s.replace(/\s+/g, ' ').trim();
+    const blocks: string[] = [];
+    const seen = new Set<string>();
+
+    // Include document.title as the first block when meaningful
+    const title = collapse(document.title || '');
+    if (title && !seen.has(title)) { seen.add(title); blocks.push(title); }
+
+    const nodes = Array.from(document.querySelectorAll<HTMLElement>(selector));
+    for (const el of nodes) {
+        if (!isVisible(el)) continue;
+        const text = collapse(el.innerText || el.textContent || '');
+        if (text.length < 3) continue;
+
+        // Skip if this exact text already captured (avoid duplicates from nested elements)
+        if (seen.has(text)) continue;
+
+        // Heuristic: prefer higher-level blocks; if parent has same text, skip child
+        const parent = el.parentElement;
+        if (parent) {
+            const parentText = collapse(parent.innerText || '');
+            if (parentText === text) continue;
+        }
+
+        seen.add(text);
+        blocks.push(text);
+    }
+
+    return blocks;
+}
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log('Web Walker: Message received in content script', message);
 
@@ -90,6 +144,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const parsedElements = parsePageForInteractiveElements();
         console.log(`Web Walker: Parsed ${parsedElements.length} interactive elements.`);
         sendResponse({ type: 'PARSE_RESULT', data: parsedElements });
+        break;
+    }
+    case 'PARSE_PAGE_TEXT': {
+        const blocks = parsePageForMeaningfulText();
+        console.log(`Web Walker: Parsed ${blocks.length} text blocks.`);
+        sendResponse({ type: 'TEXT_PARSE_RESULT', data: blocks });
         break;
     }
     case 'CLICK_ON_ELEMENT': {

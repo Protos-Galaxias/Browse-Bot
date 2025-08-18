@@ -215,43 +215,46 @@ ${agentHistory.map((msg, index) => {
 
 chrome.runtime.onMessage.addListener(async (message) => {
     if (message.type === 'START_TASK') {
-        const { prompt, mentionedTabIds } = message;
-        console.log('mentionedTabIds back', mentionedTabIds);
+        const { prompt, tabs } = message as { prompt: string; tabs?: Array<{ id: number; title?: string; url?: string }> };
+        if (Array.isArray(tabs)) console.log('tabs meta back', tabs);
 
         try {
             await aiService.initialize();
             const promptType = await classifyPrompt(prompt);
             updateLog(`[Система]: Запрос классифицирован как: ${promptType}`);
 
-            if (promptType === 'BROWSER_ACTION') {
+            if (promptType === 'BROWSER_ACTION' || (Array.isArray(tabs) && tabs.length > 0)) {
                 updateLog('Обнаружено действие в браузере, запускаю агента');
 
-                const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-                if (!tab?.id) throw new Error('No active tab');
-                const tabId = tab.id;
+                let seedTabs = Array.isArray(tabs) && tabs.length > 0 ? tabs : [];
+                if (seedTabs.length === 0) {
+                    const [activeTab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+                    if (!activeTab?.id) throw new Error('No active tab');
+                    seedTabs = [{ id: activeTab.id, title: activeTab.title, url: activeTab.url }];
+                }
 
+                const resolvedDefaultTabId = seedTabs[0]!.id;
                 let elements: any[] = [];
 
                 const toolContext: ToolContext = {
                     aiService,
-                    tabId: tabId,
+                    tabs: seedTabs,
                     getInteractiveElements: () => elements,
                     setInteractiveElements: (e) => { elements = e; },
-                    sendMessageToTab: (msg) => chrome.tabs.sendMessage(tabId, msg)
+                    sendMessageToTab: (msg, targetTabId?: number) => chrome.tabs.sendMessage(targetTabId ?? resolvedDefaultTabId, msg)
                 };
 
                 const tools = agentTools(toolContext);
 
                 const systemPrompt = `You are a web automation agent. Your goal is to complete the user's request by breaking it down into smaller sub-tasks.
 Your workflow:
-1.  **Analyze**: Look at the user's request and the history. Identify the very next sub-task to perform.
-2.  **Act**: Call a tool to complete that sub-task. Your first tool call MUST be \`parseCurrentPage\`.
-3.  **Reflect**: After a tool is used, the history will be updated. Look at the new state and decide if the sub-task is complete.
-4.  **Repeat**: If the main task is not complete, go back to step 1 and identify the next sub-task.
-5.  **Finish**: Once all sub-tasks are done, call \`finishTask\`.
-Example sub-tasks for "add items from favorites to cart":
-- Sub-task 1: Navigate to the favorites page.
-- Sub-task 2: Add all items on the favorites page to the cart.`;
+1.  **Analyze**: Read the user's request and the history. Decide if the task requires interacting with the page (click/type/select) or only understanding its content (summarize/compare/find info).
+2.  **Act**:
+    - If the task is content understanding/analysis (e.g., "what is the cheapest price?", "summarize", "compare across tabs"), call \`parsePageText\` to fetch textual context.
+    - If the task requires interaction (clicking, typing, selecting), first call \`parsePageInteractiveElements\` to build an elements context, then use the interaction tools.
+3.  **Reflect**: After each tool, review the updated history and decide the next sub-task.
+4.  **Repeat**: If the main task isn't complete, go back to step 1 and pick the next sub-task and the appropriate tool.
+5.  **Finish**: When all sub-tasks are done, call \`finishTask\` with a clear final answer.`;
 
                 agentHistory = [
                     { role: 'system', content: systemPrompt },
