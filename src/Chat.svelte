@@ -1,7 +1,8 @@
 <script lang="ts">
     import { onMount } from 'svelte';
-    import { marked } from 'marked';
-    import DOMPurify from 'dompurify';
+    import MessageList from './components/MessageList.svelte';
+    import InputEditor from './components/InputEditor.svelte';
+    import ModelSelector from './components/ModelSelector.svelte';
 
     let prompt = '';
     let log: string[] = [];
@@ -11,17 +12,7 @@
     let activeModel = '';
     let showModelDropdown = false;
     let sendOnEnter: boolean = true;
-    let textareaElement: HTMLDivElement | null = null;
-    let showTabsDropdown = false;
-    let tabsDropdownPosition = { top: 0, left: 0 };
-    let openTabs: Array<{ id: number; title: string; url?: string; favIconUrl?: string }> = [];
-    let activeEditorElement: HTMLElement | null = null;
-    let lastCaretRange: Range | null = null;
-    let lastCaretRect: { top: number; bottom: number; left: number; right: number } | null = null;
-    const mentionedTabs: Map<number, { id: number; title: string; url?: string; favIconUrl?: string }> = new Map();
-    let mentionQuery: string = '';
-    let filteredTabs: Array<{ id: number; title: string; url?: string; favIconUrl?: string }> = [];
-    let selectedMentionIdx: number = 0;
+    let mentions: Array<{ id: number; title: string; url?: string; favIconUrl?: string }> = [];
 
     onMount(async () => {
         const settings = await chrome.storage.local.get(['models', 'activeModel', 'chatLog', 'chatPrompt', 'sendOnEnter']);
@@ -44,7 +35,7 @@
         if (confirm('Вы уверены, что хотите очистить историю чата?')) {
             log = [];
             saveChatState();
-            mentionedTabs.clear();
+            mentions = [];
         }
     }
 
@@ -56,95 +47,17 @@
         log = [...log, `[User]: ${prompt}`];
         saveChatState();
 
-        const tabs = Array.from(mentionedTabs.values()).map(t => ({ id: t.id, title: t.title, url: t.url }));
+        const tabs = mentions.map(t => ({ id: t.id, title: t.title, url: t.url }));
         chrome.runtime.sendMessage({ type: 'START_TASK', prompt, tabs });
         prompt = '';
+        mentions = [];
         saveChatState();
-        if (textareaElement) {
-            textareaElement.innerText = '';
-            autoResize();
-            mentionedTabs.clear();
-        }
     }
 
     function stopTask() {
         isTaskRunning = false;
         isTyping = false;
         chrome.runtime.sendMessage({ type: 'STOP_TASK' });
-    }
-
-    $: (async () => {
-        try {
-            await chrome.storage.local.set({ chatPrompt: prompt });
-        } catch {
-        // Error handled silently
-        }
-    })();
-
-    function handleKeyPress(event: KeyboardEvent) {
-        const isMeta = event.ctrlKey || event.metaKey;
-        // Handle keyboard navigation within mention dropdown
-        if (showTabsDropdown && (event.key === 'ArrowDown' || event.key === 'ArrowUp' || event.key === 'Enter' || event.key === 'Tab')) {
-            if (filteredTabs.length > 0) {
-                event.preventDefault();
-                if (event.key === 'ArrowDown') {
-                    selectedMentionIdx = (selectedMentionIdx + 1) % filteredTabs.length;
-                } else if (event.key === 'ArrowUp') {
-                    selectedMentionIdx = (selectedMentionIdx - 1 + filteredTabs.length) % filteredTabs.length;
-                } else if (event.key === 'Enter' || event.key === 'Tab') {
-                    const picked = filteredTabs[selectedMentionIdx];
-                    if (picked) {
-                        insertTabMention(picked);
-                        showTabsDropdown = false;
-                    }
-                }
-                return;
-            }
-        }
-
-        if (event.key === '@') {
-            activeEditorElement = event.currentTarget as HTMLElement;
-            queueMicrotask(async () => {
-                await ensureOpenTabs();
-                positionDropdownAtCaret();
-                showTabsDropdown = true;
-                setTimeout(adjustDropdownToViewport, 0);
-                mentionQuery = '';
-                updateFilteredTabs();
-                selectedMentionIdx = 0;
-            });
-        } else if (event.key === 'Escape') {
-            showTabsDropdown = false;
-        }
-        if (showTabsDropdown) {
-            setTimeout(updateMentionQueryFromCaret, 0);
-        }
-        if (sendOnEnter) {
-            if (event.key === 'Enter' && !isMeta) {
-                event.preventDefault();
-                startTask();
-            } else if (event.key === 'Enter' && isMeta) {
-                event.preventDefault();
-                document.execCommand('insertLineBreak');
-                handleInput();
-                setTimeout(autoResize, 0);
-            }
-        } else {
-            if (event.key === 'Enter' && isMeta) {
-                event.preventDefault();
-                startTask();
-            }
-        }
-    }
-
-    function selectModel(model: string) {
-        activeModel = model;
-        showModelDropdown = false;
-        chrome.storage.local.set({ activeModel });
-    }
-
-    function toggleModelDropdown() {
-        showModelDropdown = !showModelDropdown;
     }
 
     chrome.runtime.onMessage.addListener((message) => {
@@ -158,357 +71,18 @@
         return true;
     });
 
-    marked.setOptions({ gfm: true, breaks: true });
-
-    DOMPurify.addHook('afterSanitizeAttributes', (node: any) => {
-        if (node && node.tagName === 'A') {
-            node.setAttribute('target', '_blank');
-            node.setAttribute('rel', 'noopener noreferrer');
-        }
-    });
-
-    function renderMarkdownSafe(input: string): string {
-        const rawHtml = marked.parse(input) as string;
-        return DOMPurify.sanitize(rawHtml, { USE_PROFILES: { html: true } });
-    }
-
-    function escapeHtml(text: string): string {
-        const div = document.createElement('div');
-        div.innerText = text;
-        return div.innerHTML;
-    }
-
-    function sanitizePromptText(text: string): string {
-        // Remove the chip close character '×' if present in innerText
-        return (text || '').replace(/\u00D7/g, '');
-    }
-
-    function renderUserMessage(input: string): string {
-        // Remove any trailing whitespace/newlines so we don't render extra <br>
-        const trimmed = (input || '').replace(/\s+$/g, '');
-        const lines = trimmed.split('\n');
-        // Also drop trailing empty/whitespace-only lines
-        while (lines.length > 0 && /^\s*$/.test(lines[lines.length - 1] || '')) {
-            lines.pop();
-        }
-        const parts: string[] = [];
-        const tokenRe = /@tab:([^@\n]+)/g; // match @tab: until next @ or EOL within the same line
-        for (let i = 0; i < lines.length; i++) {
-            const line = lines[i];
-            let lastIndex = 0;
-            tokenRe.lastIndex = 0;
-            let m: RegExpExecArray | null;
-            while ((m = tokenRe.exec(line)) !== null) {
-                const start = m.index;
-                const end = tokenRe.lastIndex;
-                const before = line.slice(lastIndex, start);
-                if (before) parts.push(escapeHtml(before));
-                const title = (m[1] || '').trim();
-                const safeTitle = escapeHtml(title);
-                parts.push(`<span class="mention-chip"><span class="chip-label">@tab:${safeTitle}</span></span>`);
-                lastIndex = end;
-            }
-            const tail = line.slice(lastIndex);
-            if (tail) parts.push(escapeHtml(tail));
-            if (i < lines.length - 1) parts.push('<br>');
-        }
-        return DOMPurify.sanitize(parts.join(''), { USE_PROFILES: { html: true } });
-    }
-
-
-    $: if (textareaElement && prompt !== undefined) {
-        autoResize();
-    }
-
-    function autoResize() {
-        if (!textareaElement) return;
-
-        textareaElement.style.height = 'auto';
-        const scrollHeight = textareaElement.scrollHeight;
-        const maxHeight = 300;
-
-        if (scrollHeight <= maxHeight) {
-            textareaElement.style.height = scrollHeight + 'px';
-            textareaElement.style.overflowY = 'hidden';
-        } else {
-            textareaElement.style.height = maxHeight + 'px';
-            textareaElement.style.overflowY = 'auto';
-        }
-    }
-
-    function handleInput() {
-        if (!textareaElement) return;
-        prompt = sanitizePromptText((textareaElement.innerText || '').replace(/\r/g, ''));
-        autoResize();
-        if (showTabsDropdown) updateMentionQueryFromCaret();
-    }
-
-    function handlePaste(e: ClipboardEvent) {
-        if (!textareaElement) return;
-        e.preventDefault();
-        const text = e.clipboardData?.getData('text/plain') || '';
-        document.execCommand('insertText', false, text);
-        handleInput();
-        setTimeout(autoResize, 0);
-    }
-
-    async function ensureOpenTabs() {
+    $: (async () => {
         try {
-            const tabs = await chrome.tabs.query({});
-            console.log('tabs', tabs);
-            openTabs = tabs.map(t => ({ id: t.id as number, title: t.title || '', url: t.url, favIconUrl: (t as any).favIconUrl }));
-        } catch {
-            try {
-                chrome.tabs.query({}, (tabs) => {
-                    openTabs = tabs.map(t => ({ id: t.id as number, title: t.title || '', url: t.url, favIconUrl: (t as any).favIconUrl }));
-                });
+            await chrome.storage.local.set({ chatPrompt: prompt });
             } catch {
             // Error handled silently
             }
-        }
-    }
+    })();
 
-    function positionDropdownAtCaret() {
-        const selection = window.getSelection();
-        if (!selection || selection.rangeCount === 0) return;
-        const range = selection.getRangeAt(0).cloneRange();
-        lastCaretRange = range.cloneRange();
-        range.collapse(true);
-        let rect: DOMRect | null = null;
-        if (range.getClientRects().length > 0) {
-            rect = range.getClientRects()[0] as DOMRect;
-        } else {
-            const dummy = document.createElement('span');
-            dummy.textContent = '\u200C';
-            range.insertNode(dummy);
-            rect = dummy.getBoundingClientRect();
-            dummy.parentNode?.removeChild(dummy);
-        }
-        if (rect) {
-            tabsDropdownPosition = { top: rect.bottom + 4, left: rect.left };
-            lastCaretRect = { top: rect.top, bottom: rect.bottom, left: rect.left, right: rect.right };
-        }
-    }
-
-    function adjustDropdownToViewport() {
-        const el = document.getElementById('tabs-mention-dropdown');
-        if (!el || !lastCaretRect) return;
-        const vw = window.innerWidth;
-        const vh = window.innerHeight;
-        const rect = lastCaretRect;
-        const ddWidth = el.offsetWidth || 260;
-        const ddHeight = el.offsetHeight || 200;
-
-        let top = rect.bottom + 4;
-        let left = rect.left;
-
-        // Flip above if overflow bottom
-        if (top + ddHeight > vh - 8) {
-            top = Math.max(8, rect.top - ddHeight - 4);
-        }
-        // Clamp horizontally if overflow right
-        if (left + ddWidth > vw - 8) {
-            left = Math.max(8, vw - ddWidth - 8);
-        }
-        // Also clamp to min margin
-        left = Math.max(8, left);
-
-        tabsDropdownPosition = { top, left };
-    }
-
-    function updateFilteredTabs() {
-        const q = (mentionQuery || '').toLowerCase();
-        if (!q) {
-            filteredTabs = openTabs.slice();
-        } else {
-            filteredTabs = openTabs.filter(t => (t.title || '').toLowerCase().includes(q));
-        }
-        if (filteredTabs.length === 0) {
-            selectedMentionIdx = 0;
-        } else if (selectedMentionIdx >= filteredTabs.length) {
-            selectedMentionIdx = 0;
-        }
-    }
-
-    function updateMentionQueryFromCaret() {
-        try {
-            const editor = (activeEditorElement || textareaElement) as HTMLElement | null;
-            const selection = window.getSelection();
-            if (!editor || !selection || selection.rangeCount === 0) return;
-            const range = selection.getRangeAt(0).cloneRange();
-            const preRange = document.createRange();
-            preRange.selectNodeContents(editor);
-            preRange.setEnd(range.endContainer, range.endOffset);
-            const upToCaret = preRange.toString();
-            const match = upToCaret.match(/@([^\s@]*)$/);
-            if (match) {
-                mentionQuery = match[1] || '';
-                updateFilteredTabs();
-                // Keep dropdown open and reposition if needed
-                positionDropdownAtCaret();
-                setTimeout(adjustDropdownToViewport, 0);
-            } else {
-                // No active mention token → close dropdown
-                showTabsDropdown = false;
-                mentionQuery = '';
-            }
-        } catch (_) {}
-    }
-
-    function insertTabMention(tab: { id: number; title: string; url?: string; favIconUrl?: string }) {
-        mentionedTabs.set(tab.id, { id: tab.id, title: tab.title, url: tab.url, favIconUrl: tab.favIconUrl });
-        console.log(tab.id);
-        const selection = window.getSelection();
-        if (activeEditorElement instanceof HTMLElement) {
-            activeEditorElement.focus();
-        }
-        if (selection && lastCaretRange) {
-            selection.removeAllRanges();
-            selection.addRange(lastCaretRange);
-        }
-        if (!selection || selection.rangeCount === 0) return;
-        const range = selection.getRangeAt(0);
-
-        try {
-            const node = range.startContainer;
-            if (node.nodeType === Node.TEXT_NODE) {
-                const textNode = node as Text;
-                const textContent = textNode.textContent || '';
-                let start = range.startOffset;
-                // move left while not at start and previous char isn't whitespace
-                while (start > 0 && !/\s/.test(textContent.charAt(start - 1))) {
-                    start--;
-                }
-                // ensure token starts with '@'
-                if (textContent.charAt(start) === '@') {
-                    range.setStart(textNode, start);
-                } else {
-                    // fallback: include preceding '@' if immediately before
-                    if (range.startOffset > 0 && textContent.charAt(range.startOffset - 1) === '@') {
-                        range.setStart(textNode, range.startOffset - 1);
-                    }
-                }
-            }
-        } catch {
-        // Error handled silently
-        }
-
-        const chip = document.createElement('span');
-        chip.className = 'mention-chip';
-        chip.setAttribute('contenteditable', 'false');
-        chip.setAttribute('data-tab-id', String(tab.id));
-        const label = document.createElement('span');
-        label.className = 'chip-label';
-        label.textContent = `@tab:${tab.title}`;
-        if (tab.favIconUrl) {
-            const icon = document.createElement('img');
-            icon.className = 'chip-favicon';
-            icon.src = tab.favIconUrl;
-            icon.alt = '';
-            chip.appendChild(icon);
-        }
-        const close = document.createElement('span');
-        close.className = 'chip-close';
-        close.setAttribute('role', 'button');
-        close.tabIndex = 0;
-        close.textContent = '×';
-        const removeChip = (e: Event) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const chipEl = (e.currentTarget as HTMLElement).closest('.mention-chip') as HTMLElement | null;
-            if (!chipEl) return;
-            const parent = chipEl.parentNode;
-            const tabIdStr = chipEl.getAttribute('data-tab-id') || '';
-            const next = chipEl.nextSibling;
-            if (next && next.nodeType === Node.TEXT_NODE) {
-                const t = next as Text;
-                if (t.data.startsWith(' ')) {
-                    if (t.data.length > 1) {
-                        t.data = t.data.slice(1);
-                    } else {
-                        parent?.removeChild(next);
-                    }
-                }
-            }
-            parent?.removeChild(chipEl);
-            if (activeEditorElement instanceof HTMLElement) {
-                activeEditorElement.focus();
-            }
-            if (parent) {
-                const newRange = document.createRange();
-                if (next && parent.contains(next)) {
-                    newRange.setStart(next, 0);
-                } else if (parent.lastChild) {
-                    newRange.setStartAfter(parent.lastChild as Node);
-                } else {
-                    newRange.selectNode(parent as Node);
-                    newRange.collapse(false);
-                }
-                const sel = window.getSelection();
-                sel?.removeAllRanges();
-                sel?.addRange(newRange);
-            }
-            if (tabIdStr) {
-                const remaining = textareaElement?.querySelectorAll(`.mention-chip[data-tab-id="${tabIdStr}"]`).length || 0;
-                if (remaining === 0) {
-                    mentionedTabs.delete(Number(tabIdStr));
-                }
-            }
-            handleInput();
-        };
-        close.addEventListener('mousedown', (e) => { e.preventDefault(); e.stopPropagation(); });
-        close.addEventListener('click', removeChip);
-        close.addEventListener('keydown', (e) => { const k = (e as KeyboardEvent).key; if (k === 'Enter' || k === ' ') removeChip(e); });
-        chip.append(label, close);
-        range.deleteContents();
-        range.insertNode(chip);
-
-        const space = document.createTextNode(' ');
-        chip.after(space);
-        const newRange = document.createRange();
-        newRange.setStartAfter(space);
-        newRange.collapse(true);
-        selection.removeAllRanges();
-        selection.addRange(newRange);
-
-        handleInput();
-        autoResize();
-    }
-
-    function onClickOutside(event: MouseEvent) {
-        const target = event.target as Node;
-        const dropdownEl = document.getElementById('tabs-mention-dropdown');
-        if (dropdownEl && !dropdownEl.contains(target) && activeEditorElement && !activeEditorElement.contains(target)) {
-            showTabsDropdown = false;
-        }
-    }
-
-    onMount(() => {
-        document.addEventListener('click', onClickOutside, true);
-        return () => document.removeEventListener('click', onClickOutside, true);
-    });
-
-    function placeCaretAtEnd(el: HTMLElement) {
-        const range = document.createRange();
-        range.selectNodeContents(el);
-        range.collapse(false);
-        const selection = window.getSelection();
-        selection?.removeAllRanges();
-        selection?.addRange(range);
-    }
-
-    function onKeyActivate(event: KeyboardEvent, callback: () => void) {
-        if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault();
-            callback();
-        }
-    }
-
-    $: if (textareaElement && document.activeElement !== textareaElement) {
-        if ((textareaElement.innerText || '') !== (prompt || '')) {
-            textareaElement.innerText = prompt || '';
-            autoResize();
-        }
+    function onModelChange(e: CustomEvent<{ model: string }>) {
+        activeModel = e.detail.model;
+        showModelDropdown = false;
+        chrome.storage.local.set({ activeModel });
     }
 </script>
 
@@ -520,35 +94,10 @@
             </div>
             <h1 class="greeting">Добрый день, пользователь</h1>
             <div class="input-card">
-                <div
-                    contenteditable="true"
-                    role="textbox"
-                    aria-multiline="true"
-                    tabindex="0"
-                    bind:this={textareaElement}
-                    on:input={handleInput}
-                    on:paste={handlePaste}
-                    data-placeholder="Чем могу помочь сегодня?"
-                    on:keydown={handleKeyPress}
-                    class="welcome-input welcome-editor"
-                ></div>
+                <InputEditor bind:value={prompt} bind:mentions={mentions} placeholder="Чем могу помочь сегодня?" {sendOnEnter} on:submit={startTask} />
                 <div class="input-controls">
                     <div class="left-controls">
-                        <div class="model-selector" role="button" tabindex="0" on:click={toggleModelDropdown} on:keydown={(e) => onKeyActivate(e, toggleModelDropdown)}>
-                            <p class="model-name">{activeModel}</p>
-                                <span class="chevron">▼</span>
-                                {#if showModelDropdown}
-                                    <div class="model-dropdown" on:click|stopPropagation>
-                                        {#each models as model}
-                                            <div class="model-option {activeModel === model ? 'active' : ''}" role="button" tabindex="0"
-                                                on:click={() => selectModel(model)}
-                                                on:keydown={(e) => onKeyActivate(e, () => selectModel(model))}>
-                                                {model}
-                                            </div>
-                                        {/each}
-                                    </div>
-                                {/if}
-                            </div>
+                        <ModelSelector {models} {activeModel} bind:open={showModelDropdown} on:change={onModelChange} />
                     </div>
                     <div class="right-controls">
                         <button class="send-btn {isTaskRunning ? 'stop-mode' : ''}" on:click={isTaskRunning ? stopTask : startTask} disabled={!isTaskRunning && !prompt.trim()}>
@@ -582,63 +131,15 @@
                 </svg>
             </button>
         </div>
-        <div class="chat-messages">
-            {#each log as entry}
-                <div class="message {entry.startsWith('[User]') ? 'user' : 'assistant'}">
-                    {#if entry.startsWith('[User]')}
-                        <div class="message-avatar">U</div>
-                        <div class="message-bubble user-bubble">
-                            {@html renderUserMessage(entry.replace('[User]: ', ''))}
-                        </div>
-                    {:else}
-                        <div class="message-content">
-                            {@html renderMarkdownSafe(entry)}
-                        </div>
-                    {/if}
-                </div>
-            {/each}
-
-            {#if isTyping}
-                <div class="message assistant">
-                    <div class="typing-indicator">
-                        <div class="logo-icon">✦</div>
-                        <span>Агент думает...</span>
-                    </div>
-                </div>
-            {/if}
-        </div>
+        <MessageList {log} {isTyping} />
     {/if}
 
     {#if log.length !== 0}
         <div class="input-area">
             <div class="input-container">
-                <div
-                    contenteditable="true"
-                    role="textbox"
-                    aria-multiline="true"
-                    tabindex="0"
-                    bind:this={textareaElement}
-                    on:input={handleInput}
-                    on:paste={handlePaste}
-                    on:keydown={handleKeyPress}
-                    class="welcome-input inline-editor"
-                ></div>
+                <InputEditor bind:value={prompt} bind:mentions={mentions} placeholder="" {sendOnEnter} on:submit={isTaskRunning ? stopTask : startTask} />
                 <div class="input-controls">
-                    <div class="model-selector" role="button" tabindex="0" on:click={toggleModelDropdown} on:keydown={(e) => onKeyActivate(e, toggleModelDropdown)}>
-                        <p class="model-name">{activeModel}</p>
-                        <span class="chevron">▼</span>
-                        {#if showModelDropdown}
-                            <div class="model-dropdown" on:click|stopPropagation>
-                                {#each models as model}
-                                    <div class="model-option {activeModel === model ? 'active' : ''}" role="button" tabindex="0"
-                                        on:click={() => selectModel(model)}
-                                        on:keydown={(e) => onKeyActivate(e, () => selectModel(model))}>
-                                        {model}
-                                    </div>
-                                {/each}
-                            </div>
-                        {/if}
-                    </div>
+                    <ModelSelector {models} {activeModel} bind:open={showModelDropdown} on:change={onModelChange} />
                     <button class="send-btn {isTaskRunning ? 'stop-mode' : ''}" on:click={isTaskRunning ? stopTask : startTask} disabled={!isTaskRunning && !prompt.trim()}>
                         <span class="send-icon">{isTaskRunning ? '■' : '↑'}</span>
                     </button>
@@ -652,26 +153,7 @@
 
 </div>
 
-{#if showTabsDropdown}
-    <div id="tabs-mention-dropdown" class="tabs-dropdown" style="top: {tabsDropdownPosition.top}px; left: {tabsDropdownPosition.left}px;">
-        {#if filteredTabs.length === 0}
-            <div class="tabs-dropdown-item empty">Нет открытых вкладок</div>
-        {:else}
-            {#each filteredTabs as t, i}
-                <div class="tabs-dropdown-item {i === selectedMentionIdx ? 'active' : ''}" role="button" tabindex="0"
-                    on:mousedown|preventDefault
-                    on:mouseenter={() => selectedMentionIdx = i}
-                    on:click={() => { insertTabMention(t); showTabsDropdown = false; }}
-                    on:keydown={(e) => { if (e.key === 'Enter') { insertTabMention(t); showTabsDropdown = false; } }}>
-                    {#if t.favIconUrl}
-                        <img class="tab-favicon" alt="" src={t.favIconUrl} />
-                    {/if}
-                    <span class="tab-title">{t.title}</span>
-                </div>
-            {/each}
-        {/if}
-    </div>
-{/if}
+<!-- tabs mention dropdown moved into InputEditor.svelte -->
 
 <style>
     .model-name {
@@ -1035,108 +517,7 @@
         font-style: italic;
     }
 
-    .tabs-dropdown {
-        position: fixed;
-        z-index: 10000;
-        background: var(--bg-secondary);
-        border: 1px solid var(--border-color);
-        border-radius: 6px;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-        min-width: 220px;
-        max-width: 400px;
-        max-height: 240px;
-        overflow-y: auto;
-        text-align: left;
-    }
-
-    .tabs-dropdown-item {
-        padding: 0.4rem 0.6rem;
-        cursor: pointer;
-        color: var(--text-primary);
-        font-size: 0.85rem;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        display: flex;
-        align-items: center;
-        gap: 0.4rem;
-        justify-content: flex-start;
-        text-align: left;
-    }
-
-    .tabs-dropdown-item:nth-child(even):not(.empty) {
-        background: var(--bg-primary);
-    }
-
-    .tabs-dropdown-item:nth-child(even):not(.empty):hover {
-        background: var(--accent-color);
-        color: white;
-    }
-    .tabs-dropdown-item:nth-child(even).active {
-        background: var(--accent-color);
-        color: white;
-    }
-
-    .tabs-dropdown-item .tab-title {
-        display: inline-block;
-        flex: 1 1 auto;
-        min-width: 0;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .tabs-dropdown-item:hover:not(.empty) {
-        background: var(--accent-color);
-        color: white;
-    }
-
-    .tabs-dropdown-item.active {
-        background: var(--accent-color);
-        color: white;
-    }
-
-    .tabs-dropdown-item.empty {
-        color: var(--text-secondary);
-        cursor: default;
-    }
-
-    :global(.mention-chip) {
-        display: inline-block;
-        padding: 0 0.25rem;
-        border: 1px solid var(--accent-color);
-        border-radius: 4px;
-        background: rgba(0,0,0,0.05);
-        color: var(--text-primary);
-        display: inline-flex;
-        align-items: center;
-        gap: 0.25rem;
-        white-space: nowrap;
-        max-width: 280px;
-        overflow: hidden;
-    }
-
-    .tab-favicon { width: 16px; height: 16px; border-radius: 2px; }
-    :global(.mention-chip .chip-favicon) { width: 14px; height: 14px; border-radius: 2px; }
-    :global(.mention-chip .chip-label) {
-        display: inline-block;
-        max-width: 260px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    :global(.mention-chip .chip-close) {
-        margin-left: 0.25rem;
-        cursor: pointer;
-        color: var(--text-secondary);
-        user-select: none;
-        -webkit-user-select: none;
-    }
-
-    :global(.mention-chip .chip-close:hover) {
-        color: var(--text-primary);
-    }
+    /* mention and tabs dropdown styles are provided by InputEditor.svelte */
 
     .input-area {
         background: var(--bg-primary);
