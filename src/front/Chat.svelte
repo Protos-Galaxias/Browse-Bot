@@ -74,9 +74,9 @@
     $: (async () => {
         try {
             await chrome.storage.local.set({ chatPrompt: prompt });
-            } catch {
-            // Error handled silently
-            }
+        } catch {
+        // Error handled silently
+        }
     })();
 
     function onModelChange(e: CustomEvent<{ model: string }>) {

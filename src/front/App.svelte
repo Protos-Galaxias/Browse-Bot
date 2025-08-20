@@ -3,7 +3,7 @@
     import Chat from './Chat.svelte';
     import Settings from './Settings.svelte';
     import Capabilities from './Capabilities.svelte';
-    import type { Theme } from './services/ConfigService';
+    import type { Theme } from '../services/ConfigService';
 
     let currentView: 'chat' | 'settings' | 'capabilities' = 'chat';
 

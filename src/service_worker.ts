@@ -1,8 +1,8 @@
 import { updateLog } from './logger';
 import { OpenRouterAIService } from './services/AIService';
 import { agentTools } from './tools/agent-tools';
-import type { ToolContext } from './tools/agent-tools';
-import type { ModelMessage, ToolSet } from 'ai';
+import type { ToolContext } from './tools/types';
+import type { ToolSet } from 'ai';
 import type { AIService } from './services/AIService';
 
 if (chrome.sidePanel) {
@@ -11,7 +11,7 @@ if (chrome.sidePanel) {
 
 const aiService = OpenRouterAIService.getInstance();
 
-let agentHistory: ModelMessage[] = [];
+let agentHistory: any[] = [];
 let lastTaskPrompt = '';
 let currentController: AbortController | null = null;
 
@@ -88,40 +88,37 @@ async function runAgentTask(
     prompt: string,
     tools: ToolSet,
     aiService: AIService,
-    systemPrompt: string,
-    maxSteps: number = 10
+    systemPrompt: string
 ) {
-    const history: ModelMessage[] = [
+    const history: any[] = [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: prompt }
     ];
 
+    // Preserve for analysis
     agentHistory = [...history];
 
     currentController = new AbortController();
     const signal = currentController.signal;
 
-    for (let step = 0; step < maxSteps; step++) {
-        updateLog(`[Агент] Шаг ${step + 1}`);
+    type ToolResultOutput = { answer?: string; [key: string]: unknown };
+    type ToolResult = { toolCallId: string; toolName: string; output: ToolResultOutput };
 
-        try {
-            const res: any = await aiService.generateWithTools({
-                messages: history,
-                tools,
-                abortSignal: signal
-            });
+    try {
+        const res: unknown = await aiService.generateWithTools({
+            messages: history,
+            tools,
+            abortSignal: signal
+        });
 
-            const toolCalls = res.toolCalls as Array<any> | undefined;
-            const text = res.text as string | undefined;
-            const sdkToolResults = res.toolResults as Array<any> | undefined;
+        const toolCalls = (res as any).toolCalls as Array<{ toolCallId: string; toolName: string; input: unknown }> | undefined;
+        const text = (res as any).text as string | undefined;
+        const sdkToolResults = (res as any).toolResults as ToolResult[] | undefined;
 
-            if (!toolCalls || toolCalls.length === 0) {
-                updateLog(`[Агент] Больше нет вызовов инструментов. Финальный ответ: ${text}`);
-                return text || 'Task completed without a final text answer.';
-            }
-
+        // Populate analysis history without affecting provider payload
+        if (Array.isArray(toolCalls)) {
             for (const call of toolCalls) {
-                history.push({
+                agentHistory.push({
                     role: 'assistant',
                     content: [{
                         type: 'tool-call',
@@ -132,41 +129,42 @@ async function runAgentTask(
                 });
                 updateLog(`[Агент] Вызвал ${call.toolName}.`);
             }
-
-            if (Array.isArray(sdkToolResults) && sdkToolResults.length > 0) {
-                const toolResultsMsgs: ModelMessage[] = sdkToolResults.map((tr: any) => ({
-                    role: 'tool',
-                    content: [{
-                        type: 'tool-result',
-                        toolCallId: tr.toolCallId,
-                        toolName: tr.toolName,
-                        output: { type: 'json', value: tr.output }
-                    }]
-                }));
-
-                history.push(...toolResultsMsgs);
-            }
-
-            agentHistory = [...history];
-            console.log('agentHistory', agentHistory);
-
-            const finish = (sdkToolResults || []).find((tr: any) => tr.toolName === 'finishTask');
-            if (finish && finish.output && typeof finish.output.answer === 'string') {
-                return finish.output.answer as string;
-            }
-        } catch (error) {
-            if (error instanceof Error && error.name === 'AbortError') {
-                updateLog('[Агент] Задача была прервана пользователем');
-                return 'Задача была остановлена пользователем';
-            }
-            throw error;
         }
-    }
+        if (Array.isArray(sdkToolResults) && sdkToolResults.length > 0) {
+            const toolResultsMsgs = sdkToolResults.map((tr: ToolResult) => ({
+                role: 'tool',
+                content: [{
+                    type: 'tool-result',
+                    toolCallId: tr.toolCallId,
+                    toolName: tr.toolName,
+                    output: { type: 'json', value: tr.output }
+                }]
+            }));
+            agentHistory.push(...toolResultsMsgs);
+        }
 
-    return 'Агент достиг максимального количества шагов без завершения.';
+        const finish = (sdkToolResults || []).find((tr: ToolResult) => tr.toolName === 'finishTask');
+        if (finish && finish.output && typeof finish.output.answer === 'string') {
+            return finish.output.answer as string;
+        }
+
+
+        agentHistory.push(...(res as any).steps);
+        console.log('agentHistory', agentHistory);
+
+        return text || 'Task completed without a final text answer.';
+    } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
+            updateLog('[Агент] Задача была прервана пользователем');
+            return 'Задача была остановлена пользователем';
+        }
+        throw error;
+    }
 }
 
 async function analyzeWork(prompt: string): Promise<string> {
+    console.log('analyzeWork', agentHistory);
+    console.log('lastTaskPrompt', lastTaskPrompt);
     if (!agentHistory.length || !lastTaskPrompt) {
         return 'Нет данных о проделанной работе. Сначала выполните какое-либо действие в браузере.';
     }
@@ -246,15 +244,8 @@ chrome.runtime.onMessage.addListener(async (message) => {
 
                 const tools = agentTools(toolContext);
 
-                const systemPrompt = `You are a web automation agent. Your goal is to complete the user's request by breaking it down into smaller sub-tasks.
-Your workflow:
-1.  **Analyze**: Read the user's request and the history. Decide if the task requires interacting with the page (click/type/select) or only understanding its content (summarize/compare/find info).
-2.  **Act**:
-    - If the task is content understanding/analysis (e.g., "what is the cheapest price?", "summarize", "compare across tabs"), call \`parsePageText\` to fetch textual context.
-    - If the task requires interaction (clicking, typing, selecting), first call \`parsePageInteractiveElements\` to build an elements context, then use the interaction tools.
-3.  **Reflect**: After each tool, review the updated history and decide the next sub-task.
-4.  **Repeat**: If the main task isn't complete, go back to step 1 and pick the next sub-task and the appropriate tool.
-5.  **Finish**: When all sub-tasks are done, call \`finishTask\` with a clear final answer.`;
+                const systemPrompt = (await import('./prompts/system.md?raw')).default as string;
+                console.log('systemPrompt', systemPrompt);
 
                 agentHistory = [
                     { role: 'system', content: systemPrompt },
@@ -278,6 +269,7 @@ Your workflow:
                 updateLog(`[Результат]: ${answer}`);
             }
         } catch (err) {
+            console.log('err', err);
             updateLog(`[Ошибка]: ${err instanceof Error ? err.message : String(err)}`);
         } finally {
             chrome.runtime.sendMessage({ type: 'TASK_COMPLETE' }).catch(console.error);

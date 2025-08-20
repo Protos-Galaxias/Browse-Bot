@@ -24,8 +24,8 @@ The input will be a single JSON object with the keys \`elements\` and \`query\`.
 Example Input:
 {
   "elements": [
-    { "id": "1", "markdownValue": "[button: Log In id=\\"login-btn\\" class=\\"btn primary\\"]" },
-    { "id": "2", "markdownValue": "[button: Register class=\\"btn secondary\\"]" }
+    { "id": "1", "markdownValue": "[button: Log In id=\\"login-btn\\" class=\\"btn primary\\"]", "tid": 1 },
+    { "id": "2", "markdownValue": "[button: Register class=\\"btn secondary\\"]", "tid": 1 }
   ],
   "query": "the Log In button"
 }
@@ -37,7 +37,7 @@ Example Output:
 Example Input:
 {
   "elements": [
-    { "id": "5", "markdownValue": "[input: Search the site..., current value: \\"\\"]" }
+    { "id": "5", "markdownValue": "[input: Search the site..., current value: \\"\\"]", "tid": 31 }
   ],
   "query": "find me the search bar"
 }
@@ -49,8 +49,8 @@ Example Output:
 Example Input:
 {
   "elements": [
-    { "id": "10", "markdownValue": "[interactive: Delete item class=\\"icon trash-icon\\"]" },
-    { "id": "11", "markdownValue": "[button: Delete comment]" }
+    { "id": "10", "markdownValue": "[interactive: Delete item class=\\"icon trash-icon\\"]", "tid": 21 },
+    { "id": "11", "markdownValue": "[button: Delete comment]", "tid": 21 }
   ],
   "query": "the delete button or icon"
 }
@@ -62,7 +62,7 @@ Example Output:
 Example Input:
 {
   "elements": [
-    { "id": "15", "markdownValue": "[interactive: Company Logo]" }
+    { "id": "15", "markdownValue": "[interactive: Company Logo]", "tid": 13 }
   ],
   "query": "the settings button"
 }

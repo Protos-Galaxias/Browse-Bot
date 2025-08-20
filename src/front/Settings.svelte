@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onMount } from 'svelte';
-    import type { Theme } from './services/ConfigService';
+    import type { Theme } from '../services/ConfigService';
 
     let apiKey = '';
     let models: string[] = [];

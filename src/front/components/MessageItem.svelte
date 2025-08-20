@@ -1,22 +1,22 @@
 <script lang="ts">
-	import { renderMarkdownSafe } from '../lib/markdown';
-	import { renderUserMessage } from '../lib/renderUser';
-	export let entry: string;
-	$: isUser = entry.startsWith('[User]');
-	$: html = isUser ? renderUserMessage(entry.replace('[User]: ', '')) : renderMarkdownSafe(entry);
+    import { renderMarkdownSafe } from '../lib/markdown';
+    import { renderUserMessage } from '../lib/renderUser';
+    export let entry: string;
+    $: isUser = entry.startsWith('[User]');
+    $: html = isUser ? renderUserMessage(entry.replace('[User]: ', '')) : renderMarkdownSafe(entry);
 </script>
 
 <div class="message {isUser ? 'user' : 'assistant'}">
-	{#if isUser}
-		<div class="message-avatar">U</div>
-		<div class="message-bubble user-bubble">
-			{@html html}
-		</div>
-	{:else}
-		<div class="message-content">
-			{@html html}
-		</div>
-	{/if}
+    {#if isUser}
+        <div class="message-avatar">U</div>
+        <div class="message-bubble user-bubble">
+            {@html html}
+        </div>
+    {:else}
+        <div class="message-content">
+            {@html html}
+        </div>
+    {/if}
 </div>
 
 <style>

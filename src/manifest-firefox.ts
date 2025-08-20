@@ -11,7 +11,7 @@ export default defineManifest({
     },
     web_accessible_resources: [
         {
-            'resources': ['src/content.ts', 'src/content_script_parser.ts'],
+            'resources': ['src/content.ts'],
             'matches': ['<all_urls>']
         }
     ],

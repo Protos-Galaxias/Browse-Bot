@@ -1,6 +1,6 @@
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { ConfigService } from './ConfigService';
-import { generateObject, generateText } from 'ai';
+import { generateObject, generateText, stepCountIs } from 'ai';
 import type { GenerateTextResult, LanguageModel, ModelMessage, ToolSet } from 'ai';
 
 export interface AIGenerateOptions {
@@ -122,7 +122,8 @@ export class OpenRouterAIService implements AIService {
             model,
             messages: messagesWithGlobal,
             tools: params.tools,
-            maxRetries: params.maxRetries,
+            maxRetries: 5,
+            stopWhen: stepCountIs(10),
             abortSignal: params.abortSignal
         });
     }

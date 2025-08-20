@@ -49,7 +49,7 @@ function nodeToMarkdown(node: HTMLElement): string {
     }
 }
 
-function parsePageForInteractiveElements(): { id: string, markdownValue: string }[] {
+function parsePageForInteractiveElements(tid: number): { id: string, tid: number, markdownValue: string }[] {
     elementCache.clear();
     document.querySelectorAll('[data-aid]').forEach(el => el.removeAttribute('data-aid'));
 
@@ -59,7 +59,7 @@ function parsePageForInteractiveElements(): { id: string, markdownValue: string 
     ].join(', ');
 
     const elements = Array.from(document.querySelectorAll<HTMLElement>(interactiveSelector));
-    const results: { id: string, markdownValue: string }[] = [];
+    const results: { id: string, tid: number, markdownValue: string }[] = [];
     let aidCounter = 0;
 
     for (const el of elements) {
@@ -69,14 +69,16 @@ function parsePageForInteractiveElements(): { id: string, markdownValue: string 
         }
 
         const aid = String(++aidCounter);
-        el.setAttribute('data-aid', aid);
-        elementCache.set(aid, el);
+        const id = `${tid}:${aid}`;
+        el.setAttribute('data-aid', id);
+        elementCache.set(id, el);
 
         const markdownValue = nodeToMarkdown(el);
 
         results.push({
-            id: aid,
-            markdownValue: markdownValue
+            id,
+            tid,
+            markdownValue
         });
     }
     return results;
@@ -140,8 +142,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log('Web Walker: Message received in content script', message);
 
     switch (message.type) {
+    case 'PARSE_PAGE_ALL': {
+        const parsedElements = parsePageForInteractiveElements(message.tid);
+        const blocks = parsePageForMeaningfulText();
+        console.log(`Web Walker: Parsed ${parsedElements.length} interactive elements and ${blocks.length} text blocks.`);
+        sendResponse({ type: 'PARSE_ALL_RESULT', data: { interactive: parsedElements, text: blocks } });
+        break;
+    }
     case 'PARSE_CURRENT_PAGE': {
-        const parsedElements = parsePageForInteractiveElements();
+        const parsedElements = parsePageForInteractiveElements(message.tid);
         console.log(`Web Walker: Parsed ${parsedElements.length} interactive elements.`);
         sendResponse({ type: 'PARSE_RESULT', data: parsedElements });
         break;
