@@ -2,7 +2,7 @@ import { updateLog } from './logger';
 import { OpenRouterAIService } from './services/AIService';
 import { agentTools } from './tools/agent-tools';
 import type { ToolContext } from './tools/types';
-import type { ToolSet } from 'ai';
+import type { ToolSet, ModelMessage } from 'ai';
 import type { AIService } from './services/AIService';
 
 if (chrome.sidePanel) {
@@ -12,88 +12,15 @@ if (chrome.sidePanel) {
 const aiService = OpenRouterAIService.getInstance();
 
 let agentHistory: any[] = [];
-let lastTaskPrompt = '';
 let currentController: AbortController | null = null;
-
-type PromptType = 'BROWSER_ACTION' | 'DIRECT_QUESTION' | 'HISTORY_ANALYSIS';
-
-async function classifyPrompt(prompt: string): Promise<PromptType> {
-    const classificationPrompt = `Классифицируй запрос пользователя как один из трех типов:
-
-BROWSER_ACTION — если запрос требует действий на сайте (клик, поиск, добавить в корзину и т.д.)
-DIRECT_QUESTION — если это просто вопрос к ИИ (погода, анекдот, как дела и т.д.)
-HISTORY_ANALYSIS — если пользователь спрашивает о проделанной работе агента (сколько шагов, что делал и т.д.)
-
-Примеры:
-Запрос: "добавь товары из избранного в корзину"
-Ответ: BROWSER_ACTION
-
-Запрос: "найди молоко"
-Ответ: BROWSER_ACTION
-
-Запрос: "кликни на кнопку поиска"
-Ответ: BROWSER_ACTION
-
-Запрос: "как дела?"
-Ответ: DIRECT_QUESTION
-
-Запрос: "какая погода в Москве?"
-Ответ: DIRECT_QUESTION
-
-Запрос: "расскажи анекдот"
-Ответ: DIRECT_QUESTION
-
-Запрос: "за сколько шагов ты это сделал?"
-Ответ: HISTORY_ANALYSIS
-
-Запрос: "что ты делал?"
-Ответ: HISTORY_ANALYSIS
-
-Запрос: "какие инструменты использовал?"
-Ответ: HISTORY_ANALYSIS
-
-Запрос: "${prompt}"
-Ответ:`;
-
-    try {
-        await aiService.initialize();
-        const response = await aiService.generateTextByPrompt(classificationPrompt);
-        const result = response.text?.trim().toUpperCase();
-
-        if (result === 'BROWSER_ACTION' || result === 'DIRECT_QUESTION' || result === 'HISTORY_ANALYSIS') {
-            return result as PromptType;
-        }
-
-        const browserKeywords = ['добавь', 'найди', 'кликни', 'нажми', 'перейди', 'открой', 'заполни', 'введи', 'корзина', 'избранное', 'поиск', 'товар', 'купить'];
-        const historyKeywords = ['шагов', 'делал', 'использовал', 'инструменты', 'анализ', 'что делал'];
-        const lowerPrompt = prompt.toLowerCase();
-
-        if (historyKeywords.some(keyword => lowerPrompt.includes(keyword))) {
-            return 'HISTORY_ANALYSIS';
-        }
-
-        if (browserKeywords.some(keyword => lowerPrompt.includes(keyword))) {
-            return 'BROWSER_ACTION';
-        }
-
-        return 'DIRECT_QUESTION';
-    } catch (err) {
-        updateLog(`[Ошибка] Не удалось классифицировать запрос: ${err instanceof Error ? err.message : String(err)}`);
-        return 'DIRECT_QUESTION';
-    }
-}
 
 
 async function runAgentTask(
-    prompt: string,
+    messages: ModelMessage[],
     tools: ToolSet,
-    aiService: AIService,
-    systemPrompt: string
+    aiService: AIService
 ) {
-    const history: any[] = [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: prompt }
-    ];
+    const history: ModelMessage[] = messages;
 
     agentHistory = [...history];
 
@@ -174,50 +101,33 @@ async function runAgentTask(
     }
 }
 
-async function analyzeWork(prompt: string): Promise<string> {
-    if (!agentHistory.length || !lastTaskPrompt) {
-        return 'Нет данных о проделанной работе. Сначала выполните какое-либо действие в браузере.';
-    }
-
-    const hasToolCalls = agentHistory.some(msg =>
-        msg.role === 'assistant' && Array.isArray(msg.content) && msg.content[0]?.type === 'tool-call'
-    );
-
-    if (!hasToolCalls) {
-        return 'Нет данных о проделанной работе. Сначала выполните какое-либо действие в браузере.';
-    }
-
-    const analysisPrompt = `Проанализируй проделанную работу агента.
-
-Исходный запрос пользователя: "${lastTaskPrompt}"
-Текущий вопрос: "${prompt}"
-
-История действий агента:
-${agentHistory.map((msg, index) => {
-        if (msg.role === 'user') return `Шаг ${index}: Пользователь: ${msg.content}`;
-        if (msg.role === 'assistant' && Array.isArray(msg.content)) {
-            const toolCall = msg.content[0];
-            if (toolCall.type === 'tool-call') {
-                return `Шаг ${index}: Агент вызвал инструмент '${toolCall.toolName}'`;
-            }
-        }
-        if (msg.role === 'tool' && Array.isArray(msg.content)) {
-            const toolResult = msg.content[0];
-            if (toolResult.type === 'tool-result') {
-                return `Шаг ${index}: Результат инструмента '${toolResult.toolName}': ${JSON.stringify(toolResult.output)}`;
-            }
-        }
-        return `Шаг ${index}: ${msg.role}: ${JSON.stringify(msg.content)}`;
-    }).join('\n')}
-
-Ответь на вопрос пользователя, основываясь на этой истории.`;
-
+function formatWorkHistoryForContext(): string | null {
+    if (!Array.isArray(agentHistory) || agentHistory.length === 0) return null;
     try {
-        await aiService.initialize();
-        const response = await aiService.generateTextByPrompt(analysisPrompt);
-        return response.text || 'Не удалось проанализировать работу.';
-    } catch (err) {
-        return `Ошибка при анализе: ${err instanceof Error ? err.message : String(err)}`;
+        const lines: string[] = agentHistory.map((msg: any, index: number) => {
+            if (msg.role === 'user' && typeof msg.content === 'string') {
+                return `Шаг ${index}: Пользователь: ${msg.content}`;
+            }
+            if (msg.role === 'assistant' && Array.isArray(msg.content)) {
+                const item = msg.content[0];
+                if (item?.type === 'tool-call') {
+                    return `Шаг ${index}: Агент вызвал инструмент '${item.toolName}'`;
+                }
+            }
+            if (msg.role === 'tool' && Array.isArray(msg.content)) {
+                const item = msg.content[0];
+                if (item?.type === 'tool-result') {
+                    return `Шаг ${index}: Результат '${item.toolName}': ${JSON.stringify(item.output)}`;
+                }
+            }
+            if (typeof msg.content === 'string') {
+                return `Шаг ${index}: ${msg.role}: ${msg.content}`;
+            }
+            return `Шаг ${index}: ${msg.role}`;
+        });
+        return `Контекст (история предыдущей работы агента):\n${lines.join('\n')}`;
+    } catch {
+        return null;
     }
 }
 
@@ -228,55 +138,58 @@ chrome.runtime.onMessage.addListener(async (message) => {
 
         try {
             await aiService.initialize();
-            const promptType = await classifyPrompt(prompt);
-            updateLog(`[Система]: Запрос классифицирован как: ${promptType}`);
 
-            if (promptType === 'BROWSER_ACTION' || (Array.isArray(tabs) && tabs.length > 0)) {
-                updateLog('Обнаружено действие в браузере, запускаю агента');
+            let seedTabs = Array.isArray(tabs) && tabs.length > 0 ? tabs : [];
+            if (seedTabs.length === 0) {
+                const [activeTab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+                if (!activeTab?.id) {
+                    updateLog('[Система]: Нет активной вкладки — отвечаю без инструментов, но с историей');
 
-                let seedTabs = Array.isArray(tabs) && tabs.length > 0 ? tabs : [];
-                if (seedTabs.length === 0) {
-                    const [activeTab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-                    if (!activeTab?.id) throw new Error('No active tab');
+                    const systemPrompt = (await import('./prompts/system.md?raw')).default as string;
+                    const historyText = formatWorkHistoryForContext();
+                    const messages: ModelMessage[] = [
+                        { role: 'system', content: systemPrompt },
+                        ...(historyText ? [{ role: 'system', content: historyText } as ModelMessage] : []),
+                        { role: 'user', content: prompt }
+                    ];
+
+                    agentHistory = [...messages];
+
+                    const finalAnswer = await runAgentTask(messages, {} as ToolSet, aiService);
+                    updateLog(`[Результат]: ${finalAnswer}`);
+                    return true;
+                } else {
                     seedTabs = [{ id: activeTab.id, title: activeTab.title, url: activeTab.url }];
                 }
-
-                const resolvedDefaultTabId = seedTabs[0]!.id;
-                let elements: any[] = [];
-
-                const toolContext: ToolContext = {
-                    aiService,
-                    tabs: seedTabs,
-                    getInteractiveElements: () => elements,
-                    setInteractiveElements: (e) => { elements = e; },
-                    sendMessageToTab: (msg, targetTabId?: number) => chrome.tabs.sendMessage(targetTabId ?? resolvedDefaultTabId, msg)
-                };
-
-                const tools = agentTools(toolContext);
-
-                const systemPrompt = (await import('./prompts/system.md?raw')).default as string;
-
-                agentHistory = [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: prompt }
-                ];
-                lastTaskPrompt = prompt;
-
-                const finalAnswer = await runAgentTask(prompt, tools, aiService, systemPrompt);
-
-                updateLog(`[Результат]: ${finalAnswer}`);
-            } else if (promptType === 'HISTORY_ANALYSIS') {
-                updateLog('[Система]: Запрошен анализ истории');
-                const analysis = await analyzeWork(prompt);
-                updateLog(`[Анализ]: ${analysis}`);
-
-            } else {
-                updateLog('[Система]: Обнаружен прямой вопрос, отправляю в LLM');
-
-                const response = await aiService.generateTextByPrompt(prompt);
-                const answer = response.text || 'Не удалось получить ответ.';
-                updateLog(`[Результат]: ${answer}`);
             }
+
+            const resolvedDefaultTabId = seedTabs[0]!.id;
+            let elements: any[] = [];
+
+            const toolContext: ToolContext = {
+                aiService,
+                tabs: seedTabs,
+                getInteractiveElements: () => elements,
+                setInteractiveElements: (e) => { elements = e; },
+                sendMessageToTab: (msg, targetTabId?: number) => chrome.tabs.sendMessage(targetTabId ?? resolvedDefaultTabId, msg)
+            };
+
+            const tools = agentTools(toolContext);
+
+            const systemPrompt = (await import('./prompts/system.md?raw')).default as string;
+            const historyText = formatWorkHistoryForContext();
+
+            const messages: ModelMessage[] = [
+                { role: 'system', content: systemPrompt },
+                ...(historyText ? [{ role: 'system', content: historyText } as ModelMessage] : []),
+                { role: 'user', content: prompt }
+            ];
+
+            agentHistory = [...messages];
+
+            const finalAnswer = await runAgentTask(messages, tools, aiService);
+
+            updateLog(`[Результат]: ${finalAnswer}`);
         } catch (err) {
             console.log('err', err);
             updateLog(`[Ошибка]: ${err instanceof Error ? err.message : String(err)}`);
