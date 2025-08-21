@@ -3,9 +3,10 @@
     import Chat from './Chat.svelte';
     import Settings from './Settings.svelte';
     import Capabilities from './Capabilities.svelte';
+    import DomainPrompts from './DomainPrompts.svelte';
     import type { Theme } from '../services/ConfigService';
 
-    let currentView: 'chat' | 'settings' | 'capabilities' = 'chat';
+    let currentView: 'chat' | 'settings' | 'capabilities' | 'domain-prompts' = 'chat';
 
     // Обработка хэша в URL
     function updateViewFromHash() {
@@ -14,6 +15,8 @@
             currentView = 'settings';
         } else if (hash === '#capabilities') {
             currentView = 'capabilities';
+        } else if (hash === '#domain-prompts') {
+            currentView = 'domain-prompts';
         } else {
             currentView = 'chat';
         }
@@ -55,6 +58,7 @@
     <nav>
         <button on:click={() => currentView = 'chat'}>Чат</button>
         <button on:click={() => currentView = 'capabilities'}>Возможности</button>
+        <button on:click={() => currentView = 'domain-prompts'}>Домены</button>
         <button on:click={() => currentView = 'settings'}>Настройки</button>
     </nav>
 
@@ -64,6 +68,8 @@
         <Settings />
     {:else if currentView === 'capabilities'}
         <Capabilities />
+    {:else if currentView === 'domain-prompts'}
+        <DomainPrompts />
     {/if}
 </main>
 

@@ -68,13 +68,10 @@ export class OpenRouterAIService implements AIService {
 
     async generateTextByPrompt(prompt: string, options: AIGenerateOptions = {}): Promise<GenerateTextResult<any, any>> {
         const model = options.model || await this.configService.get<string>('activeModel') || 'openai/gpt-4.1-mini';
-        const globalPrompt = await this.configService.get<string>('globalPrompt', '');
-
-        const finalPrompt = globalPrompt ? `${globalPrompt}\n\n${prompt}` : prompt;
 
         return generateText({
             model: this.getClient().chat(model),
-            prompt: finalPrompt
+            prompt
         });
     }
 
@@ -89,12 +86,10 @@ export class OpenRouterAIService implements AIService {
         try {
             const model = options.model || await this.configService.get<string>('activeModel') || 'openai/gpt-4.1-mini';
             const client = this.getClient();
-            const globalPrompt = await this.configService.get<string>('globalPrompt', '');
-            const finalSystem = globalPrompt ? `${globalPrompt}\n\n${systemPrompt}` : systemPrompt;
             const result = await generateObject({
                 model: client.chat(model),
                 schema,
-                system: finalSystem,
+                system: systemPrompt,
                 prompt
             });
 
@@ -112,15 +107,10 @@ export class OpenRouterAIService implements AIService {
         abortSignal?: AbortSignal;
     }): Promise<GenerateTextResult<any, any>> {
         const model = await this.getChatModel();
-        const globalPrompt = await this.configService.get<string>('globalPrompt', '');
-
-        const messagesWithGlobal: ModelMessage[] = globalPrompt
-            ? [{ role: 'system', content: globalPrompt }, ...params.messages]
-            : params.messages;
 
         return generateText({
             model,
-            messages: messagesWithGlobal,
+            messages: params.messages,
             tools: params.tools,
             maxRetries: 5,
             stopWhen: stepCountIs(10),

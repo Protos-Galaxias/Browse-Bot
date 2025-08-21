@@ -11,7 +11,7 @@ export class ConfigService {
     private static instance: ConfigService;
     private config: Partial<Config> = {};
     private cache: Map<string, any> = new Map();
-    private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+    private readonly CACHE_TTL = 0; // disable cache to always read fresh values
 
     private constructor() {}
 

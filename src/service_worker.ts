@@ -3,6 +3,7 @@ import { OpenRouterAIService } from './services/AIService';
 import { agentTools } from './tools/agent-tools';
 import type { ToolContext } from './tools/types';
 import type { ToolSet, ModelMessage } from 'ai';
+import { ConfigService } from './services/ConfigService';
 import type { AIService } from './services/AIService';
 
 if (chrome.sidePanel) {
@@ -131,22 +132,57 @@ function formatWorkHistoryForContext(): string | null {
     }
 }
 
+type TabMeta = { id: number; title?: string; url?: string };
+
+async function buildSystemPrompt(tabs?: Array<TabMeta>): Promise<string> {
+    const systemPromptRaw = (await import('./prompts/system.md?raw')).default as string;
+    const globalPrompt = await ConfigService.getInstance().get<string>('globalPrompt', '');
+    const domainPrompts = await ConfigService.getInstance().get<Record<string, string>>('domainPrompts', {} as Record<string, string>);
+    const trimmed = (globalPrompt ?? '').trim();
+    const parts: string[] = [systemPromptRaw];
+    if (trimmed) parts.push(`<context_from_user>\n${trimmed}\n</context_from_user>`);
+
+    const hosts = new Set<string>();
+    if (Array.isArray(tabs)) {
+        for (const t of tabs) {
+            const url = t?.url;
+            if (!url) continue;
+            try {
+                const host = new URL(url).hostname.replace(/^www\./, '');
+                if (host) hosts.add(host);
+            } catch {}
+        }
+    }
+
+    const domainSections: string[] = [];
+    for (const host of hosts) {
+        const prompt = (domainPrompts && typeof domainPrompts === 'object') ? domainPrompts[host] || domainPrompts[`www.${host}`] : undefined;
+        const trimmedPrompt = (prompt ?? '').trim();
+        if (trimmedPrompt) {
+            domainSections.push(`<domain_context domain="${host}">\n${trimmedPrompt}\n</domain_context>`);
+        }
+    }
+    if (domainSections.length > 0) parts.push(domainSections.join('\n\n'));
+    return parts.join('\n\n');
+}
+
 chrome.runtime.onMessage.addListener(async (message) => {
     if (message.type === 'START_TASK') {
         const { prompt, tabs } = message as { prompt: string; tabs?: Array<{ id: number; title?: string; url?: string }> };
         if (Array.isArray(tabs)) console.log('tabs meta back', tabs);
 
+        let seedTabs = Array.isArray(tabs) && tabs.length > 0 ? tabs : [];
+        let systemPrompt = await buildSystemPrompt(seedTabs);
+        console.log('systemPrompt', systemPrompt);
         try {
             await aiService.initialize();
 
-            let seedTabs = Array.isArray(tabs) && tabs.length > 0 ? tabs : [];
+
+            const historyText = formatWorkHistoryForContext();
             if (seedTabs.length === 0) {
                 const [activeTab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
                 if (!activeTab?.id) {
                     updateLog('[Система]: Нет активной вкладки — отвечаю без инструментов, но с историей');
-
-                    const systemPrompt = (await import('./prompts/system.md?raw')).default as string;
-                    const historyText = formatWorkHistoryForContext();
                     const messages: ModelMessage[] = [
                         { role: 'system', content: systemPrompt },
                         ...(historyText ? [{ role: 'system', content: historyText } as ModelMessage] : []),
@@ -160,6 +196,7 @@ chrome.runtime.onMessage.addListener(async (message) => {
                     return true;
                 } else {
                     seedTabs = [{ id: activeTab.id, title: activeTab.title, url: activeTab.url }];
+                    systemPrompt = await buildSystemPrompt(seedTabs);
                 }
             }
 
@@ -175,9 +212,6 @@ chrome.runtime.onMessage.addListener(async (message) => {
             };
 
             const tools = agentTools(toolContext);
-
-            const systemPrompt = (await import('./prompts/system.md?raw')).default as string;
-            const historyText = formatWorkHistoryForContext();
 
             const messages: ModelMessage[] = [
                 { role: 'system', content: systemPrompt },

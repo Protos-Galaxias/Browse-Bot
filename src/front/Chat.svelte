@@ -3,6 +3,7 @@
     import MessageList from './components/MessageList.svelte';
     import InputEditor from './components/InputEditor.svelte';
     import ModelSelector from './components/ModelSelector.svelte';
+    import { getHost } from './lib/url';
 
     let prompt = '';
     let log: string[] = [];
@@ -13,6 +14,36 @@
     let showModelDropdown = false;
     let sendOnEnter: boolean = true;
     let mentions: Array<{ id: number; title: string; url?: string; favIconUrl?: string }> = [];
+    let activeTabMeta: { id: number; title: string; url?: string; favIconUrl?: string } | null = null;
+    let displayMentions: Array<{ id: number; title: string; url?: string; favIconUrl?: string }> = [];
+    let domainPrompts: Record<string, string> = {};
+    let domainPromptCollapsed = true;
+    let activeDomain = '';
+    let domainPromptText = '';
+
+    async function fetchActiveTab(): Promise<{ id: number; title: string; url?: string; favIconUrl?: string } | null> {
+        try {
+            const [activeTab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+            if (!activeTab?.id) return null;
+            return { id: activeTab.id, title: activeTab.title || '', url: activeTab.url, favIconUrl: (activeTab as any).favIconUrl };
+        } catch {
+            try {
+                return await new Promise((resolve) => {
+                    chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
+                        const t = tabs && tabs[0];
+                        resolve(t?.id ? { id: t.id as number, title: t.title || '', url: t.url, favIconUrl: (t as any).favIconUrl } : null);
+                    });
+                });
+            } catch { return null; }
+        }
+    }
+
+    function setActiveTabMeta(tab: { id: number; title: string; url?: string; favIconUrl?: string } | null) { activeTabMeta = tab; }
+
+    async function ensureActiveMention() {
+        const tab = await fetchActiveTab();
+        setActiveTabMeta(tab);
+    }
 
     onMount(async () => {
         const settings = await chrome.storage.local.get(['models', 'activeModel', 'chatLog', 'chatPrompt', 'sendOnEnter']);
@@ -21,7 +52,27 @@
         log = Array.isArray(settings.chatLog) ? settings.chatLog : [];
         prompt = typeof settings.chatPrompt === 'string' ? settings.chatPrompt : '';
         sendOnEnter = typeof settings.sendOnEnter === 'boolean' ? settings.sendOnEnter : true;
+
+        await ensureActiveMention();
+
+        try {
+            const store = await chrome.storage.local.get(['domainPrompts']);
+            domainPrompts = (store?.domainPrompts && typeof store.domainPrompts === 'object') ? store.domainPrompts : {};
+        } catch {}
+
+        try {
+            chrome.tabs.onActivated.addListener(async (activeInfo) => {
+                try { const tab = await chrome.tabs.get(activeInfo.tabId); setActiveTabMeta({ id: tab.id as number, title: tab.title || '', url: tab.url, favIconUrl: (tab as any).favIconUrl }); } catch {}
+            });
+            chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+                try { if (tab.active) setActiveTabMeta({ id: tab.id as number, title: tab.title || '', url: tab.url, favIconUrl: (tab as any).favIconUrl }); } catch {}
+            });
+        } catch {}
     });
+
+    $: displayMentions = activeTabMeta && !mentions.some(m => m.id === activeTabMeta!.id)
+        ? [activeTabMeta, ...mentions]
+        : [...mentions];
 
     function saveChatState() {
         try {
@@ -36,6 +87,8 @@
             log = [];
             saveChatState();
             mentions = [];
+            // Сразу возвращаем активную вкладку в mentions
+            ensureActiveMention();
         }
     }
 
@@ -47,10 +100,12 @@
         log = [...log, `[User]: ${prompt}`];
         saveChatState();
 
-        const tabs = mentions.map(t => ({ id: t.id, title: t.title, url: t.url }));
+        const tabs = displayMentions.map(t => ({ id: t.id, title: t.title, url: t.url }));
         chrome.runtime.sendMessage({ type: 'START_TASK', prompt, tabs });
         prompt = '';
         mentions = [];
+        // После отправки снова показываем активную вкладку
+        ensureActiveMention();
         saveChatState();
     }
 
@@ -84,16 +139,59 @@
         showModelDropdown = false;
         chrome.storage.local.set({ activeModel });
     }
+
+    $: activeDomain = (activeTabMeta?.url ? (() => { try { return new URL(activeTabMeta!.url!).hostname.replace(/^www\./,''); } catch { return ''; } })() : '');
+    $: domainPromptText = (activeDomain && domainPrompts[activeDomain]) ? domainPrompts[activeDomain] : '';
+
+    async function saveDomainPrompt() {
+        if (!activeDomain) return;
+        domainPrompts = { ...domainPrompts, [activeDomain]: domainPromptText };
+        try { await chrome.storage.local.set({ domainPrompts }); } catch {}
+    }
+
+    function buildMentionTitle(m: { title?: string; url?: string }) {
+        const base = m.title || m.url || '';
+        try {
+            const host = getHost(m.url);
+            const prompt = (host && domainPrompts[host]) ? String(domainPrompts[host]).trim() : '';
+            return prompt ? `${base}\n\n${prompt}` : base;
+        } catch {
+            return base;
+        }
+    }
+    
 </script>
 
 <div class="chat-container">
+    {mentions}
     {#if log.length === 0}
         <div class="welcome-screen">
             <div class="logo">
                 <div class="logo-icon">✦</div>
             </div>
             <h1 class="greeting">Добрый день, пользователь</h1>
+            <div class="domain-prompt">
+                <button class="domain-toggle" on:click={() => domainPromptCollapsed = !domainPromptCollapsed}>
+                    {domainPromptCollapsed ? '▼' : '▲'} Промт для домена {activeDomain || '(нет активного домена)'}
+                </button>
+                {#if !domainPromptCollapsed}
+                    <textarea class="domain-textarea" bind:value={domainPromptText} placeholder="Промт для текущего домена..." on:input={saveDomainPrompt} />
+                {/if}
+            </div>
             <div class="input-card">
+                {#if displayMentions.length > 0}
+                    <div class="mentions-bar">
+                        {#each displayMentions as m}
+                            <div class="mention-pill" title={buildMentionTitle(m)}>
+                                {#if m.favIconUrl}
+                                    <img class="mention-icon" src={m.favIconUrl} alt={getHost(m.url)} />
+                                {:else}
+                                    <div class="mention-fallback">{getHost(m.url)}</div>
+                                {/if}
+                            </div>
+                        {/each}
+                    </div>
+                {/if}
                 <InputEditor bind:value={prompt} bind:mentions={mentions} placeholder="Чем могу помочь сегодня?" {sendOnEnter} on:submit={startTask} />
                 <div class="input-controls">
                     <div class="left-controls">
@@ -117,32 +215,51 @@
             </div>
         </div>
     {:else}
-        <div class="chat-header">
-            <div class="header-left">
-                <div class="logo-icon-small">✦</div>
-                <span class="header-title">Чат с агентом</span>
-            </div>
-            <button class="clear-btn" on:click={clearHistory} title="Очистить историю" aria-label="Очистить историю чата">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="3 6 5 6 21 6"></polyline>
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                    <line x1="10" y1="11" x2="10" y2="17"></line>
-                    <line x1="14" y1="11" x2="14" y2="17"></line>
-                </svg>
-            </button>
-        </div>
         <MessageList {log} {isTyping} />
     {/if}
 
     {#if log.length !== 0}
         <div class="input-area">
+            <div class="domain-prompt">
+                <button class="domain-toggle" on:click={() => domainPromptCollapsed = !domainPromptCollapsed}>
+                    {domainPromptCollapsed ? '▼' : '▲'} Промт для домена {activeDomain || '(нет активного домена)'}
+                </button>
+                {#if !domainPromptCollapsed}
+                    <textarea class="domain-textarea" bind:value={domainPromptText} placeholder="Промт для текущего домена..." on:input={saveDomainPrompt} />
+                {/if}
+            </div>
             <div class="input-container">
+                {#if displayMentions.length > 0}
+                    <div class="mentions-bar">
+                        {#each displayMentions as m}
+                            <div class="mention-pill" title={buildMentionTitle(m)}>
+                                {#if m.favIconUrl}
+                                    <img class="mention-icon" src={m.favIconUrl} alt={getHost(m.url)} />
+                                {:else}
+                                    <div class="mention-fallback">{getHost(m.url)}</div>
+                                {/if}
+                            </div>
+                        {/each}
+                    </div>
+                {/if}
                 <InputEditor bind:value={prompt} bind:mentions={mentions} placeholder="" {sendOnEnter} on:submit={isTaskRunning ? stopTask : startTask} />
                 <div class="input-controls">
-                    <ModelSelector {models} {activeModel} bind:open={showModelDropdown} on:change={onModelChange} />
-                    <button class="send-btn {isTaskRunning ? 'stop-mode' : ''}" on:click={isTaskRunning ? stopTask : startTask} disabled={!isTaskRunning && !prompt.trim()}>
-                        <span class="send-icon">{isTaskRunning ? '■' : '↑'}</span>
-                    </button>
+                    <div class="left-controls">
+                        <ModelSelector {models} {activeModel} bind:open={showModelDropdown} on:change={onModelChange} />
+                    </div>
+                    <div class="right-controls">
+                        <button class="clear-btn" on:click={clearHistory} title="Очистить историю" aria-label="Очистить историю чата">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                <line x1="10" y1="11" x2="10" y2="17"></line>
+                                <line x1="14" y1="11" x2="14" y2="17"></line>
+                            </svg>
+                        </button>
+                        <button class="send-btn {isTaskRunning ? 'stop-mode' : ''}" on:click={isTaskRunning ? stopTask : startTask} disabled={!isTaskRunning && !prompt.trim()}>
+                            <span class="send-icon">{isTaskRunning ? '■' : '↑'}</span>
+                        </button>
+                    </div>
                 </div>
             </div>
             <div class="disclaimer">
@@ -242,6 +359,46 @@
         width: 100%;
         max-width: 350px;
         border: 1px solid var(--border-color);
+    }
+
+    .domain-prompt { margin: 0 0 0.5rem 0; text-align: left; }
+    .domain-toggle { background: transparent; border: 1px solid var(--border-color); color: var(--text-secondary); padding: 0.25rem 0.4rem; border-radius: 6px; cursor: pointer; }
+    .domain-toggle:hover { background: var(--bg-secondary); color: var(--text-primary); }
+    .domain-textarea { width: 100%; min-height: 64px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 6px; padding: 0.4rem; resize: vertical; margin-top: 0.4rem; }
+
+    .mentions-bar {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        flex-wrap: wrap;
+        padding: 0.25rem 0.25rem 0.4rem 0.25rem;
+    }
+
+    .mention-pill {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 999px;
+        padding: 0.15rem 0.4rem;
+        max-width: 140px;
+    }
+
+    .mention-icon {
+        width: 16px;
+        height: 16px;
+        border-radius: 3px;
+        flex-shrink: 0;
+    }
+
+    .mention-fallback {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 110px;
     }
 
     .input-controls {

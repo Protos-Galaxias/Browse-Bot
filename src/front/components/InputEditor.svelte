@@ -46,6 +46,24 @@
         mentions = Array.from(mentionMap.values());
         dispatch('mentionsChange', { mentions });
     }
+    function reconcileMentionsFromDOM() {
+        if (!el) return;
+        try {
+            const chips = el.querySelectorAll('.mention-chip');
+            const presentIds = new Set<number>();
+            chips.forEach((chip) => {
+                const idStr = (chip as HTMLElement).getAttribute('data-tab-id') || '';
+                const idNum = Number(idStr);
+                if (!Number.isNaN(idNum)) presentIds.add(idNum);
+            });
+            Array.from(mentionMap.keys()).forEach((id) => {
+                if (!presentIds.has(id)) mentionMap.delete(id);
+            });
+            syncMentionsOut();
+        } catch {
+            // ignore
+        }
+    }
     function handleInput() {
         if (!el) return;
         const raw = (el.innerText || '').replace(/\r/g, '');
@@ -54,6 +72,7 @@
         dispatch('input', { value });
         autoResize();
         if (showTabsDropdown) updateMentionQueryFromCaret();
+        reconcileMentionsFromDOM();
     }
     function handlePaste(e: ClipboardEvent) {
         if (!el) return;
@@ -92,7 +111,11 @@
     }
     function adjustDropdownToViewport() {
         if (!lastCaretRect) return;
-        const vw = window.innerWidth; const vh = window.innerHeight; const rect = lastCaretRect; const ddWidth = 260; const ddHeight = 200;
+        const vw = window.innerWidth; const vh = window.innerHeight; const rect = lastCaretRect; const ddWidth = 260;
+        const el = document.getElementById('tabs-mention-dropdown');
+        const measured = el?.getBoundingClientRect();
+        const approx = Math.min(240, Math.max(36 * (filteredTabs.length || 1), 36));
+        const ddHeight = measured?.height ?? approx;
         let top = rect.bottom + 4; let left = rect.left;
         if (top + ddHeight > vh - 8) top = Math.max(8, rect.top - ddHeight - 4);
         if (left + ddWidth > vw - 8) left = Math.max(8, vw - ddWidth - 8);
@@ -222,6 +245,8 @@
             showTabsDropdown = false;
         }
         if (showTabsDropdown) setTimeout(updateMentionQueryFromCaret, 0);
+        // After key handling, reconcile mentions in case a chip was deleted via Backspace/Delete
+        setTimeout(reconcileMentionsFromDOM, 0);
 
         if (sendOnEnter) {
             if (event.key === 'Enter' && !isMeta) { event.preventDefault(); dispatch('submit'); }
