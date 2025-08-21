@@ -15,7 +15,6 @@ export const findAndClickTool = (context: ToolContext) => tool({
         console.log(`findAndClick with reasoning: ${reasoning}`, element_description);
         updateLog(`${reasoning}. ${element_description}`);
         const elements = context.getInteractiveElements();
-        console.log('element22222s', elements);
         if (elements.length === 0) return { success: false, error: 'Context is empty. Call `parsePage` or `parsePageInteractiveElements` first.' };
 
         const elementIds = await findElementIds(elements, `Reason: ${reasoning}. Element description: ${element_description}`, context.aiService);

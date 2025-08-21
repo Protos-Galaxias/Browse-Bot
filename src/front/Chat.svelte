@@ -16,7 +16,7 @@
 
     onMount(async () => {
         const settings = await chrome.storage.local.get(['models', 'activeModel', 'chatLog', 'chatPrompt', 'sendOnEnter']);
-        models = settings.models || ['google/gemini-2.5-pro', 'openai/gpt-5-mini'];
+        models = settings.models || ['openai/gpt-4.1-mini'];
         activeModel = settings.activeModel || models[0];
         log = Array.isArray(settings.chatLog) ? settings.chatLog : [];
         prompt = typeof settings.chatPrompt === 'string' ? settings.chatPrompt : '';

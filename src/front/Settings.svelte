@@ -14,7 +14,7 @@
     onMount(async () => {
         const settings = await chrome.storage.local.get(['apiKey', 'models', 'activeModel', 'globalPrompt', 'theme', 'sendOnEnter']);
         apiKey = settings.apiKey || '';
-        models = settings.models || ['google/gemini-2.5-pro'];
+        models = settings.models || ['openai/gpt-4.1-mini'];
         activeModel = settings.activeModel || models[0];
         globalPrompt = typeof settings.globalPrompt === 'string' ? settings.globalPrompt : '';
         theme = settings.theme || 'system';

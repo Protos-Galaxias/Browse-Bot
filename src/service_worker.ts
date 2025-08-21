@@ -95,7 +95,6 @@ async function runAgentTask(
         { role: 'user', content: prompt }
     ];
 
-    // Preserve for analysis
     agentHistory = [...history];
 
     currentController = new AbortController();
@@ -111,11 +110,21 @@ async function runAgentTask(
             abortSignal: signal
         });
 
-        const toolCalls = (res as any).toolCalls as Array<{ toolCallId: string; toolName: string; input: unknown }> | undefined;
-        const text = (res as any).text as string | undefined;
-        const sdkToolResults = (res as any).toolResults as ToolResult[] | undefined;
+        const raw: any = res as any;
+        console.log('res', raw);
+        const steps: Array<any> | undefined = Array.isArray(raw?.steps) ? raw.steps : undefined;
+        const flattenContent: Array<any> = Array.isArray(steps)
+            ? steps.flatMap((s: any) => (Array.isArray(s?.content) ? s.content : []))
+            : [];
 
-        // Populate analysis history without affecting provider payload
+        const toolCalls = flattenContent.filter((c: any) => c?.type === 'tool-call');
+        const sdkToolResults = flattenContent.filter((c: any) => c?.type === 'tool-result');
+        const text = (() => {
+            const texts = flattenContent.filter((c: any) => c?.type === 'text' && typeof c.text === 'string');
+            return texts.length > 0 ? texts[texts.length - 1].text : undefined;
+        })();
+        console.log('derived', { stepsCount: steps?.length ?? 0, toolCalls: toolCalls.length, toolResults: sdkToolResults.length, hasText: Boolean(text) });
+
         if (Array.isArray(toolCalls)) {
             for (const call of toolCalls) {
                 agentHistory.push({
@@ -149,7 +158,10 @@ async function runAgentTask(
         }
 
 
-        agentHistory.push(...(res as any).steps);
+        if (Array.isArray(steps)) agentHistory.push(...steps);
+        if (typeof text === 'string' && text.length > 0) {
+            agentHistory.push({ role: 'assistant', content: text });
+        }
         console.log('agentHistory', agentHistory);
 
         return text || 'Task completed without a final text answer.';
@@ -163,8 +175,6 @@ async function runAgentTask(
 }
 
 async function analyzeWork(prompt: string): Promise<string> {
-    console.log('analyzeWork', agentHistory);
-    console.log('lastTaskPrompt', lastTaskPrompt);
     if (!agentHistory.length || !lastTaskPrompt) {
         return 'Нет данных о проделанной работе. Сначала выполните какое-либо действие в браузере.';
     }
@@ -245,7 +255,6 @@ chrome.runtime.onMessage.addListener(async (message) => {
                 const tools = agentTools(toolContext);
 
                 const systemPrompt = (await import('./prompts/system.md?raw')).default as string;
-                console.log('systemPrompt', systemPrompt);
 
                 agentHistory = [
                     { role: 'system', content: systemPrompt },

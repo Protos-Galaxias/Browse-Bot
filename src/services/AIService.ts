@@ -62,12 +62,12 @@ export class OpenRouterAIService implements AIService {
     }
 
     async getChatModel(): Promise<LanguageModel> {
-        const modelName = await this.configService.get<string>('activeModel') || 'google/gemini-2.5-pro';
+        const modelName = await this.configService.get<string>('activeModel') || 'openai/gpt-4.1-mini';
         return this.getClient().chat(modelName);
     }
 
     async generateTextByPrompt(prompt: string, options: AIGenerateOptions = {}): Promise<GenerateTextResult<any, any>> {
-        const model = options.model || await this.configService.get<string>('activeModel') || 'google/gemini-2.5-pro';
+        const model = options.model || await this.configService.get<string>('activeModel') || 'openai/gpt-4.1-mini';
         const globalPrompt = await this.configService.get<string>('globalPrompt', '');
 
         const finalPrompt = globalPrompt ? `${globalPrompt}\n\n${prompt}` : prompt;
@@ -87,7 +87,7 @@ export class OpenRouterAIService implements AIService {
 
     async generate<T>(schema: any, systemPrompt: string, prompt: string, options: AIGenerateOptions = {}): Promise<T> {
         try {
-            const model = options.model || await this.configService.get<string>('activeModel') || 'google/gemini-2.5-pro';
+            const model = options.model || await this.configService.get<string>('activeModel') || 'openai/gpt-4.1-mini';
             const client = this.getClient();
             const globalPrompt = await this.configService.get<string>('globalPrompt', '');
             const finalSystem = globalPrompt ? `${globalPrompt}\n\n${systemPrompt}` : systemPrompt;
