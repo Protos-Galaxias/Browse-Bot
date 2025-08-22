@@ -172,6 +172,59 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
         break;
     }
+    case 'OPEN_LINK': {
+        const el = elementCache.get(String(message.aid));
+        if (!el) {
+            sendResponse({ status: 'error', message: `Element with aid=${message.aid} not found` });
+            break;
+        }
+        let href: string | null = null;
+        let targetBlank = false;
+        if (el instanceof HTMLAnchorElement) {
+            href = el.getAttribute('href');
+            targetBlank = (el.getAttribute('target') || '').toLowerCase() === '_blank';
+        } else {
+            // Try to find ancestor anchor
+            const a = el.closest('a') as HTMLAnchorElement | null;
+            if (a) {
+                href = a.getAttribute('href');
+                targetBlank = (a.getAttribute('target') || '').toLowerCase() === '_blank';
+            }
+        }
+        if (!href) {
+            sendResponse({ status: 'error', message: 'No href found for target element' });
+            break;
+        }
+        try {
+            const absolute = new URL(href, document.baseURI).href;
+            // Request background to open to avoid popup blockers
+            chrome.runtime.sendMessage({ type: 'OPEN_LINK_IN_BG', url: absolute });
+            sendResponse({ status: 'ok', url: absolute, targetBlank });
+        } catch {
+            sendResponse({ status: 'error', message: 'Failed to resolve URL' });
+        }
+        break;
+    }
+    case 'GET_LINK_INFO': {
+        const el = elementCache.get(String(message.aid));
+        if (!el) { sendResponse({ status: 'error', message: `Element with aid=${message.aid} not found` }); break; }
+        let href: string | null = null;
+        let targetBlank = false;
+        if (el instanceof HTMLAnchorElement) {
+            href = el.getAttribute('href');
+            targetBlank = (el.getAttribute('target') || '').toLowerCase() === '_blank';
+        } else {
+            const a = el.closest('a') as HTMLAnchorElement | null;
+            if (a) {
+                href = a.getAttribute('href');
+                targetBlank = (a.getAttribute('target') || '').toLowerCase() === '_blank';
+            }
+        }
+        if (!href) { sendResponse({ status: 'ok', href: null, targetBlank: false }); break; }
+        try { const absolute = new URL(href, document.baseURI).href; sendResponse({ status: 'ok', href: absolute, targetBlank }); }
+        catch { sendResponse({ status: 'ok', href: null, targetBlank }); }
+        break;
+    }
     case 'INSERT_TEXT': {
         const elementToInsert = elementCache.get(String(message.aid));
         if (elementToInsert && (elementToInsert instanceof HTMLInputElement || elementToInsert instanceof HTMLTextAreaElement)) {

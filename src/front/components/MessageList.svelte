@@ -1,10 +1,21 @@
 <script lang="ts">
     import MessageItem from './MessageItem.svelte';
+    import { afterUpdate, onMount } from 'svelte';
     export let log: string[] = [];
     export let isTyping = false;
+
+    let container: HTMLDivElement | null = null;
+    let endRef: HTMLDivElement | null = null;
+
+    function scrollToBottom() {
+        if (endRef) endRef.scrollIntoView({ behavior: 'auto', block: 'end' });
+    }
+
+    onMount(scrollToBottom);
+    afterUpdate(scrollToBottom);
 </script>
 
-<div class="chat-messages">
+<div class="chat-messages" bind:this={container}>
     {#each log as entry}
         <MessageItem {entry} />
     {/each}
@@ -17,6 +28,7 @@
             </div>
         </div>
     {/if}
+    <div bind:this={endRef}></div>
 </div>
 
 <style>

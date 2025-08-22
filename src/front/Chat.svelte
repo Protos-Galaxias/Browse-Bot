@@ -20,6 +20,8 @@
     let domainPromptCollapsed = true;
     let activeDomain = '';
     let domainPromptText = '';
+    let hideAgentMessages: boolean = false;
+    let showClearConfirm = false;
 
     async function fetchActiveTab(): Promise<{ id: number; title: string; url?: string; favIconUrl?: string } | null> {
         try {
@@ -46,12 +48,13 @@
     }
 
     onMount(async () => {
-        const settings = await chrome.storage.local.get(['models', 'activeModel', 'chatLog', 'chatPrompt', 'sendOnEnter']);
+        const settings = await chrome.storage.local.get(['models', 'activeModel', 'chatLog', 'chatPrompt', 'sendOnEnter', 'hideAgentMessages']);
         models = settings.models || ['openai/gpt-4.1-mini'];
         activeModel = settings.activeModel || models[0];
         log = Array.isArray(settings.chatLog) ? settings.chatLog : [];
         prompt = typeof settings.chatPrompt === 'string' ? settings.chatPrompt : '';
         sendOnEnter = typeof settings.sendOnEnter === 'boolean' ? settings.sendOnEnter : true;
+        hideAgentMessages = typeof settings.hideAgentMessages === 'boolean' ? settings.hideAgentMessages : false;
 
         await ensureActiveMention();
 
@@ -82,15 +85,15 @@
         }
     }
 
-    function clearHistory() {
-        if (confirm('Вы уверены, что хотите очистить историю чата?')) {
-            log = [];
-            saveChatState();
-            mentions = [];
-            // Сразу возвращаем активную вкладку в mentions
-            ensureActiveMention();
-        }
+    function clearHistory() { showClearConfirm = true; }
+    function confirmClearHistory() {
+        log = [];
+        saveChatState();
+        mentions = [];
+        ensureActiveMention();
+        showClearConfirm = false;
     }
+    function cancelClearHistory() { showClearConfirm = false; }
 
     function startTask() {
         if (!prompt.trim()) return;
@@ -117,7 +120,13 @@
 
     chrome.runtime.onMessage.addListener((message) => {
         if (message.type === 'UPDATE_LOG') {
-            log = [...log, message.data];
+            const text = String(message.data || '');
+            if (hideAgentMessages) {
+                // В режиме скрытия показываем только итог/ошибку/анализ
+                const isFinalOrError = text.startsWith('[Результат]') || text.startsWith('[Ошибка]') || text.startsWith('[Анализ]');
+                if (!isFinalOrError) return true;
+            }
+            log = [...log, text];
             isTyping = false;
         } else if (message.type === 'TASK_COMPLETE') {
             isTaskRunning = false;
@@ -163,7 +172,6 @@
 </script>
 
 <div class="chat-container">
-    {mentions}
     {#if log.length === 0}
         <div class="welcome-screen">
             <div class="logo">
@@ -264,6 +272,19 @@
             </div>
             <div class="disclaimer">
                 Агент может допускать ошибки. Пожалуйста, проверяйте результаты.
+            </div>
+        </div>
+    {/if}
+
+    {#if showClearConfirm}
+        <div class="modal-backdrop" on:click={cancelClearHistory}>
+            <div class="modal" on:click|stopPropagation>
+                <div class="modal-title">Очистить историю чата?</div>
+                <div class="modal-text">Это действие удалит текущий список сообщений. Отменить нельзя.</div>
+                <div class="modal-actions">
+                    <button class="modal-btn secondary" on:click={cancelClearHistory}>Отмена</button>
+                    <button class="modal-btn danger" on:click={confirmClearHistory}>Очистить</button>
+                </div>
             </div>
         </div>
     {/if}
@@ -406,6 +427,34 @@
         justify-content: space-between;
         align-items: center;
     }
+
+    /* Modal styles */
+    .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 99999;
+    }
+    .modal {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 1rem;
+        width: 90%;
+        max-width: 360px;
+        color: var(--text-primary);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+    .modal-title { font-weight: 600; margin-bottom: 0.4rem; }
+    .modal-text { color: var(--text-secondary); margin-bottom: 0.8rem; }
+    .modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
+    .modal-btn { padding: 0.35rem 0.7rem; border-radius: 6px; cursor: pointer; border: 1px solid var(--border-color); background: transparent; color: var(--text-primary); }
+    .modal-btn.secondary:hover { background: var(--bg-primary); }
+    .modal-btn.danger { background: #dc3545; color: #fff; border-color: #dc3545; }
+    .modal-btn.danger:hover { background: #c82333; }
 
     .left-controls, .right-controls {
         display: flex;

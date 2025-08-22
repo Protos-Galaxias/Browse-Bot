@@ -22,9 +22,25 @@ export const findAndClickTool = (context: ToolContext) => tool({
         if (!elementIds || elementIds.length === 0) return { success: false, error: `No element found for: ${element_description}` };
 
         for (const aid of elementIds) {
-            const tid = elements.find(e => e.id === aid)?.tid;
+            const elementMeta = elements.find(e => e.id === aid);
+            const tid = elementMeta?.tid;
             const targetTabId = resolveTabId(context, tid);
-            await context.sendMessageToTab({ type: 'CLICK_ON_ELEMENT', aid, tid }, targetTabId);
+
+            // Ask content script about link and target
+            const info = await context.sendMessageToTab({ type: 'GET_LINK_INFO', aid, tid }, targetTabId).catch(() => null);
+            console.log('info', info);
+            const href = info?.href as string | null | undefined;
+            const isBlank = Boolean(info?.targetBlank);
+
+            if (href && isBlank) {
+                console.log('open link', href);
+                // Open via background (worker)
+                await context.sendMessageToTab({ type: 'OPEN_LINK', aid, tid }, targetTabId);
+            } else {
+                console.log('click element', aid, tid);
+                // Fallback to regular click
+                await context.sendMessageToTab({ type: 'CLICK_ON_ELEMENT', aid, tid }, targetTabId);
+            }
         }
 
         return { success: true, clickedElements: elementIds.length };

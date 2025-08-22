@@ -39,7 +39,6 @@ async function runAgentTask(
         });
 
         const raw: any = res as any;
-        console.log('res', raw);
         const steps: Array<any> | undefined = Array.isArray(raw?.steps) ? raw.steps : undefined;
         const flattenContent: Array<any> = Array.isArray(steps)
             ? steps.flatMap((s: any) => (Array.isArray(s?.content) ? s.content : []))
@@ -64,7 +63,6 @@ async function runAgentTask(
                         input: call.input
                     }]
                 });
-                updateLog(`[Агент] Вызвал ${call.toolName}.`);
             }
         }
         if (Array.isArray(sdkToolResults) && sdkToolResults.length > 0) {
@@ -167,13 +165,22 @@ async function buildSystemPrompt(tabs?: Array<TabMeta>): Promise<string> {
 }
 
 chrome.runtime.onMessage.addListener(async (message) => {
+    if (message.type === 'OPEN_LINK_IN_BG') {
+        try {
+            const url = String(message.url || '');
+            if (!url) throw new Error('No URL');
+            await chrome.tabs.create({ url });
+        } catch (e) {
+            console.error('Failed to open link in bg:', e);
+        }
+        return true;
+    }
     if (message.type === 'START_TASK') {
         const { prompt, tabs } = message as { prompt: string; tabs?: Array<{ id: number; title?: string; url?: string }> };
         if (Array.isArray(tabs)) console.log('tabs meta back', tabs);
 
         let seedTabs = Array.isArray(tabs) && tabs.length > 0 ? tabs : [];
         let systemPrompt = await buildSystemPrompt(seedTabs);
-        console.log('systemPrompt', systemPrompt);
         try {
             await aiService.initialize();
 

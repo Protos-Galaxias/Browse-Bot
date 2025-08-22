@@ -8,17 +8,19 @@
     let activeModel = '';
     let globalPrompt = '';
     let sendOnEnter: boolean = true;
+    let hideAgentMessages: boolean = false;
     let theme: Theme = 'system';
     let saveStatus: 'idle' | 'saving' | 'saved' = 'idle';
 
     onMount(async () => {
-        const settings = await chrome.storage.local.get(['apiKey', 'models', 'activeModel', 'globalPrompt', 'theme', 'sendOnEnter']);
+        const settings = await chrome.storage.local.get(['apiKey', 'models', 'activeModel', 'globalPrompt', 'theme', 'sendOnEnter', 'hideAgentMessages']);
         apiKey = settings.apiKey || '';
         models = settings.models || ['openai/gpt-4.1-mini'];
         activeModel = settings.activeModel || models[0];
         globalPrompt = typeof settings.globalPrompt === 'string' ? settings.globalPrompt : '';
         theme = settings.theme || 'system';
         sendOnEnter = typeof settings.sendOnEnter === 'boolean' ? settings.sendOnEnter : true;
+        hideAgentMessages = typeof settings.hideAgentMessages === 'boolean' ? settings.hideAgentMessages : false;
         applyTheme(theme);
         chrome.runtime.sendMessage({ type: 'UPDATE_CONFIG' });
     });
@@ -65,7 +67,7 @@
 
     async function saveSettings() {
         saveStatus = 'saving';
-        await chrome.storage.local.set({ apiKey, models, activeModel, globalPrompt, theme, sendOnEnter });
+        await chrome.storage.local.set({ apiKey, models, activeModel, globalPrompt, theme, sendOnEnter, hideAgentMessages });
         saveStatus = 'saved';
         setTimeout(() => {
             saveStatus = 'idle';
@@ -74,20 +76,31 @@
 </script>
 
 <div class="settings-container">
-    <div class="settings-card">
-        <h2>Настройки Web Walker</h2>
-
         <div class="setting-group">
             <label class="setting-label">
                 OpenRouter API Key
                 <input
                     type="password"
                     bind:value={apiKey}
+                    on:input={saveSettings}
                     placeholder="Введите ваш API ключ"
                     class="setting-input"
                 />
             </label>
         </div>
+
+        {#if !apiKey}
+            <div class="info-card">
+                <p>API ключ необходим для обращения к моделям через OpenRouter.</p>
+                <ol>
+                    <li>Зайдите на <a href="https://openrouter.ai" target="_blank" rel="noopener">openrouter.ai</a>.</li>
+                    <li>Авторизуйтесь и перейдите в раздел API Keys.</li>
+                    <li>Создайте новый ключ и скопируйте его значение.</li>
+                    <li>Вставьте ключ в поле выше — сохранится автоматически.</li>
+                </ol>
+                <p>Сохранение происходит мгновенно. Ключ хранится локально в браузере.</p>
+            </div>
+        {/if}
 
         <div class="setting-group">
             <label class="setting-label">
@@ -153,6 +166,7 @@
                     class="setting-textarea"
                     placeholder="Этот текст будет добавляться ко всем запросам в LLM как системная подсказка."
                     rows="6"
+                    on:input={saveSettings}
                 ></textarea>
             </label>
         </div>
@@ -161,27 +175,31 @@
             <label class="setting-label">
                 Отправка по Enter
                 <div class="toggle-row">
-                    <input id="sendOnEnter" type="checkbox" bind:checked={sendOnEnter} />
+                    <input id="sendOnEnter" type="checkbox" bind:checked={sendOnEnter} on:change={saveSettings} />
                     <label for="sendOnEnter">Enter — отправка, Ctrl/Cmd+Enter — новая строка</label>
                 </div>
             </label>
         </div>
 
-        <button class="save-btn {saveStatus}" on:click={saveSettings} disabled={saveStatus === 'saving'}>
-            {#if saveStatus === 'saving'}
-                Сохранение...
-            {:else if saveStatus === 'saved'}
-                ✓ Сохранено
-            {:else}
-                Сохранить настройки
-            {/if}
-        </button>
+        <div class="setting-group">
+            <label class="setting-label">
+                Скрывать промежуточные сообщения агента
+                <div class="toggle-row">
+                    <input id="hideAgentMessages" type="checkbox" bind:checked={hideAgentMessages} on:change={saveSettings} />
+                    <label for="hideAgentMessages">Показывать только итоговый ответ</label>
+                </div>
+            </label>
+        </div>
+
+        {#if saveStatus === 'saved'}
+            <div class="save-toast">✓ Настройки сохранены</div>
+        {/if}
 
         <div class="help-text">
             <p>Для работы агента необходим API ключ от OpenRouter.</p>
             <p>Получить ключ можно на сайте: <a href="https://openrouter.ai" target="_blank">openrouter.ai</a></p>
         </div>
-    </div>
+    
 </div>
 
 <style>
@@ -216,24 +234,16 @@
     }
 
     .settings-container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        min-height: 100vh;
+        display: block;
+        height: 100%;
+        min-height: 0;
+        overflow-y: auto;
         background: var(--bg-primary);
-        padding: 2rem;
+        padding: 0.75rem;
         transition: background 0.3s;
-    }
-
-    .settings-card {
-        background: var(--bg-primary);
-        border-radius: 12px;
-        padding: 1rem;
-        width: 100%;
-        max-width: 300px;
-        border: 1px solid var(--border-color);
         box-sizing: border-box;
-        transition: background 0.3s, border-color 0.3s;
+        max-width: 520px;
+        margin: 0 auto;
     }
 
     h2 {
@@ -428,40 +438,14 @@
         background: var(--accent-hover);
     }
 
-    .save-btn {
+    .save-toast {
         width: 100%;
-        background: var(--accent-color);
-        border: none;
-        color: white;
-        padding: 0.75rem;
-        border-radius: 8px;
-        font-size: 0.9rem;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.2s;
-        margin-bottom: 1rem;
-    }
-
-    .save-btn:hover {
-        background: var(--accent-hover);
-        transform: translateY(-1px);
-    }
-
-    .save-btn:active {
-        transform: translateY(0);
-    }
-
-    .save-btn.saving {
-        opacity: 0.7;
-        cursor: wait;
-    }
-
-    .save-btn.saved {
+        text-align: center;
         background: #28a745;
-    }
-
-    .save-btn.saved:hover {
-        background: #218838;
+        color: white;
+        padding: 0.5rem;
+        border-radius: 8px;
+        margin: 0.5rem 0 1rem 0;
     }
 
     .help-text {
@@ -482,4 +466,16 @@
     .help-text a:hover {
         text-decoration: underline;
     }
+
+    .info-card {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 0.75rem;
+        color: var(--text-primary);
+        margin-bottom: 1rem;
+    }
+    .info-card ol { margin: 0.5rem 0 0.5rem 1.2rem; padding-left: 1rem; }
+    .info-card li { margin: 0.25rem 0; }
+    .info-card a { color: var(--accent-color); text-decoration: underline; }
 </style>

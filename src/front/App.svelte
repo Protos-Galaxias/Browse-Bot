@@ -30,7 +30,7 @@
 
     // Загрузка темы при запуске
     onMount(async () => {
-        const settings = await chrome.storage.local.get(['theme']);
+        const settings = await chrome.storage.local.get(['theme', 'apiKey']);
         const theme = settings.theme || 'system';
         applyTheme(theme);
 
@@ -40,6 +40,13 @@
                 applyTheme(changes.theme.newValue);
             }
         });
+
+        // Если API ключ не задан – открываем настройки
+        const apiKey = settings.apiKey || '';
+        if (!apiKey) {
+            currentView = 'settings';
+            try { window.location.hash = '#settings'; } catch {}
+        }
     });
 
     function applyTheme(selectedTheme: Theme) {
@@ -62,15 +69,17 @@
         <button on:click={() => currentView = 'settings'}>Настройки</button>
     </nav>
 
-    {#if currentView === 'chat'}
-        <Chat />
-    {:else if currentView === 'settings'}
-        <Settings />
-    {:else if currentView === 'capabilities'}
-        <Capabilities />
-    {:else if currentView === 'domain-prompts'}
-        <DomainPrompts />
-    {/if}
+    <div class="view">
+        {#if currentView === 'chat'}
+            <Chat />
+        {:else if currentView === 'settings'}
+            <Settings />
+        {:else if currentView === 'capabilities'}
+            <Capabilities />
+        {:else if currentView === 'domain-prompts'}
+            <DomainPrompts />
+        {/if}
+    </div>
 </main>
 
 <style>
@@ -124,6 +133,13 @@
         display: flex;
         flex-direction: column;
         width: 100% !important;
+    }
+
+    .view {
+        flex: 1;
+        min-height: 0; /* allow children to manage their own scroll */
+        overflow: hidden; /* prevent body scroll; children can scroll internally */
+        display: block;
     }
 
     nav {
