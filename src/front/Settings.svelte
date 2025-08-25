@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import type { Theme } from '../services/ConfigService';
+    import DomainPrompts from './DomainPrompts.svelte';
 
     let apiKey = '';
     let models: string[] = [];
@@ -11,6 +12,7 @@
     let hideAgentMessages: boolean = false;
     let theme: Theme = 'system';
     let saveStatus: 'idle' | 'saving' | 'saved' = 'idle';
+    let activeTab: 'general' | 'behavior' | 'prompt' = 'general';
 
     onMount(async () => {
         const settings = await chrome.storage.local.get(['apiKey', 'models', 'activeModel', 'globalPrompt', 'theme', 'sendOnEnter', 'hideAgentMessages']);
@@ -76,6 +78,13 @@
 </script>
 
 <div class="settings-container">
+        <div class="tabs">
+            <button class="tab {activeTab === 'general' ? 'active' : ''}" on:click={() => activeTab = 'general'}>Общие</button>
+            <button class="tab {activeTab === 'behavior' ? 'active' : ''}" on:click={() => activeTab = 'behavior'}>Поведение</button>
+            <button class="tab {activeTab === 'prompt' ? 'active' : ''}" on:click={() => activeTab = 'prompt'}>Глобальный промт</button>
+        </div>
+
+        {#if activeTab === 'general'}
         <div class="setting-group">
             <label class="setting-label">
                 OpenRouter API Key
@@ -132,6 +141,40 @@
             </label>
         </div>
 
+        
+        {/if}
+
+        {#if activeTab === 'prompt'}
+        <div class="setting-group">
+            <label class="setting-label">
+                Глобальный промт / информация о вас
+                <textarea
+                    bind:value={globalPrompt}
+                    class="setting-textarea"
+                    placeholder="Этот текст будет добавляться ко всем запросам в LLM как системная подсказка."
+                    rows="6"
+                    on:input={saveSettings}
+                ></textarea>
+            </label>
+        </div>
+
+        <div class="setting-group">
+            <div class="setting-label">Промты для доменов</div>
+            <DomainPrompts />
+        </div>
+        {/if}
+
+        {#if activeTab === 'behavior'}
+        <div class="setting-group">
+            <label class="setting-label">
+                Отправка по Enter
+                <div class="toggle-row">
+                    <input id="sendOnEnter" type="checkbox" bind:checked={sendOnEnter} on:change={saveSettings} />
+                    <label for="sendOnEnter">Enter — отправка, Ctrl/Cmd+Enter — новая строка</label>
+                </div>
+            </label>
+        </div>
+
         <div class="setting-group">
             <label class="setting-label">
                 Цветовая схема
@@ -160,29 +203,6 @@
 
         <div class="setting-group">
             <label class="setting-label">
-                Глобальный промт / информация о вас
-                <textarea
-                    bind:value={globalPrompt}
-                    class="setting-textarea"
-                    placeholder="Этот текст будет добавляться ко всем запросам в LLM как системная подсказка."
-                    rows="6"
-                    on:input={saveSettings}
-                ></textarea>
-            </label>
-        </div>
-
-        <div class="setting-group">
-            <label class="setting-label">
-                Отправка по Enter
-                <div class="toggle-row">
-                    <input id="sendOnEnter" type="checkbox" bind:checked={sendOnEnter} on:change={saveSettings} />
-                    <label for="sendOnEnter">Enter — отправка, Ctrl/Cmd+Enter — новая строка</label>
-                </div>
-            </label>
-        </div>
-
-        <div class="setting-group">
-            <label class="setting-label">
                 Скрывать промежуточные сообщения агента
                 <div class="toggle-row">
                     <input id="hideAgentMessages" type="checkbox" bind:checked={hideAgentMessages} on:change={saveSettings} />
@@ -190,6 +210,7 @@
                 </div>
             </label>
         </div>
+        {/if}
 
         {#if saveStatus === 'saved'}
             <div class="save-toast">✓ Настройки сохранены</div>
@@ -246,13 +267,26 @@
         margin: 0 auto;
     }
 
-    h2 {
-        color: var(--text-primary);
-        margin: 0 0 1.5rem 0;
-        font-size: 1.2rem;
-        font-weight: 300;
-        text-align: center;
+    .tabs {
+        display: flex;
+        gap: 0.25rem;
+        margin-bottom: 0.75rem;
+        position: sticky;
+        top: 0;
+        background: var(--bg-primary);
+        padding-top: 0.25rem;
     }
+    .tab {
+        background: transparent;
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        padding: 0.35rem 0.6rem;
+        border-radius: 8px;
+        cursor: pointer;
+    }
+    .tab.active { background: var(--accent-color); border-color: var(--accent-color); color: #fff; }
+
+    
 
     .setting-group {
         margin-bottom: 1rem;
@@ -313,6 +347,8 @@
         border-color: var(--accent-color);
         color: white;
     }
+
+    
 
     .setting-textarea {
         width: 100%;

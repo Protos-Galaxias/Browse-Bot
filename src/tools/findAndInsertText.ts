@@ -21,6 +21,12 @@ export const findAndInsertTextTool = (context: ToolContext) => tool({
         const tid = elements.find(e => e.id === targetId)?.tid;
         const targetTabId = resolveTabId(context, tid);
         await context.sendMessageToTab({ type: 'INSERT_TEXT', aid: targetId, text, tid }, targetTabId);
+        // Heuristic: If user is searching (common cases), press Enter to submit search when no explicit search button is guaranteed
+        const lower = (element_description + ' ' + reasoning).toLowerCase();
+        const likelySearch = /search|поиск|найти|query|поисков/gi.test(lower);
+        if (likelySearch) {
+            await context.sendMessageToTab({ type: 'PRESS_ENTER', aid: targetId, tid }, targetTabId);
+        }
         return { success: true, elementId: targetId };
     }
 });

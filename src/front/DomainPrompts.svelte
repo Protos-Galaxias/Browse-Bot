@@ -59,7 +59,7 @@
                             <button class="delete-btn" on:click={() => deleteEntry(e.domain)} title="Удалить">✕</button>
                         </div>
                     </div>
-                    <textarea class="item-textarea" bind:value={e.prompt} on:change={(ev) => updateEntry(e.domain, (ev.target as HTMLTextAreaElement).value)} />
+                    <textarea class="item-textarea" bind:value={e.prompt} on:change={(ev) => updateEntry(e.domain, (ev.target as HTMLTextAreaElement).value)}></textarea>
                 </div>
             {/each}
         {/if}

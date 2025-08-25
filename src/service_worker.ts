@@ -14,6 +14,7 @@ const aiService = OpenRouterAIService.getInstance();
 
 let agentHistory: any[] = [];
 let currentController: AbortController | null = null;
+let currentTaskTabs: Array<{ id: number; title?: string; url?: string }> = [];
 
 
 async function runAgentTask(
@@ -148,7 +149,9 @@ async function buildSystemPrompt(tabs?: Array<TabMeta>): Promise<string> {
             try {
                 const host = new URL(url).hostname.replace(/^www\./, '');
                 if (host) hosts.add(host);
-            } catch {}
+            } catch {
+                // ignore invalid URLs
+            }
         }
     }
 
@@ -169,7 +172,27 @@ chrome.runtime.onMessage.addListener(async (message) => {
         try {
             const url = String(message.url || '');
             if (!url) throw new Error('No URL');
-            await chrome.tabs.create({ url });
+            const created = await chrome.tabs.create({ url, active: false });
+            if (created && typeof created.id === 'number') {
+                const exists = currentTaskTabs.some(t => t.id === created.id);
+                if (!exists) currentTaskTabs.push({ id: created.id, title: created.title, url: created.url });
+                // Update title/url when they become available
+                const handleUpdated = (tabId: number, changeInfo: any, tab: chrome.tabs.Tab) => {
+                    if (tabId !== created.id) return;
+                    const idx = currentTaskTabs.findIndex(t => t.id === tabId);
+                    if (idx !== -1) {
+                        currentTaskTabs[idx] = {
+                            id: tabId,
+                            title: changeInfo.title ?? tab.title,
+                            url: changeInfo.url ?? tab.url
+                        };
+                    }
+                    if (changeInfo.status === 'complete') {
+                        try { chrome.tabs.onUpdated.removeListener(handleUpdated); } catch { /* ignore remove errors */ }
+                    }
+                };
+                try { chrome.tabs.onUpdated.addListener(handleUpdated); } catch { /* ignore add errors */ }
+            }
         } catch (e) {
             console.error('Failed to open link in bg:', e);
         }
@@ -180,6 +203,7 @@ chrome.runtime.onMessage.addListener(async (message) => {
         if (Array.isArray(tabs)) console.log('tabs meta back', tabs);
 
         let seedTabs = Array.isArray(tabs) && tabs.length > 0 ? tabs : [];
+        currentTaskTabs = seedTabs; // share reference with tool context so new tabs can be appended
         let systemPrompt = await buildSystemPrompt(seedTabs);
         try {
             await aiService.initialize();
@@ -203,6 +227,7 @@ chrome.runtime.onMessage.addListener(async (message) => {
                     return true;
                 } else {
                     seedTabs = [{ id: activeTab.id, title: activeTab.title, url: activeTab.url }];
+                    currentTaskTabs = seedTabs;
                     systemPrompt = await buildSystemPrompt(seedTabs);
                 }
             }
@@ -212,7 +237,7 @@ chrome.runtime.onMessage.addListener(async (message) => {
 
             const toolContext: ToolContext = {
                 aiService,
-                tabs: seedTabs,
+                tabs: currentTaskTabs,
                 getInteractiveElements: () => elements,
                 setInteractiveElements: (e) => { elements = e; },
                 sendMessageToTab: (msg, targetTabId?: number) => chrome.tabs.sendMessage(targetTabId ?? resolvedDefaultTabId, msg)
@@ -236,6 +261,7 @@ chrome.runtime.onMessage.addListener(async (message) => {
             updateLog(`[Ошибка]: ${err instanceof Error ? err.message : String(err)}`);
         } finally {
             chrome.runtime.sendMessage({ type: 'TASK_COMPLETE' }).catch(console.error);
+            currentTaskTabs = [];
         }
     } else if (message.type === 'STOP_TASK') {
         if (currentController) {
@@ -244,6 +270,7 @@ chrome.runtime.onMessage.addListener(async (message) => {
             updateLog('[Система]: Задача остановлена пользователем');
             chrome.runtime.sendMessage({ type: 'TASK_COMPLETE' }).catch(console.error);
         }
+        currentTaskTabs = [];
     }
     return true;
 });

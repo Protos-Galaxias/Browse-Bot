@@ -229,11 +229,30 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const elementToInsert = elementCache.get(String(message.aid));
         if (elementToInsert && (elementToInsert instanceof HTMLInputElement || elementToInsert instanceof HTMLTextAreaElement)) {
             elementToInsert.value = message.text;
+            elementToInsert.dispatchEvent(new Event('input', { bubbles: true }));
             sendResponse({ status: 'ok' });
         } else {
             console.error(`Web Walker: Input element with aid=${message.aid} not found.`);
             sendResponse({ status: 'error', message: `Input element with aid=${message.aid} not found` });
         }
+        break;
+    }
+    case 'PRESS_ENTER': {
+        const el = elementCache.get(String(message.aid));
+        const target: HTMLElement | undefined = el || undefined;
+        const eventInit = { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true } as any;
+        const dispatchOn = (n: Element | Document | Window) => {
+            n.dispatchEvent(new KeyboardEvent('keydown', eventInit));
+            n.dispatchEvent(new KeyboardEvent('keypress', eventInit));
+            n.dispatchEvent(new KeyboardEvent('keyup', eventInit));
+        };
+        if (target instanceof HTMLElement) {
+            dispatchOn(target);
+            try { dispatchOn(target.form || document); } catch {}
+        } else {
+            dispatchOn(document);
+        }
+        sendResponse({ status: 'ok' });
         break;
     }
     case 'SELECT_OPTION': {
