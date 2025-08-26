@@ -10,6 +10,9 @@ export default defineConfig({
     svelte(),
     crx({ manifest }),
   ],
+  define: {
+    __BROWSER__: JSON.stringify('firefox')
+  },
   // Явно указываем папку для сборки
   build: {
     outDir: 'dist-firefox',
@@ -27,7 +30,22 @@ export default defineConfig({
           if (chunkInfo.name === 'src/service_worker') {
             return 'src/service_worker.js';
           }
+          // Для контент-скрипта фиксируем имя без хэша
+          if (chunkInfo.name === 'src/content') {
+            return 'src/content.js';
+          }
           // Для остальных JS файлов используем стандартный шаблон
+          return 'assets/[name]-[hash].js';
+        },
+        // Подстраховка: если контент-скрипт не попал как entry, ловим по facadeModuleId
+        chunkFileNames: (chunkInfo) => {
+          const id = chunkInfo.facadeModuleId || '';
+          if (id.endsWith('/src/content.ts') || id.endsWith('\\src\\content.ts')) {
+            return 'src/content.js';
+          }
+          if (chunkInfo.name === 'src/service_worker') {
+            return 'src/service_worker.js';
+          }
           return 'assets/[name]-[hash].js';
         },
         assetFileNames: (assetInfo) => {

@@ -5,9 +5,15 @@ import type { ToolContext } from './tools/types';
 import type { ToolSet, ModelMessage } from 'ai';
 import { ConfigService } from './services/ConfigService';
 import type { AIService } from './services/AIService';
+import systemPromptRaw from './prompts/system.md?raw';
+import { isChrome } from './browser';
 
 if (chrome.sidePanel) {
     chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+}
+
+if (isChrome()) {
+    injectIntoAllOpenTabs();
 }
 
 const aiService = OpenRouterAIService.getInstance();
@@ -15,6 +21,73 @@ const aiService = OpenRouterAIService.getInstance();
 let agentHistory: any[] = [];
 let currentController: AbortController | null = null;
 let currentTaskTabs: Array<{ id: number; title?: string; url?: string }> = [];
+
+async function ensureHostPermissionForTab(tabId: number): Promise<boolean> {
+    try {
+        const tab = await chrome.tabs.get(tabId);
+        const url = tab?.url || '';
+        if (!url || !/^https?:\/\//i.test(url)) return false;
+        const origin = new URL(url).origin + '/*';
+        const has = await chrome.permissions.contains({ origins: [origin] });
+        if (has) return true;
+        try {
+            const granted = await chrome.permissions.request({ origins: [origin] });
+            return Boolean(granted);
+        } catch (e) {
+            console.warn('Permission request failed for origin', origin, e);
+            return false;
+        }
+    } catch (e) {
+        console.warn('Failed to check/request permission for tab', tabId, e);
+        return false;
+    }
+}
+
+async function injectContentIntoTab(tabId: number): Promise<void> {
+    try {
+        if (!chrome?.scripting?.executeScript) return;
+        const allowed = await ensureHostPermissionForTab(tabId);
+        if (!allowed) {
+            console.warn('Skipping injection; host permission not granted for tab', tabId);
+            return;
+        }
+        const results = await chrome.scripting.executeScript({
+            target: { tabId },
+            func: () => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const w = window as any;
+                const already = Boolean(w.__webWalkerInjected);
+                w.__webWalkerInjected = true;
+                return already;
+            }
+        });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const alreadyInjected = Array.isArray(results) && results.length > 0 ? Boolean((results[0] as any)?.result) : false;
+        if (!alreadyInjected) {
+            await chrome.scripting.executeScript({
+                target: { tabId },
+                files: ['src/content.js']
+            });
+        }
+    } catch (e) {
+        console.warn('Content injection failed for tab', tabId, e);
+    }
+}
+
+function injectIntoAllOpenTabs(): void {
+    try {
+        chrome.tabs.query({}, (tabs) => {
+            for (const t of tabs) {
+                const id = t && typeof t.id === 'number' ? t.id : undefined;
+                if (id) {
+                    injectContentIntoTab(id).catch(() => {});
+                }
+            }
+        });
+    } catch {
+        // ignore
+    }
+}
 
 
 async function runAgentTask(
@@ -134,7 +207,6 @@ function formatWorkHistoryForContext(): string | null {
 type TabMeta = { id: number; title?: string; url?: string };
 
 async function buildSystemPrompt(tabs?: Array<TabMeta>): Promise<string> {
-    const systemPromptRaw = (await import('./prompts/system.md?raw')).default as string;
     const globalPrompt = await ConfigService.getInstance().get<string>('globalPrompt', '');
     const domainPrompts = await ConfigService.getInstance().get<Record<string, string>>('domainPrompts', {} as Record<string, string>);
     const trimmed = (globalPrompt ?? '').trim();
@@ -188,6 +260,10 @@ chrome.runtime.onMessage.addListener(async (message) => {
                         };
                     }
                     if (changeInfo.status === 'complete') {
+                        // Ensure content script is injected once the tab is ready (Chrome only)
+                        if (isChrome()) {
+                            injectContentIntoTab(tabId).catch(() => {});
+                        }
                         try { chrome.tabs.onUpdated.removeListener(handleUpdated); } catch { /* ignore remove errors */ }
                     }
                 };
@@ -235,6 +311,11 @@ chrome.runtime.onMessage.addListener(async (message) => {
             const resolvedDefaultTabId = seedTabs[0]!.id;
             let elements: any[] = [];
 
+            // Proactively inject content script into all task tabs (Chrome only)
+            if (isChrome()) {
+                try { await Promise.all(seedTabs.map(t => injectContentIntoTab(t.id))); } catch { /* ignore */ }
+            }
+
             const toolContext: ToolContext = {
                 aiService,
                 tabs: currentTaskTabs,
@@ -270,6 +351,7 @@ chrome.runtime.onMessage.addListener(async (message) => {
             updateLog('[Система]: Задача остановлена пользователем');
             chrome.runtime.sendMessage({ type: 'TASK_COMPLETE' }).catch(console.error);
         }
+        agentHistory = [];
         currentTaskTabs = [];
     }
     return true;

@@ -9,12 +9,12 @@ export default defineManifest({
     background: {
         scripts: ['src/service_worker.ts']
     },
-    web_accessible_resources: [
-        {
-            'resources': ['src/content.ts'],
-            'matches': ['<all_urls>']
-        }
-    ],
+    // web_accessible_resources: [
+    //     {
+    //         'resources': ['src/content.ts'],
+    //         'matches': ['<all_urls>']
+    //     }
+    // ],
     host_permissions: [
         '<all_urls>'
     ],
