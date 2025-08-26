@@ -7,24 +7,25 @@ export interface AIGenerateOptions {
   model?: string;
   temperature?: number;
   maxTokens?: number;
-  [key: string]: any;
 }
 
+export type GenerateWithToolsParams = {
+  messages: ModelMessage[];
+  tools: ToolSet;
+  maxRetries?: number;
+  maxToolRoundtrips?: number;
+  abortSignal?: AbortSignal;
+};
+
 export interface AIService {
-  generateTextByPrompt(prompt: string, options?: AIGenerateOptions): Promise<GenerateTextResult<any, any>>;
-  generate<T>(schema: any, systemPrompt: string, prompt: string, options?: AIGenerateOptions): Promise<T>;
-  isConfigured(): Promise<boolean>;
+  generate<T>(schema: unknown, systemPrompt: string, prompt: string, options?: AIGenerateOptions): Promise<T>;
   getChatModel(): Promise<LanguageModel>;
-  generateWithTools(params: {
-    messages: ModelMessage[],
-    tools: ToolSet,
-    maxToolRoundtrips?: number,
-    abortSignal?: AbortSignal
-  }): Promise<GenerateTextResult<any, any>>;
+  generateWithTools(params: GenerateWithToolsParams): Promise<GenerateTextResult<any, any>>;
 }
 
 export class OpenRouterAIService implements AIService {
     private static instance: OpenRouterAIService;
+    public static readonly DEFAULT_MODEL: string = 'openai/gpt-4.1-mini';
     private client: ReturnType<typeof createOpenRouter> | null = null;
     private configService = ConfigService.getInstance();
 
@@ -45,15 +46,6 @@ export class OpenRouterAIService implements AIService {
         this.client = createOpenRouter({ apiKey });
     }
 
-    async isConfigured(): Promise<boolean> {
-        try {
-            const apiKey = await this.configService.get<string>('apiKey');
-            return !!apiKey;
-        } catch {
-            return false;
-        }
-    }
-
     private getClient() {
         if (!this.client) {
             throw new Error('AI Service not initialized. Call initialize() first.');
@@ -62,33 +54,17 @@ export class OpenRouterAIService implements AIService {
     }
 
     async getChatModel(): Promise<LanguageModel> {
-        const modelName = await this.configService.get<string>('activeModel') || 'openai/gpt-4.1-mini';
+        const modelName = await this.configService.get<string>('activeModel') || OpenRouterAIService.DEFAULT_MODEL;
         return this.getClient().chat(modelName);
     }
 
-    async generateTextByPrompt(prompt: string, options: AIGenerateOptions = {}): Promise<GenerateTextResult<any, any>> {
-        const model = options.model || await this.configService.get<string>('activeModel') || 'openai/gpt-4.1-mini';
-
-        return generateText({
-            model: this.getClient().chat(model),
-            prompt
-        });
-    }
-
-    async generateTextBySmallModel(prompt: string): Promise<GenerateTextResult<any, any>> {
-        return generateText({
-            model: this.getClient().chat('openai/gpt-4.1-mini'),
-            prompt
-        });
-    }
-
-    async generate<T>(schema: any, systemPrompt: string, prompt: string, options: AIGenerateOptions = {}): Promise<T> {
+    async generate<T>(schema: unknown, systemPrompt: string, prompt: string, options: AIGenerateOptions = {}): Promise<T> {
         try {
-            const model = options.model || await this.configService.get<string>('activeModel') || 'openai/gpt-4.1-mini';
+            const model = options.model || await this.configService.get<string>('activeModel') || OpenRouterAIService.DEFAULT_MODEL;
             const client = this.getClient();
             const result = await generateObject({
                 model: client.chat(model),
-                schema,
+                schema: schema as any,
                 system: systemPrompt,
                 prompt
             });
@@ -100,20 +76,17 @@ export class OpenRouterAIService implements AIService {
         }
     }
 
-    async generateWithTools(params: {
-        messages: ModelMessage[];
-        tools: ToolSet;
-        maxRetries?: number;
-        abortSignal?: AbortSignal;
-    }): Promise<GenerateTextResult<any, any>> {
+    async generateWithTools(params: GenerateWithToolsParams): Promise<GenerateTextResult<any, any>> {
         const model = await this.getChatModel();
+        const maxRetries = typeof params.maxRetries === 'number' ? params.maxRetries : 5;
+        const maxToolRoundtrips = typeof params.maxToolRoundtrips === 'number' ? params.maxToolRoundtrips : 10;
 
         return generateText({
             model,
             messages: params.messages,
             tools: params.tools,
-            maxRetries: 5,
-            stopWhen: stepCountIs(10),
+            maxRetries,
+            stopWhen: stepCountIs(maxToolRoundtrips),
             abortSignal: params.abortSignal
         });
     }
