@@ -4,6 +4,7 @@
     import Settings from './Settings.svelte';
     import Capabilities from './Capabilities.svelte';
     import type { Theme } from '../services/ConfigService';
+    import { _ } from 'svelte-i18n';
 
     let currentView: 'chat' | 'settings' | 'capabilities' = 'chat';
 
@@ -60,9 +61,9 @@
 
 <main>
     <nav>
-        <button on:click={() => currentView = 'chat'}>Чат</button>
-        <button on:click={() => currentView = 'capabilities'}>Возможности</button>
-        <button on:click={() => currentView = 'settings'}>Настройки</button>
+        <button on:click={() => currentView = 'chat'}>{$_('app.nav.chat')}</button>
+        <button on:click={() => currentView = 'capabilities'}>{$_('app.nav.capabilities')}</button>
+        <button on:click={() => currentView = 'settings'}>{$_('app.nav.settings')}</button>
     </nav>
 
     <div class="view">

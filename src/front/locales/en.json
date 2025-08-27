@@ -1,0 +1,153 @@
+{
+  "app": {
+    "title": "Web Walker",
+    "disclaimer": "The agent may make mistakes. Please verify the results.",
+    "nav": {
+      "chat": "Chat",
+      "capabilities": "Capabilities",
+      "settings": "Settings"
+    }
+  },
+  "common": {
+    "provider": "Provider",
+    "openrouter": "OpenRouter",
+    "openai": "OpenAI",
+    "ollama": "Ollama",
+    "xai": "xAI (Grok)",
+    "models": "AI Models",
+    "choose": "Choose",
+    "selected": "Selected",
+    "add": "Add",
+    "remove": "Remove",
+    "save": "Save",
+    "saved": "Settings saved",
+    "language": "Language",
+    "ru": "Russian",
+    "en": "English"
+  },
+  "tabs": {
+    "general": "General",
+    "behavior": "Behavior",
+    "prompt": "Prompt"
+  },
+  "settings": {
+    "apiKeyOpenRouter": "OpenRouter API Key",
+    "apiKeyOpenAI": "OpenAI API Key",
+    "apiKeyXAI": "xAI API Key",
+    "ollamaBaseURL": "Ollama Base URL",
+    "sendOnEnter": "Enter — send, Ctrl/Cmd+Enter — new line",
+    "hideAgentMessages": "Show final answer only",
+    "theme": {
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System"
+    },
+    "help": {
+      "needKey": "An API key is required to use models via {provider}.",
+      "openrouterHint": "Get a key at openrouter.ai",
+      "openaiHint": "Get a key at platform.openai.com",
+      "ollamaHint": "Specify base URL, default http://localhost:11434/api",
+      "openrouterCta": "Get a key at {url}",
+      "steps": {
+        "signInGoToApiKeys": "Sign in and go to API Keys.",
+        "createKey": "Create a new key and copy it.",
+        "pasteAutoSave": "Paste the key above — it will auto-save."
+      },
+      "xai": {
+        "link": "https://api.x.ai",
+        "signInGetKey": "Sign in and obtain an API key.",
+        "pasteAutoSave": "Paste the key above — it will auto-save."
+      },
+      "ollama": {
+        "install": "Install Ollama locally and start the service.",
+        "ensurePort": "Ensure port 11434 is accessible.",
+        "changeBaseUrl": "Change Base URL below if needed."
+      }
+    }
+    ,
+    "placeholders": {
+      "openrouterKey": "Enter your OpenRouter API key",
+      "openaiKey": "Enter your OpenAI API key",
+      "xaiKey": "Enter your xAI API key",
+      "ollamaBaseUrl": "Example: http://localhost:11434/api",
+      "modelName": "Model name",
+      "globalPrompt": "This text will be added to all LLM requests as a system prompt."
+    },
+    "globalPromptLabel": "Global prompt / about you",
+    "domainPrompts": "Domain prompts",
+    "sendOnEnterLabel": "Send on Enter",
+    "themeLabel": "Theme",
+    "hideAgentMessagesLabel": "Hide intermediate agent messages"
+  },
+  "chat": {
+    "welcome": "Good day, user",
+    "domainPrompt": "Prompt for domain",
+    "domainPromptPlaceholder": "Prompt for the current domain...",
+    "helpPlaceholder": "How can I help today?",
+    "clearHistoryTitle": "Clear history",
+    "clearHistoryAria": "Clear chat history",
+    "capabilities": "Capabilities",
+    "clearConfirm": {
+      "title": "Clear chat history?",
+      "text": "This will delete the current list of messages. This cannot be undone.",
+      "cancel": "Cancel",
+      "confirm": "Clear"
+    },
+    "typing": "The agent is thinking..."
+  },
+  "cap": {
+    "title": "Web Walker capabilities",
+    "sections": {
+      "automation": {
+        "title": "Browser automation",
+        "items": {
+          "search": "Search products on sites",
+          "addToCart": "Add to cart",
+          "fillForms": "Fill forms",
+          "navigate": "Navigate sites"
+        }
+      },
+      "chat": {
+        "title": "Smart chat",
+        "items": {
+          "autoDetect": "Automatically detect request type",
+          "directQuestions": "Direct questions to AI",
+          "analysis": "Work analysis",
+          "context": "Context understanding"
+        }
+      },
+      "tools": {
+        "title": "Tools",
+        "items": {
+          "scan": "Scan page",
+          "findElements": "Find elements",
+          "clickElements": "Click elements",
+          "typeText": "Type text",
+          "observeChanges": "Observe changes"
+        }
+      },
+      "analytics": {
+        "title": "Analytics",
+        "items": {
+          "history": "Action history",
+          "performance": "Performance analysis",
+          "reports": "Work reports"
+        }
+      },
+      "settings": {
+        "title": "Settings",
+        "items": {
+          "apiKeys": "Configure API keys",
+          "modelChoice": "Choose AI model",
+          "dataSecurity": "Data security"
+        }
+      }
+    }
+  },
+  "domains": {
+    "filterPlaceholder": "Filter by domain",
+    "empty": "No saved domain prompts"
+  }
+}
+
+

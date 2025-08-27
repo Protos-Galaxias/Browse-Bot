@@ -1,6 +1,7 @@
 <script lang="ts">
     import MessageItem from './MessageItem.svelte';
     import { afterUpdate, onMount } from 'svelte';
+    import { _ } from 'svelte-i18n';
     export let log: string[] = [];
     export let isTyping = false;
 
@@ -24,7 +25,7 @@
         <div class="message assistant">
             <div class="typing-indicator">
                 <div class="logo-icon">✦</div>
-                <span>Агент думает...</span>
+                <span>{$_('chat.typing')}</span>
             </div>
         </div>
     {/if}

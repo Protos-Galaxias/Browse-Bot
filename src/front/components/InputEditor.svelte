@@ -1,5 +1,6 @@
 <script lang="ts">
     import { onMount, createEventDispatcher } from 'svelte';
+    import { _ } from 'svelte-i18n';
     export let value = '';
     export let placeholder = '';
     export let sendOnEnter = true;
@@ -299,7 +300,7 @@
     {#if showTabsDropdown}
         <div id="tabs-mention-dropdown" class="tabs-dropdown" style="top: {tabsDropdownPosition.top}px; left: {tabsDropdownPosition.left}px;">
             {#if filteredTabs.length === 0}
-                <div class="tabs-dropdown-item empty">Нет открытых вкладок</div>
+                <div class="tabs-dropdown-item empty">{$_('tabs.noOpenTabs')}</div>
             {:else}
                 {#each filteredTabs as t, i}
                     <div class="tabs-dropdown-item {i === selectedMentionIdx ? 'active' : ''}" role="button" tabindex="0"

@@ -1,49 +1,30 @@
-import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import { createOpenAI } from '@ai-sdk/openai';
 import { ConfigService } from './ConfigService';
 import { generateObject, generateText, stepCountIs } from 'ai';
-import type { GenerateTextResult, ModelMessage, ToolSet } from 'ai';
+import type { GenerateTextResult } from 'ai';
+import type { AIService, AIGenerateOptions, GenerateWithToolsParams } from './AIService';
 
-export interface AIGenerateOptions {
-  model?: string;
-  temperature?: number;
-  maxTokens?: number;
-}
-
-export type GenerateWithToolsParams = {
-  messages: ModelMessage[];
-  tools: ToolSet;
-  maxRetries?: number;
-  maxToolRoundtrips?: number;
-  abortSignal?: AbortSignal;
-};
-
-export interface AIService {
-  generate<T>(schema: unknown, systemPrompt: string, prompt: string, options?: AIGenerateOptions): Promise<T>;
-  getChatModel(): Promise<any>;
-  generateWithTools(params: GenerateWithToolsParams): Promise<GenerateTextResult<any, any>>;
-}
-
-export class OpenRouterAIService implements AIService {
-    private static instance: OpenRouterAIService;
-    public static readonly DEFAULT_MODEL: string = 'openai/gpt-4.1-mini';
-    private client: ReturnType<typeof createOpenRouter> | null = null;
+export class OpenAIService implements AIService {
+    private static instance: OpenAIService;
+    public static readonly DEFAULT_MODEL: string = 'gpt-4.1-mini';
+    private client: ReturnType<typeof createOpenAI> | null = null;
     private configService = ConfigService.getInstance();
 
     private constructor() {}
 
-    static getInstance(): OpenRouterAIService {
-        if (!OpenRouterAIService.instance) {
-            OpenRouterAIService.instance = new OpenRouterAIService();
+    static getInstance(): OpenAIService {
+        if (!OpenAIService.instance) {
+            OpenAIService.instance = new OpenAIService();
         }
-        return OpenRouterAIService.instance;
+        return OpenAIService.instance;
     }
 
     async initialize(): Promise<void> {
-        const apiKey = await this.configService.get<string>('apiKey');
+        const apiKey = await this.configService.get<string>('openaiApiKey');
         if (!apiKey) {
-            throw new Error('API key not configured');
+            throw new Error('OpenAI API key not configured');
         }
-        this.client = createOpenRouter({ apiKey });
+        this.client = createOpenAI({ apiKey });
     }
 
     private getClient() {
@@ -54,18 +35,18 @@ export class OpenRouterAIService implements AIService {
     }
 
     async getChatModel(): Promise<any> {
-        const modelName = (await this.configService.get<string>('activeModel_openrouter'))
+        const modelName = (await this.configService.get<string>('activeModel_openai'))
             || (await this.configService.get<string>('activeModel'))
-            || OpenRouterAIService.DEFAULT_MODEL;
+            || OpenAIService.DEFAULT_MODEL;
         return this.getClient().chat(modelName);
     }
 
     async generate<T>(schema: unknown, systemPrompt: string, prompt: string, options: AIGenerateOptions = {}): Promise<T> {
         try {
             const model = options.model
-                || (await this.configService.get<string>('activeModel_openrouter'))
+                || (await this.configService.get<string>('activeModel_openai'))
                 || (await this.configService.get<string>('activeModel'))
-                || OpenRouterAIService.DEFAULT_MODEL;
+                || OpenAIService.DEFAULT_MODEL;
             const client = this.getClient();
             const result = await generateObject({
                 model: client.chat(model) as any,
@@ -76,7 +57,7 @@ export class OpenRouterAIService implements AIService {
 
             return result.object as T;
         } catch (error) {
-            console.error('Error in generate:', error);
+            console.error('Error in generate (OpenAI):', error);
             throw new Error('Invalid JSON response from AI');
         }
     }
@@ -96,3 +77,5 @@ export class OpenRouterAIService implements AIService {
         });
     }
 }
+
+

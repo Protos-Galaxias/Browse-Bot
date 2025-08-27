@@ -1,49 +1,30 @@
-import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import { createOllama, ollama as defaultOllama } from 'ollama-ai-provider-v2';
 import { ConfigService } from './ConfigService';
 import { generateObject, generateText, stepCountIs } from 'ai';
-import type { GenerateTextResult, ModelMessage, ToolSet } from 'ai';
+import type { GenerateTextResult } from 'ai';
+import type { AIService, AIGenerateOptions, GenerateWithToolsParams } from './AIService';
 
-export interface AIGenerateOptions {
-  model?: string;
-  temperature?: number;
-  maxTokens?: number;
-}
-
-export type GenerateWithToolsParams = {
-  messages: ModelMessage[];
-  tools: ToolSet;
-  maxRetries?: number;
-  maxToolRoundtrips?: number;
-  abortSignal?: AbortSignal;
-};
-
-export interface AIService {
-  generate<T>(schema: unknown, systemPrompt: string, prompt: string, options?: AIGenerateOptions): Promise<T>;
-  getChatModel(): Promise<any>;
-  generateWithTools(params: GenerateWithToolsParams): Promise<GenerateTextResult<any, any>>;
-}
-
-export class OpenRouterAIService implements AIService {
-    private static instance: OpenRouterAIService;
-    public static readonly DEFAULT_MODEL: string = 'openai/gpt-4.1-mini';
-    private client: ReturnType<typeof createOpenRouter> | null = null;
+export class OllamaService implements AIService {
+    private static instance: OllamaService;
+    public static readonly DEFAULT_MODEL: string = 'phi3';
+    private client: ReturnType<typeof createOllama> | ((modelId: string) => any) | null = null;
     private configService = ConfigService.getInstance();
 
     private constructor() {}
 
-    static getInstance(): OpenRouterAIService {
-        if (!OpenRouterAIService.instance) {
-            OpenRouterAIService.instance = new OpenRouterAIService();
+    static getInstance(): OllamaService {
+        if (!OllamaService.instance) {
+            OllamaService.instance = new OllamaService();
         }
-        return OpenRouterAIService.instance;
+        return OllamaService.instance;
     }
 
     async initialize(): Promise<void> {
-        const apiKey = await this.configService.get<string>('apiKey');
-        if (!apiKey) {
-            throw new Error('API key not configured');
-        }
-        this.client = createOpenRouter({ apiKey });
+        const baseURL = await this.configService.get<string>('ollamaBaseURL');
+        // If baseURL is provided, create a custom instance; otherwise use default
+        this.client = baseURL && typeof baseURL === 'string' && baseURL.trim().length > 0
+            ? createOllama({ baseURL })
+            : defaultOllama;
     }
 
     private getClient() {
@@ -54,21 +35,23 @@ export class OpenRouterAIService implements AIService {
     }
 
     async getChatModel(): Promise<any> {
-        const modelName = (await this.configService.get<string>('activeModel_openrouter'))
+        const modelName = (await this.configService.get<string>('activeModel_ollama'))
             || (await this.configService.get<string>('activeModel'))
-            || OpenRouterAIService.DEFAULT_MODEL;
-        return this.getClient().chat(modelName);
+            || OllamaService.DEFAULT_MODEL;
+        const client = this.getClient();
+        // ollama provider instance is callable: ollama('model-id') → chat model
+        return (client as (modelId: string) => any)(modelName);
     }
 
     async generate<T>(schema: unknown, systemPrompt: string, prompt: string, options: AIGenerateOptions = {}): Promise<T> {
         try {
             const model = options.model
-                || (await this.configService.get<string>('activeModel_openrouter'))
+                || (await this.configService.get<string>('activeModel_ollama'))
                 || (await this.configService.get<string>('activeModel'))
-                || OpenRouterAIService.DEFAULT_MODEL;
+                || OllamaService.DEFAULT_MODEL;
             const client = this.getClient();
             const result = await generateObject({
-                model: client.chat(model) as any,
+                model: (client as (m: string) => any)(model) as any,
                 schema: schema as any,
                 system: systemPrompt,
                 prompt
@@ -76,7 +59,7 @@ export class OpenRouterAIService implements AIService {
 
             return result.object as T;
         } catch (error) {
-            console.error('Error in generate:', error);
+            console.error('Error in generate (Ollama):', error);
             throw new Error('Invalid JSON response from AI');
         }
     }
@@ -96,3 +79,7 @@ export class OpenRouterAIService implements AIService {
         });
     }
 }
+
+
+
+

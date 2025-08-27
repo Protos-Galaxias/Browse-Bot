@@ -3,6 +3,7 @@
     import MessageList from './components/MessageList.svelte';
     import InputEditor from './components/InputEditor.svelte';
     import ModelSelector from './components/ModelSelector.svelte';
+    import { _ } from 'svelte-i18n';
     import { getHost } from './lib/url';
 
     let prompt = '';
@@ -22,6 +23,50 @@
     let domainPromptText = '';
     let hideAgentMessages: boolean = false;
     let showClearConfirm = false;
+    const DEFAULT_MODELS: Record<'openrouter' | 'openai' | 'ollama' | 'xai', string[]> = {
+        openrouter: ['openai/gpt-4.1-mini'],
+        openai: ['gpt-4.1-mini'],
+        ollama: ['phi3'],
+        xai: ['grok-3']
+    };
+
+    let provider: 'openrouter' | 'openai' | 'ollama' | 'xai' = 'openrouter';
+
+    async function loadModelsFromStorage() {
+        const store = await chrome.storage.local.get([
+            'provider',
+            'models_openrouter',
+            'activeModel_openrouter',
+            'models_openai',
+            'activeModel_openai',
+            'models_ollama',
+            'activeModel_ollama',
+            'models_xai',
+            'activeModel_xai'
+        ]);
+        provider = (store.provider === 'openai' || store.provider === 'openrouter' || store.provider === 'ollama' || store.provider === 'xai') ? store.provider : 'openrouter';
+        const modelsOpenrouter: string[] = Array.isArray(store.models_openrouter) && store.models_openrouter.length > 0 ? store.models_openrouter : DEFAULT_MODELS.openrouter;
+        const modelsOpenai: string[] = Array.isArray(store.models_openai) && store.models_openai.length > 0 ? store.models_openai : DEFAULT_MODELS.openai;
+        const modelsOllama: string[] = Array.isArray(store.models_ollama) && store.models_ollama.length > 0 ? store.models_ollama : DEFAULT_MODELS.ollama;
+        const modelsXai: string[] = Array.isArray(store.models_xai) && store.models_xai.length > 0 ? store.models_xai : DEFAULT_MODELS.xai;
+        const activeModelOpenrouter: string = typeof store.activeModel_openrouter === 'string' && store.activeModel_openrouter ? store.activeModel_openrouter : modelsOpenrouter[0];
+        const activeModelOpenai: string = typeof store.activeModel_openai === 'string' && store.activeModel_openai ? store.activeModel_openai : modelsOpenai[0];
+        const activeModelOllama: string = typeof store.activeModel_ollama === 'string' && store.activeModel_ollama ? store.activeModel_ollama : modelsOllama[0];
+        const activeModelXai: string = typeof store.activeModel_xai === 'string' && store.activeModel_xai ? store.activeModel_xai : modelsXai[0];
+        if (provider === 'openai') {
+            models = modelsOpenai;
+            activeModel = activeModelOpenai;
+        } else if (provider === 'ollama') {
+            models = modelsOllama;
+            activeModel = activeModelOllama;
+        } else if (provider === 'xai') {
+            models = modelsXai;
+            activeModel = activeModelXai;
+        } else {
+            models = modelsOpenrouter;
+            activeModel = activeModelOpenrouter;
+        }
+    }
 
     async function fetchActiveTab(): Promise<{ id: number; title: string; url?: string; favIconUrl?: string } | null> {
         try {
@@ -48,9 +93,8 @@
     }
 
     onMount(async () => {
-        const settings = await chrome.storage.local.get(['models', 'activeModel', 'chatLog', 'chatPrompt', 'sendOnEnter', 'hideAgentMessages']);
-        models = settings.models || ['openai/gpt-4.1-mini'];
-        activeModel = settings.activeModel || models[0];
+        await loadModelsFromStorage();
+        const settings = await chrome.storage.local.get(['chatLog', 'chatPrompt', 'sendOnEnter', 'hideAgentMessages']);
         log = Array.isArray(settings.chatLog) ? settings.chatLog : [];
         prompt = typeof settings.chatPrompt === 'string' ? settings.chatPrompt : '';
         sendOnEnter = typeof settings.sendOnEnter === 'boolean' ? settings.sendOnEnter : true;
@@ -146,8 +190,37 @@
     function onModelChange(e: CustomEvent<{ model: string }>) {
         activeModel = e.detail.model;
         showModelDropdown = false;
-        chrome.storage.local.set({ activeModel });
+        const payload: Record<string, unknown> = { activeModel };
+        if (provider === 'openai') {
+            payload['activeModel_openai'] = activeModel;
+        } else if (provider === 'ollama') {
+            payload['activeModel_ollama'] = activeModel;
+        } else if (provider === 'xai') {
+            payload['activeModel_xai'] = activeModel;
+        } else {
+            payload['activeModel_openrouter'] = activeModel;
+        }
+        chrome.storage.local.set(payload);
     }
+
+    try {
+        chrome.storage.onChanged.addListener(async (changes, area) => {
+            if (area !== 'local') return;
+            const providerChanged = Boolean(changes.provider);
+            const modelKeysChanged =
+                Boolean(changes.models_openrouter) ||
+                Boolean(changes.activeModel_openrouter) ||
+                Boolean(changes.models_openai) ||
+                Boolean(changes.activeModel_openai) ||
+                Boolean(changes.models_ollama) ||
+                Boolean(changes.activeModel_ollama) ||
+                Boolean(changes.models_xai) ||
+                Boolean(changes.activeModel_xai);
+            if (providerChanged || modelKeysChanged) {
+                await loadModelsFromStorage();
+            }
+        });
+    } catch {}
 
     $: activeDomain = (activeTabMeta?.url ? (() => { try { return new URL(activeTabMeta!.url!).hostname.replace(/^www\./,''); } catch { return ''; } })() : '');
     $: domainPromptText = (activeDomain && domainPrompts[activeDomain]) ? domainPrompts[activeDomain] : '';
@@ -177,13 +250,13 @@
             <div class="logo">
                 <div class="logo-icon">✦</div>
             </div>
-            <h1 class="greeting">Добрый день, пользователь</h1>
+            <h1 class="greeting">{$_('chat.welcome')}</h1>
             <div class="domain-prompt">
                 <button class="domain-toggle" on:click={() => domainPromptCollapsed = !domainPromptCollapsed}>
-                    {domainPromptCollapsed ? '▼' : '▲'} Промт для домена {activeDomain || '(нет активного домена)'}
+                    {domainPromptCollapsed ? '▼' : '▲'} {$_('chat.domainPrompt')} {activeDomain || '(—)'}
                 </button>
                 {#if !domainPromptCollapsed}
-                    <textarea class="domain-textarea" bind:value={domainPromptText} placeholder="Промт для текущего домена..." on:input={saveDomainPrompt} />
+                    <textarea class="domain-textarea" bind:value={domainPromptText} placeholder={$_('chat.domainPromptPlaceholder')} on:input={saveDomainPrompt}></textarea>
                 {/if}
             </div>
             <div class="input-card">
@@ -200,7 +273,7 @@
                         {/each}
                     </div>
                 {/if}
-                <InputEditor bind:value={prompt} bind:mentions={mentions} placeholder="Чем могу помочь сегодня?" {sendOnEnter} on:submit={startTask} />
+                <InputEditor bind:value={prompt} bind:mentions={mentions} placeholder={$_('chat.helpPlaceholder')} {sendOnEnter} on:submit={startTask} />
                 <div class="input-controls">
                     <div class="left-controls">
                         <ModelSelector {models} {activeModel} bind:open={showModelDropdown} on:change={onModelChange} />
@@ -217,7 +290,7 @@
                 <div class="action-row">
                     <button class="action-btn primary" on:click={() => window.location.hash = '#capabilities'}>
                         <span class="action-icon">💡</span>
-                        <span>Возможности</span>
+                        <span>{$_('chat.capabilities')}</span>
                     </button>
                 </div>
             </div>
@@ -230,10 +303,10 @@
         <div class="input-area">
             <div class="domain-prompt">
                 <button class="domain-toggle" on:click={() => domainPromptCollapsed = !domainPromptCollapsed}>
-                    {domainPromptCollapsed ? '▼' : '▲'} Промт для домена {activeDomain || '(нет активного домена)'}
+                    {domainPromptCollapsed ? '▼' : '▲'} {$_('chat.domainPrompt')} {activeDomain || '(—)'}
                 </button>
                 {#if !domainPromptCollapsed}
-                    <textarea class="domain-textarea" bind:value={domainPromptText} placeholder="Промт для текущего домена..." on:input={saveDomainPrompt} />
+                    <textarea class="domain-textarea" bind:value={domainPromptText} placeholder={$_('chat.domainPromptPlaceholder')} on:input={saveDomainPrompt}></textarea>
                 {/if}
             </div>
             <div class="input-container">
@@ -256,7 +329,7 @@
                         <ModelSelector {models} {activeModel} bind:open={showModelDropdown} on:change={onModelChange} />
                     </div>
                     <div class="right-controls">
-                        <button class="clear-btn" on:click={clearHistory} title="Очистить историю" aria-label="Очистить историю чата">
+                        <button class="clear-btn" on:click={clearHistory} title={$_('chat.clearHistoryTitle')} aria-label={$_('chat.clearHistoryAria')}>
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <polyline points="3 6 5 6 21 6"></polyline>
                                 <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -270,20 +343,18 @@
                     </div>
                 </div>
             </div>
-            <div class="disclaimer">
-                Агент может допускать ошибки. Пожалуйста, проверяйте результаты.
-            </div>
+            <div class="disclaimer">{$_('app.disclaimer')}</div>
         </div>
     {/if}
 
     {#if showClearConfirm}
         <div class="modal-backdrop" on:click={cancelClearHistory}>
             <div class="modal" on:click|stopPropagation>
-                <div class="modal-title">Очистить историю чата?</div>
-                <div class="modal-text">Это действие удалит текущий список сообщений. Отменить нельзя.</div>
+                <div class="modal-title">{$_('chat.clearConfirm.title')}</div>
+                <div class="modal-text">{$_('chat.clearConfirm.text')}</div>
                 <div class="modal-actions">
-                    <button class="modal-btn secondary" on:click={cancelClearHistory}>Отмена</button>
-                    <button class="modal-btn danger" on:click={confirmClearHistory}>Очистить</button>
+                    <button class="modal-btn secondary" on:click={cancelClearHistory}>{$_('chat.clearConfirm.cancel')}</button>
+                    <button class="modal-btn danger" on:click={confirmClearHistory}>{$_('chat.clearConfirm.confirm')}</button>
                 </div>
             </div>
         </div>

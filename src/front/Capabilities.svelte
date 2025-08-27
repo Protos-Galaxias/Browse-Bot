@@ -1,52 +1,56 @@
+<script lang="ts">
+    import { _ } from 'svelte-i18n';
+</script>
+
 <div class="capabilities-container">
-    <h2>Возможности Web Walker</h2>
+    <h2>{$_('cap.title')}</h2>
 
     <div class="capability-section">
-        <h3>🤖 Автоматизация браузера</h3>
+        <h3>🤖 {$_('cap.sections.automation.title')}</h3>
         <ul>
-            <li>Поиск товаров на сайтах</li>
-            <li>Добавление в корзину</li>
-            <li>Заполнение форм</li>
-            <li>Навигация по сайтам</li>
+            <li>{$_('cap.sections.automation.items.search')}</li>
+            <li>{$_('cap.sections.automation.items.addToCart')}</li>
+            <li>{$_('cap.sections.automation.items.fillForms')}</li>
+            <li>{$_('cap.sections.automation.items.navigate')}</li>
         </ul>
     </div>
 
     <div class="capability-section">
-        <h3>💬 Умный чат</h3>
+        <h3>💬 {$_('cap.sections.chat.title')}</h3>
         <ul>
-            <li>Автоматическое определение типа запроса</li>
-            <li>Прямые вопросы к ИИ</li>
-            <li>Анализ проделанной работы</li>
-            <li>Контекстное понимание</li>
+            <li>{$_('cap.sections.chat.items.autoDetect')}</li>
+            <li>{$_('cap.sections.chat.items.directQuestions')}</li>
+            <li>{$_('cap.sections.chat.items.analysis')}</li>
+            <li>{$_('cap.sections.chat.items.context')}</li>
         </ul>
     </div>
 
     <div class="capability-section">
-        <h3>🔧 Инструменты</h3>
+        <h3>🔧 {$_('cap.sections.tools.title')}</h3>
         <ul>
-            <li>Сканирование страницы</li>
-            <li>Поиск элементов</li>
-            <li>Клик по элементам</li>
-            <li>Ввод текста</li>
-            <li>Отслеживание изменений</li>
+            <li>{$_('cap.sections.tools.items.scan')}</li>
+            <li>{$_('cap.sections.tools.items.findElements')}</li>
+            <li>{$_('cap.sections.tools.items.clickElements')}</li>
+            <li>{$_('cap.sections.tools.items.typeText')}</li>
+            <li>{$_('cap.sections.tools.items.observeChanges')}</li>
         </ul>
     </div>
 
     <div class="capability-section">
-        <h3>📊 Аналитика</h3>
+        <h3>📊 {$_('cap.sections.analytics.title')}</h3>
         <ul>
-            <li>История действий</li>
-            <li>Анализ эффективности</li>
-            <li>Отчеты о работе</li>
+            <li>{$_('cap.sections.analytics.items.history')}</li>
+            <li>{$_('cap.sections.analytics.items.performance')}</li>
+            <li>{$_('cap.sections.analytics.items.reports')}</li>
         </ul>
     </div>
 
     <div class="capability-section">
-        <h3>⚙️ Настройки</h3>
+        <h3>⚙️ {$_('cap.sections.settings.title')}</h3>
         <ul>
-            <li>Настройка API ключей</li>
-            <li>Выбор модели ИИ</li>
-            <li>Безопасность данных</li>
+            <li>{$_('cap.sections.settings.items.apiKeys')}</li>
+            <li>{$_('cap.sections.settings.items.modelChoice')}</li>
+            <li>{$_('cap.sections.settings.items.dataSecurity')}</li>
         </ul>
     </div>
 </div>

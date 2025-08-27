@@ -1,5 +1,6 @@
 <script lang="ts">
     import { onMount } from 'svelte';
+    import { _ } from 'svelte-i18n';
 
     let domainPrompts: Record<string, string> = {};
     let entries: Array<{ domain: string; prompt: string }> = [];
@@ -44,19 +45,19 @@
 
 <div class="page">
     <div class="header">
-        <input class="filter" placeholder="Фильтр по домену" bind:value={filter} on:input={rebuildEntries} />
+        <input class="filter" placeholder={$_('domains.filterPlaceholder')} bind:value={filter} on:input={rebuildEntries} />
     </div>
 
     <div class="list">
         {#if entries.length === 0}
-            <div class="empty">Нет сохранённых доменных промтов</div>
+            <div class="empty">{$_('domains.empty')}</div>
         {:else}
             {#each entries as e}
                 <div class="item">
                     <div class="item-head">
                         <div class="item-domain" title={e.domain}>{e.domain}</div>
                         <div class="item-actions">
-                            <button class="delete-btn" on:click={() => deleteEntry(e.domain)} title="Удалить">✕</button>
+                            <button class="delete-btn" on:click={() => deleteEntry(e.domain)} title={$_('common.remove')}>✕</button>
                         </div>
                     </div>
                     <textarea class="item-textarea" bind:value={e.prompt} on:change={(ev) => updateEntry(e.domain, (ev.target as HTMLTextAreaElement).value)}></textarea>

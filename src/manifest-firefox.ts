@@ -16,7 +16,9 @@ export default defineManifest({
     //     }
     // ],
     host_permissions: [
-        '<all_urls>'
+        '<all_urls>',
+        'http://localhost/*',
+        'http://127.0.0.1/*'
     ],
     content_scripts: [
         {
