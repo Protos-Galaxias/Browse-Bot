@@ -1,9 +1,6 @@
 import { updateLog } from './logger';
-import { OpenRouterAIService } from './services/AIService';
-import { OpenAIService } from './services/OpenAIService';
+import { AiService } from './services/AIService';
 import { agentTools } from './tools/agent-tools';
-import { OllamaService } from './services/OllamaService';
-import { XAIService } from './services/XAIService';
 import type { ToolContext } from './tools/types';
 import type { ToolSet, ModelMessage } from 'ai';
 import { ConfigService } from './services/ConfigService';
@@ -287,16 +284,8 @@ chrome.runtime.onMessage.addListener(async (message) => {
         try {
             // Resolve provider from config
             const providerFromConfig = (await ConfigService.getInstance().get<string>('provider')) || 'openrouter';
-
-            const selectedService = providerFromConfig.toLowerCase() === 'openai'
-                ? OpenAIService.getInstance()
-                : providerFromConfig.toLowerCase() === 'ollama'
-                    ? OllamaService.getInstance()
-                    : providerFromConfig.toLowerCase() === 'xai'
-                        ? XAIService.getInstance()
-                        : OpenRouterAIService.getInstance();
-
-            await selectedService.initialize();
+            const selectedServiceGeneric = AiService.fromProviderName(providerFromConfig);
+            await selectedServiceGeneric.initialize();
 
 
             const historyText = formatWorkHistoryForContext();
@@ -312,7 +301,7 @@ chrome.runtime.onMessage.addListener(async (message) => {
 
                     agentHistory = [...messages];
 
-                    const finalAnswer = await runAgentTask(messages, {} as ToolSet, selectedService);
+                    const finalAnswer = await runAgentTask(messages, {} as ToolSet, selectedServiceGeneric);
                     updateLog(`[Результат]: ${finalAnswer}`);
                     return true;
                 } else {
@@ -331,7 +320,7 @@ chrome.runtime.onMessage.addListener(async (message) => {
             }
 
             const toolContext: ToolContext = {
-                aiService: selectedService,
+                aiService: selectedServiceGeneric,
                 tabs: currentTaskTabs,
                 getInteractiveElements: () => elements,
                 setInteractiveElements: (e) => { elements = e; },
@@ -348,7 +337,7 @@ chrome.runtime.onMessage.addListener(async (message) => {
 
             agentHistory = [...messages];
 
-            const finalAnswer = await runAgentTask(messages, tools, selectedService);
+            const finalAnswer = await runAgentTask(messages, tools, selectedServiceGeneric);
 
             updateLog(`[Результат]: ${finalAnswer}`);
         } catch (err) {

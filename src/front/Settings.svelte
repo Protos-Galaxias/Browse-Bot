@@ -4,6 +4,7 @@
     import DomainPrompts from './DomainPrompts.svelte';
     import { _, locale } from 'svelte-i18n';
     import { setAppLocale } from './lib/i18n';
+    import { ProviderConfigs } from '../services/ProviderConfigs';
 
     let apiKey = '';
     let openaiApiKey = '';
@@ -17,87 +18,62 @@
     let theme: Theme = 'system';
     let saveStatus: 'idle' | 'saving' | 'saved' = 'idle';
     let activeTab: 'general' | 'behavior' | 'prompt' = 'general';
-    let provider: 'openrouter' | 'openai' | 'ollama' | 'xai' = 'openrouter';
-    const DEFAULT_MODELS: Record<'openrouter' | 'openai' | 'ollama' | 'xai', string[]> = {
-        openrouter: ['openai/gpt-4.1-mini'],
-        openai: ['gpt-4.1-mini'],
-        ollama: ['phi3'],
-        xai: ['grok-3']
-    };
+    type ProviderId = keyof typeof ProviderConfigs;
+    let provider: ProviderId = 'openrouter';
     let ollamaBaseURL = '';
 
     onMount(async () => {
-        const settings = await chrome.storage.local.get([
+        const providerIds = Object.keys(ProviderConfigs) as ProviderId[];
+
+        const keysToLoad = new Set<string>([
             'provider',
-            'apiKey',
-            'openaiApiKey',
-            'ollamaBaseURL',
-            'xaiApiKey',
-            'xaiBaseURL',
-            'models_openrouter',
-            'activeModel_openrouter',
-            'models_openai',
-            'activeModel_openai',
-            'models_ollama',
-            'activeModel_ollama',
-            'models_xai',
-            'activeModel_xai',
-            // legacy keys for backward-compat population
-            'models',
-            'activeModel',
             'globalPrompt',
             'theme',
             'sendOnEnter',
-            'hideAgentMessages'
+            'hideAgentMessages',
+            // legacy
+            'models',
+            'activeModel'
         ]);
-        provider = (settings.provider === 'openai' || settings.provider === 'openrouter' || settings.provider === 'ollama' || settings.provider === 'xai') ? settings.provider : 'openrouter';
+        for (const pid of providerIds) {
+            const meta = ProviderConfigs[pid];
+            keysToLoad.add(meta.storageModels);
+            keysToLoad.add(meta.storageActiveModel);
+            if (meta.storageApiKey) keysToLoad.add(meta.storageApiKey);
+            if (meta.storageBaseURL) keysToLoad.add(meta.storageBaseURL);
+        }
+        const settings = await chrome.storage.local.get(Array.from(keysToLoad));
+
+        provider = (providerIds as string[]).includes(settings.provider) ? settings.provider as ProviderId : 'openrouter';
+
+        // API keys / baseURLs (keep separate vars for inputs)
         apiKey = settings.apiKey || '';
         openaiApiKey = settings.openaiApiKey || '';
-        ollamaBaseURL = settings.ollamaBaseURL || '';
         xaiApiKey = settings.xaiApiKey || '';
+        ollamaBaseURL = settings.ollamaBaseURL || '';
 
         const legacyModels: string[] | undefined = Array.isArray(settings.models) ? settings.models : undefined;
         const legacyActive: string | undefined = typeof settings.activeModel === 'string' ? settings.activeModel : undefined;
 
-        const modelsOpenrouter: string[] = Array.isArray(settings.models_openrouter) && settings.models_openrouter.length > 0
-            ? settings.models_openrouter
-            : (legacyModels && legacyModels.length > 0 ? legacyModels : DEFAULT_MODELS.openrouter);
-        const modelsOpenai: string[] = Array.isArray(settings.models_openai) && settings.models_openai.length > 0
-            ? settings.models_openai
-            : (legacyModels && legacyModels.length > 0 ? legacyModels : DEFAULT_MODELS.openai);
-        const modelsOllama: string[] = Array.isArray(settings.models_ollama) && settings.models_ollama.length > 0
-            ? settings.models_ollama
-            : DEFAULT_MODELS.ollama;
-        const modelsXai: string[] = Array.isArray(settings.models_xai) && settings.models_xai.length > 0
-            ? settings.models_xai
-            : DEFAULT_MODELS.xai;
+        const modelsByProvider: Record<ProviderId, string[]> = {} as any;
+        const activeByProvider: Record<ProviderId, string> = {} as any;
+        for (const pid of providerIds) {
+            const meta = ProviderConfigs[pid];
+            const storedModels: string[] | undefined = Array.isArray(settings[meta.storageModels]) ? settings[meta.storageModels] : undefined;
+            const finalModels = storedModels && storedModels.length > 0
+                ? storedModels
+                : (legacyModels && legacyModels.length > 0 ? legacyModels : meta.defaultModels);
+            modelsByProvider[pid] = finalModels;
 
-        const activeModelOpenrouter: string = typeof settings.activeModel_openrouter === 'string' && settings.activeModel_openrouter
-            ? settings.activeModel_openrouter
-            : (legacyActive || modelsOpenrouter[0]);
-        const activeModelOpenai: string = typeof settings.activeModel_openai === 'string' && settings.activeModel_openai
-            ? settings.activeModel_openai
-            : (legacyActive || modelsOpenai[0]);
-        const activeModelOllama: string = typeof settings.activeModel_ollama === 'string' && settings.activeModel_ollama
-            ? settings.activeModel_ollama
-            : modelsOllama[0];
-        const activeModelXai: string = typeof settings.activeModel_xai === 'string' && settings.activeModel_xai
-            ? settings.activeModel_xai
-            : modelsXai[0];
-
-        if (provider === 'openai') {
-            models = modelsOpenai;
-            activeModel = activeModelOpenai;
-        } else if (provider === 'ollama') {
-            models = modelsOllama;
-            activeModel = activeModelOllama;
-        } else if (provider === 'xai') {
-            models = modelsXai;
-            activeModel = activeModelXai;
-        } else {
-            models = modelsOpenrouter;
-            activeModel = activeModelOpenrouter;
+            const storedActive: string | undefined = typeof settings[meta.storageActiveModel] === 'string' && settings[meta.storageActiveModel]
+                ? settings[meta.storageActiveModel]
+                : undefined;
+            activeByProvider[pid] = storedActive || legacyActive || finalModels[0];
         }
+
+        models = modelsByProvider[provider];
+        activeModel = activeByProvider[provider];
+
         globalPrompt = typeof settings.globalPrompt === 'string' ? settings.globalPrompt : '';
         theme = settings.theme || 'system';
         sendOnEnter = typeof settings.sendOnEnter === 'boolean' ? settings.sendOnEnter : true;
@@ -146,20 +122,14 @@
         saveSettings();
     }
 
-    async function setProvider(newProvider: 'openrouter' | 'openai' | 'ollama' | 'xai') {
+    async function setProvider(newProvider: ProviderId) {
         provider = newProvider;
-        // Load provider-specific models and activeModel; fallback to defaults
-        const keys = newProvider === 'openai'
-            ? ['models_openai', 'activeModel_openai'] as const
-            : newProvider === 'ollama'
-                ? ['models_ollama', 'activeModel_ollama'] as const
-                : newProvider === 'xai'
-                    ? ['models_xai', 'activeModel_xai'] as const
-                    : ['models_openrouter', 'activeModel_openrouter'] as const;
-        const store = await chrome.storage.local.get(keys as unknown as string[]);
-        const fallbackModels = DEFAULT_MODELS[newProvider];
-        const nextModels: string[] = Array.isArray(store[keys[0]]) && (store[keys[0]] as any).length > 0 ? (store[keys[0]] as any) : fallbackModels;
-        const nextActive: string = typeof store[keys[1]] === 'string' && store[keys[1]] ? String(store[keys[1]]) : nextModels[0];
+        const meta = ProviderConfigs[newProvider];
+        const store = await chrome.storage.local.get([meta.storageModels, meta.storageActiveModel]);
+        const fallbackModels = meta.defaultModels;
+        const storedModels = Array.isArray(store[meta.storageModels]) ? store[meta.storageModels] as string[] : undefined;
+        const nextModels: string[] = storedModels && storedModels.length > 0 ? storedModels : fallbackModels;
+        const nextActive: string = typeof store[meta.storageActiveModel] === 'string' && store[meta.storageActiveModel] ? String(store[meta.storageActiveModel]) : nextModels[0];
         models = nextModels;
         activeModel = nextActive;
         await saveSettings();
@@ -171,6 +141,7 @@
             provider,
             apiKey,
             openaiApiKey,
+            xaiApiKey,
             ollamaBaseURL,
             globalPrompt,
             theme,
@@ -180,16 +151,9 @@
             models,
             activeModel
         };
-        if (provider === 'openai') {
-            payload['models_openai'] = models;
-            payload['activeModel_openai'] = activeModel;
-        } else if (provider === 'ollama') {
-            payload['models_ollama'] = models;
-            payload['activeModel_ollama'] = activeModel;
-        } else {
-            payload['models_openrouter'] = models;
-            payload['activeModel_openrouter'] = activeModel;
-        }
+        const meta = ProviderConfigs[provider];
+        payload[meta.storageModels] = models;
+        payload[meta.storageActiveModel] = activeModel;
         await chrome.storage.local.set(payload);
         saveStatus = 'saved';
         setTimeout(() => {
@@ -218,11 +182,10 @@
         <div class="setting-group">
             <label class="setting-label">
                 {$_('common.provider')}
-                <select class="setting-input" bind:value={provider} on:change={(e) => setProvider((e.target as HTMLSelectElement).value as any)}>
-                    <option value="openrouter">{$_('common.openrouter')}</option>
-                    <option value="openai">{$_('common.openai')}</option>
-                    <option value="ollama">{$_('common.ollama')}</option>
-                    <option value="xai">{$_('common.xai')}</option>
+                <select class="setting-input" bind:value={provider} on:change={(e) => setProvider((e.target as HTMLSelectElement).value as ProviderId)}>
+                    {#each Object.keys(ProviderConfigs) as pid}
+                        <option value={pid}>{$_(`common.${pid}`) || pid}</option>
+                    {/each}
                 </select>
             </label>
         </div>
@@ -299,7 +262,6 @@
                         <li>{$_('settings.help.ollama.changeBaseUrl')}</li>
                     </ol>
                 {/if}
-                <p>{$_('common.saved')}</p>
             </div>
         {/if}
 
