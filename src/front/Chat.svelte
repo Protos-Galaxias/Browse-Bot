@@ -241,7 +241,7 @@
             return base;
         }
     }
-    
+
 </script>
 
 <div class="chat-container">

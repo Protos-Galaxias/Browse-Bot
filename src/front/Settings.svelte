@@ -4,7 +4,7 @@
     import DomainPrompts from './DomainPrompts.svelte';
     import { _, locale } from 'svelte-i18n';
     import { setAppLocale } from './lib/i18n';
-    import { ProviderConfigs } from '../services/ProviderConfigs';
+    import { ProviderMeta as ProviderConfigs } from '../services/ProviderMeta';
 
     let apiKey = '';
     let openaiApiKey = '';
