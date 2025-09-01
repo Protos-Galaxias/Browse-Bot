@@ -1,6 +1,7 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 import type { ToolContext, ToolOutput } from './types';
+import { reportError } from '../logger';
 
 export const parsePageTool = (context: ToolContext) => tool({
     description: 'Parses all tabs and returns both interactive elements and meaningful text for each tab in parsedTabs. Also updates interactive elements context from the first tab.',
@@ -10,10 +11,15 @@ export const parsePageTool = (context: ToolContext) => tool({
         if (all.length === 0) return { success: false, error: 'No tabs available in context.' };
 
         const parseOne = async (tid: number, title?: string, url?: string) => {
-            const response = await context.sendMessageToTab({ type: 'PARSE_PAGE_ALL', tid }, tid);
-            const interactive = Array.isArray(response?.data?.interactive) ? response.data.interactive : [];
-            const text = Array.isArray(response?.data?.text) ? response.data.text : [];
-            return { tabId: tid, title, url, interactive, text };
+            try {
+                const response = await context.sendMessageToTab({ type: 'PARSE_PAGE_ALL', tid }, tid);
+                const interactive = Array.isArray(response?.data?.interactive) ? response.data.interactive : [];
+                const text = Array.isArray(response?.data?.text) ? response.data.text : [];
+                return { tabId: tid, title, url, interactive, text };
+            } catch (e) {
+                reportError(e, 'errors.parseAll');
+                return { tabId: tid, title, url, interactive: [], text: [] };
+            }
         };
 
         const parsedTabs = await Promise.all(

@@ -1,9 +1,26 @@
 <script lang="ts">
     import { renderMarkdownSafe } from '../lib/markdown';
     import { renderUserMessage } from '../lib/renderUser';
-    export let entry: string;
-    $: isUser = entry.startsWith('[User]');
-    $: html = isUser ? renderUserMessage(entry.replace('[User]: ', '')) : renderMarkdownSafe(entry);
+    import { _, format } from 'svelte-i18n';
+    import { get } from 'svelte/store';
+    export let entry: string | { type: 'i18n'; key: string; params?: Record<string, unknown>; prefix?: 'error'|'result'|'system'|'agent'|'user' };
+
+    function isI18nLog(x: unknown): x is { type: 'i18n'; key: string; params?: Record<string, unknown>; prefix?: 'error'|'result'|'system'|'agent'|'user' } {
+        return Boolean(x && typeof x === 'object' && (x as any).type === 'i18n' && typeof (x as any).key === 'string');
+    }
+
+    $: isI18n = isI18nLog(entry);
+    $: isUser = !isI18n && typeof entry === 'string' ? entry.startsWith('[User]') : (isI18n && (entry as any).prefix === 'user');
+    $: html = (() => {
+        if (isI18n && isI18nLog(entry)) {
+            const prefix = entry.prefix === 'error' ? '[Ошибка]' : entry.prefix === 'result' ? '[Результат]' : entry.prefix === 'system' ? '[Система]' : entry.prefix === 'agent' ? '[Агент]' : '';
+            const fmt = get(format) as (key: string, values?: Record<string, unknown>) => string;
+            const text = fmt(entry.key, entry.params ?? {});
+            return renderMarkdownSafe(`${prefix ? prefix + ': ' : ''}${text}`);
+        }
+        const val = String(entry);
+        return isUser ? renderUserMessage(val.replace('[User]: ', '')) : renderMarkdownSafe(val);
+    })();
 </script>
 
 <div class="message {isUser ? 'user' : 'assistant'}">

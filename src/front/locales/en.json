@@ -147,6 +147,28 @@
   "domains": {
     "filterPlaceholder": "Filter by domain",
     "empty": "No saved domain prompts"
+  },
+  "errors": {
+    "agentAborted": "Task was aborted by the user",
+    "openLinkInBg": "Failed to open link in background",
+    "noElementsContext": "No elements context. Call parsePage/parsePageInteractiveElements first",
+    "elementNotFound": "Element not found by description: {description}",
+    "aiInvalidJson": "Invalid JSON response from the model",
+    "sendMessageGetLinkInfo": "Failed to get link info",
+    "sendMessageOpenLink": "Failed to open link",
+    "sendMessageClick": "Failed to click element",
+    "sendMessageInsert": "Failed to insert text",
+    "sendMessageEnter": "Failed to press Enter",
+    "sendMessageSelect": "Failed to select option",
+    "sendMessageCheckbox": "Failed to set checkbox",
+    "sendMessageRadio": "Failed to select radio",
+    "parseAll": "Failed to parse page (all)",
+    "parseInteractive": "Failed to parse interactive elements",
+    "parseText": "Failed to parse page text"
+  },
+  "system": {
+    "noActiveTabNoTools": "No active tab — answering without tools, but with history",
+    "taskStoppedByUser": "Task stopped by user"
   }
 }
 

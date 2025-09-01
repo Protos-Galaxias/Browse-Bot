@@ -7,4 +7,19 @@ export const resolveTabId = (context: ToolContext, tabId?: number): number => {
     return available[0];
 };
 
+export const sendToTabOrThrow = async (context: ToolContext, message: any, tabId?: number): Promise<any> => {
+    const response = await context.sendMessageToTab(message, tabId);
+    try {
+        if (response && typeof response === 'object' && 'status' in response) {
+            if ((response as any).status === 'error') {
+                const msg = typeof (response as any).message === 'string' ? (response as any).message : 'Operation failed in content script';
+                throw new Error(msg);
+            }
+        }
+    } catch {
+        // If response shape unexpected, just return it
+    }
+    return response;
+};
+
 

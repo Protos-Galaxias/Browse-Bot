@@ -2,6 +2,7 @@ import { ConfigService } from './ConfigService';
 import { generateObject, generateText, stepCountIs } from 'ai';
 import type { GenerateTextResult, ModelMessage, ToolSet, LanguageModel } from 'ai';
 import { ProviderConfigs, type ProviderDescriptor } from './ProviderConfigs';
+import { reportErrorKey } from '../logger';
 
 export interface AIGenerateOptions {
   model?: string;
@@ -75,7 +76,7 @@ export class AiService implements AIService {
             });
             return result.object as T;
         } catch (error) {
-            console.error('Error in generate (Generic):', error);
+            reportErrorKey('errors.aiInvalidJson', error);
             throw new Error('Invalid JSON response from AI');
         }
     }

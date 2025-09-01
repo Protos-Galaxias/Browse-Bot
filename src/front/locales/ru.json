@@ -147,6 +147,28 @@
   "domains": {
     "filterPlaceholder": "Фильтр по домену",
     "empty": "Нет сохранённых доменных промтов"
+  },
+  "errors": {
+    "agentAborted": "Задача была прервана пользователем",
+    "openLinkInBg": "Не удалось открыть ссылку в фоне",
+    "noElementsContext": "Нет контекста элементов. Сначала вызовите parsePage/parsePageInteractiveElements",
+    "elementNotFound": "Элемент не найден по описанию: {description}",
+    "aiInvalidJson": "Неверный JSON ответ от модели",
+    "sendMessageGetLinkInfo": "Ошибка получения информации о ссылке",
+    "sendMessageOpenLink": "Не удалось открыть ссылку",
+    "sendMessageClick": "Не удалось кликнуть по элементу",
+    "sendMessageInsert": "Не удалось ввести текст",
+    "sendMessageEnter": "Не удалось нажать Enter",
+    "sendMessageSelect": "Не удалось выбрать опцию",
+    "sendMessageCheckbox": "Не удалось установить чекбокс",
+    "sendMessageRadio": "Не удалось выбрать радио-кнопку",
+    "parseAll": "Не удалось распарсить страницу (все)",
+    "parseInteractive": "Не удалось распарсить интерактивные элементы",
+    "parseText": "Не удалось распарсить текст страницы"
+  },
+  "system": {
+    "noActiveTabNoTools": "Нет активной вкладки — отвечаю без инструментов, но с историей",
+    "taskStoppedByUser": "Задача остановлена пользователем"
   }
 }
 

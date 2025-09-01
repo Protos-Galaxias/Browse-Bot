@@ -2,8 +2,8 @@ import { tool } from 'ai';
 import { z } from 'zod';
 import { findElementIds } from './findElement';
 import type { ToolContext, ToolOutput } from './types';
-import { resolveTabId } from './utils';
-import { updateLog } from '../logger';
+import { resolveTabId, sendToTabOrThrow } from './utils';
+import { updateLog, reportErrorKey, updateLogI18n } from '../logger';
 
 export const findAndClickTool = (context: ToolContext) => tool({
     description: 'Clicks an element. Use `parsePage` (preferred) or `parsePageInteractiveElements` beforehand to build elements context. If only text is needed (no clicks), use `parsePageText` instead.',
@@ -15,11 +15,17 @@ export const findAndClickTool = (context: ToolContext) => tool({
         console.log(`findAndClick with reasoning: ${reasoning}`, element_description);
         updateLog(`${reasoning}. ${element_description}`);
         const elements = context.getInteractiveElements();
-        if (elements.length === 0) return { success: false, error: 'Context is empty. Call `parsePage` or `parsePageInteractiveElements` first.' };
+        if (elements.length === 0) {
+            updateLogI18n('errors.noElementsContext', undefined, 'error');
+            return { success: false, error: 'Context is empty. Call `parsePage` or `parsePageInteractiveElements` first.' };
+        }
 
-        const elementIds = await findElementIds(elements, `Reason: ${reasoning}. Element description: ${element_description}`, context.aiService);
+        const elementIds = await findElementIds(elements, `Reason: ${reasoning}. Element description: ${element_description}`, context.aiService).catch((e) => { reportErrorKey('errors.elementNotFound', e, { description: element_description }); return []; });
 
-        if (!elementIds || elementIds.length === 0) return { success: false, error: `No element found for: ${element_description}` };
+        if (!elementIds || elementIds.length === 0) {
+            updateLogI18n('errors.elementNotFound', { description: element_description }, 'error');
+            return { success: false, error: `No element found for: ${element_description}` };
+        }
 
         for (const aid of elementIds) {
             const elementMeta = elements.find(e => e.id === aid);
@@ -27,7 +33,7 @@ export const findAndClickTool = (context: ToolContext) => tool({
             const targetTabId = resolveTabId(context, tid);
 
             // Ask content script about link and target
-            const info = await context.sendMessageToTab({ type: 'GET_LINK_INFO', aid, tid }, targetTabId).catch(() => null);
+            const info = await sendToTabOrThrow(context, { type: 'GET_LINK_INFO', aid, tid }, targetTabId).catch((e) => { reportErrorKey('errors.sendMessageGetLinkInfo', e); return null; });
             console.log('info', info);
             const href = info?.href as string | null | undefined;
             const isBlank = Boolean(info?.targetBlank);
@@ -35,11 +41,11 @@ export const findAndClickTool = (context: ToolContext) => tool({
             if (href && isBlank) {
                 console.log('open link', href);
                 // Open via background (worker)
-                await context.sendMessageToTab({ type: 'OPEN_LINK', aid, tid }, targetTabId);
+                await sendToTabOrThrow(context, { type: 'OPEN_LINK', aid, tid }, targetTabId).catch((e) => reportErrorKey('errors.sendMessageOpenLink', e));
             } else {
                 console.log('click element', aid, tid);
                 // Fallback to regular click
-                await context.sendMessageToTab({ type: 'CLICK_ON_ELEMENT', aid, tid }, targetTabId);
+                await sendToTabOrThrow(context, { type: 'CLICK_ON_ELEMENT', aid, tid }, targetTabId).catch((e) => reportErrorKey('errors.sendMessageClick', e));
             }
         }
 

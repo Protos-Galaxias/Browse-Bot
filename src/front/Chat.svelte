@@ -3,7 +3,8 @@
     import MessageList from './components/MessageList.svelte';
     import InputEditor from './components/InputEditor.svelte';
     import ModelSelector from './components/ModelSelector.svelte';
-    import { _ } from 'svelte-i18n';
+    import { _, format } from 'svelte-i18n';
+    import { get } from 'svelte/store';
     import { getHost } from './lib/url';
 
     let prompt = '';
@@ -164,7 +165,18 @@
 
     chrome.runtime.onMessage.addListener((message) => {
         if (message.type === 'UPDATE_LOG') {
-            const text = String(message.data || '');
+            const payload = message.data;
+            const text = (() => {
+                try {
+                    if (payload && typeof payload === 'object' && payload.type === 'i18n' && typeof payload.key === 'string') {
+                        const fmt = get(format) as (key: string, values?: Record<string, unknown>) => string;
+                        const prefix = payload.prefix === 'error' ? '[Ошибка]' : payload.prefix === 'result' ? '[Результат]' : payload.prefix === 'system' ? '[Система]' : payload.prefix === 'agent' ? '[Агент]' : '';
+                        const localized = fmt(payload.key, payload.params || {});
+                        return `${prefix ? prefix + ': ' : ''}${localized}`;
+                    }
+                } catch {}
+                return String(payload || '');
+            })();
             if (hideAgentMessages) {
                 // В режиме скрытия показываем только итог/ошибку/анализ
                 const isFinalOrError = text.startsWith('[Результат]') || text.startsWith('[Ошибка]') || text.startsWith('[Анализ]');

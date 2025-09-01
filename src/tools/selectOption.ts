@@ -2,8 +2,8 @@ import { tool } from 'ai';
 import { z } from 'zod';
 import type { ToolContext, ToolOutput } from './types';
 import { findElementIds } from './findElement';
-import { resolveTabId } from './utils';
-import { updateLog } from '../logger';
+import { resolveTabId, sendToTabOrThrow } from './utils';
+import { updateLog, reportError } from '../logger';
 
 export const selectOptionTool = (context: ToolContext) => tool({
     description: 'Selects an option in a <select> element by visible label or value. Build elements context first via `parsePage` (preferred) or `parsePageInteractiveElements`.',
@@ -17,12 +17,12 @@ export const selectOptionTool = (context: ToolContext) => tool({
         updateLog(`${reasoning}. Выбор опции "${option}".`);
         const elements = context.getInteractiveElements();
         if (elements.length === 0) return { success: false, error: 'Context is empty. Call `parsePage` or `parsePageInteractiveElements` first.' };
-        const elementIds = await findElementIds(elements, element_description, context.aiService);
+        const elementIds = await findElementIds(elements, element_description, context.aiService).catch((e) => { reportError(e, 'errors.sendMessageSelect'); return []; });
         if (!elementIds || elementIds.length === 0) return { success: false, error: `No select found for: ${element_description}` };
         const targetId = elementIds[0];
         const tid = elements.find(e => e.id === targetId)?.tid;
         const targetTabId = resolveTabId(context, tid);
-        await context.sendMessageToTab({ type: 'SELECT_OPTION', aid: targetId, option, matchBy, tid }, targetTabId);
+        await sendToTabOrThrow(context, { type: 'SELECT_OPTION', aid: targetId, option, matchBy, tid }, targetTabId).catch((e) => reportError(e, 'Не удалось выбрать опцию'));
         return { success: true, elementId: targetId };
     }
 });

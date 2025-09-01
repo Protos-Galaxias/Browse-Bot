@@ -1,4 +1,4 @@
-import { updateLog } from './logger';
+import { updateLog, reportError, updateLogI18n } from './logger';
 import { AiService } from './services/AIService';
 import { agentTools } from './tools/agent-tools';
 import type { ToolContext } from './tools/types';
@@ -167,9 +167,10 @@ async function runAgentTask(
         return text || 'Task completed without a final text answer.';
     } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') {
-            updateLog('[Агент] Задача была прервана пользователем');
+            updateLogI18n('errors.agentAborted', undefined, 'agent');
             return 'Задача была остановлена пользователем';
         }
+        reportError(error, 'Агент завершился с ошибкой');
         throw error;
     }
 }
@@ -270,7 +271,7 @@ chrome.runtime.onMessage.addListener(async (message) => {
                 try { chrome.tabs.onUpdated.addListener(handleUpdated); } catch { /* ignore add errors */ }
             }
         } catch (e) {
-            console.error('Failed to open link in bg:', e);
+            reportError(e, 'errors.openLinkInBg');
         }
         return true;
     }
@@ -292,7 +293,7 @@ chrome.runtime.onMessage.addListener(async (message) => {
             if (seedTabs.length === 0) {
                 const [activeTab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
                 if (!activeTab?.id) {
-                    updateLog('[Система]: Нет активной вкладки — отвечаю без инструментов, но с историей');
+                    updateLogI18n('system.noActiveTabNoTools', undefined, 'system');
                     const messages: ModelMessage[] = [
                         { role: 'system', content: systemPrompt },
                         ...(historyText ? [{ role: 'system', content: historyText } as ModelMessage] : []),
@@ -341,8 +342,7 @@ chrome.runtime.onMessage.addListener(async (message) => {
 
             updateLog(`[Результат]: ${finalAnswer}`);
         } catch (err) {
-            console.log('err', err);
-            updateLog(`[Ошибка]: ${err instanceof Error ? err.message : String(err)}`);
+            reportError(err, 'Во время выполнения задачи произошла ошибка');
         } finally {
             chrome.runtime.sendMessage({ type: 'TASK_COMPLETE' }).catch(console.error);
             currentTaskTabs = [];
@@ -351,7 +351,7 @@ chrome.runtime.onMessage.addListener(async (message) => {
         if (currentController) {
             currentController.abort();
             currentController = null;
-            updateLog('[Система]: Задача остановлена пользователем');
+            updateLogI18n('system.taskStoppedByUser', undefined, 'system');
             chrome.runtime.sendMessage({ type: 'TASK_COMPLETE' }).catch(console.error);
         }
         agentHistory = [];

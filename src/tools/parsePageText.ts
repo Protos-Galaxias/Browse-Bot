@@ -1,6 +1,7 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 import type { ToolContext, ToolOutput } from './types';
+import { reportError } from '../logger';
 
 export const parsePageTextTool = (context: ToolContext) => tool({
     description: 'Gets meaningful text from the page for analysis (summaries, comparisons, Q&A). Does not collect interactive elements.',
@@ -10,9 +11,14 @@ export const parsePageTextTool = (context: ToolContext) => tool({
         if (all.length === 0) return { success: false, error: 'No tabs available in context.' };
 
         const parseOne = async (tid: number, title?: string, url?: string) => {
-            const response = await context.sendMessageToTab({ type: 'PARSE_PAGE_TEXT' }, tid);
-            const elements = Array.isArray(response?.data) ? response.data : [];
-            return { tabId: tid, title, url, elements };
+            try {
+                const response = await context.sendMessageToTab({ type: 'PARSE_PAGE_TEXT' }, tid);
+                const elements = Array.isArray(response?.data) ? response.data : [];
+                return { tabId: tid, title, url, elements };
+            } catch (e) {
+                reportError(e, 'errors.parseText');
+                return { tabId: tid, title, url, elements: [] };
+            }
         };
 
         const parsedTabs = await Promise.all(
