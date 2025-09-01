@@ -5,10 +5,14 @@
     import Capabilities from './Capabilities.svelte';
     import type { Theme } from '../services/ConfigService';
     import { _ } from 'svelte-i18n';
+    import settingsIcon from './icons/settings.svg';
+    import chatIcon from './icons/chat.svg';
+    import ideaIcon from './icons/idea.svg';
+    import DomainPromptBar from './components/DomainPromptBar.svelte';
+
 
     let currentView: 'chat' | 'settings' | 'capabilities' = 'chat';
 
-    // Обработка хэша в URL
     function updateViewFromHash() {
         const hash = window.location.hash;
         if (hash === '#settings') {
@@ -20,19 +24,15 @@
         }
     }
 
-    // Слушаем изменения хэша
     window.addEventListener('hashchange', updateViewFromHash);
 
-    // Инициализация при загрузке
     updateViewFromHash();
 
-    // Загрузка темы при запуске
     onMount(async () => {
         const settings = await chrome.storage.local.get(['theme', 'apiKey']);
         const theme = settings.theme || 'system';
         applyTheme(theme);
 
-        // Слушаем изменения темы из настроек
         chrome.storage.onChanged.addListener((changes) => {
             if (changes.theme) {
                 applyTheme(changes.theme.newValue);
@@ -60,11 +60,21 @@
 </script>
 
 <main>
-    <nav>
-        <button on:click={() => currentView = 'chat'}>{$_('app.nav.chat')}</button>
-        <button on:click={() => currentView = 'capabilities'}>{$_('app.nav.capabilities')}</button>
-        <button on:click={() => currentView = 'settings'}>{$_('app.nav.settings')}</button>
-    </nav>
+    <header class="header">
+        <DomainPromptBar/>
+        <nav>
+            <button on:click={() => currentView = 'chat'}>
+                <img class="nav-icon" src={chatIcon} alt="Chat" />
+            </button>
+            <button on:click={() => currentView = 'capabilities'}>
+                <img class="nav-icon" src={ideaIcon} alt="Capabilities" />
+            </button>
+            <button on:click={() => currentView = 'settings'}>
+                <img class="nav-icon" src={settingsIcon} alt="Settings" />
+            </button>
+        </nav>
+    </header>
+
 
     <div class="view">
         {#if currentView === 'chat'}
@@ -84,8 +94,8 @@
         --border-color: #3a3a3a;
         --text-primary: #e0e0e0;
         --text-secondary: #a0a0a0;
-        --accent-color: #ff6b35;
-        --accent-hover: #ff5722;
+        --accent-color: #e7e6db;
+        --accent-hover: #c6c4ae;
     }
 
     :global(:root[data-theme="light"]) {
@@ -94,8 +104,8 @@
         --border-color: #e0e0e0;
         --text-primary: #333333;
         --text-secondary: #666666;
-        --accent-color: #ff6b35;
-        --accent-hover: #ff5722;
+        --accent-color: #e7e6db;
+        --accent-hover: #c6c4ae;
     }
 
     :global(:root[data-theme="dark"]) {
@@ -104,8 +114,8 @@
         --border-color: #3a3a3a;
         --text-primary: #f0f0f0;
         --text-secondary: #b0b0b0;
-        --accent-color: #ff6b35;
-        --accent-hover: #ff5722;
+        --accent-color: #e7e6db;
+        --accent-hover: #c6c4ae;
     }
 
     :global(body) {
@@ -119,6 +129,12 @@
         min-width: 0 !important;
         min-height: 0 !important;
         transition: background 0.3s, color 0.3s;
+    }
+
+    .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
     }
 
     main {
@@ -141,7 +157,6 @@
         display: flex;
         padding: 0;
         background: var(--bg-primary);
-        border-bottom: 1px solid var(--border-color);
         transition: background 0.3s, border-color 0.3s;
     }
 
@@ -164,5 +179,16 @@
     nav button:active {
         background: var(--accent-color);
         color: white;
+    }
+
+    .nav-icon {
+        width: 18px;
+        height: 18px;
+        display: block;
+    }
+
+    /* Make stroke-based SVG icons white in dark theme */
+    :global(:root[data-theme="dark"]) .nav-icon {
+        filter: invert(1);
     }
 </style>

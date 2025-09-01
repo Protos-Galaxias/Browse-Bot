@@ -13,14 +13,14 @@ export const findAndClickTool = (context: ToolContext) => tool({
     }),
     async execute({ reasoning, element_description }): Promise<ToolOutput> {
         console.log(`findAndClick with reasoning: ${reasoning}`, element_description);
-        updateLog(`${reasoning}. ${element_description}`);
+        updateLog({ type: 'ui', kind: 'click', title: 'Нажали', text: `${reasoning}. ${element_description}` });
         const elements = context.getInteractiveElements();
         if (elements.length === 0) {
             updateLogI18n('errors.noElementsContext', undefined, 'error');
             return { success: false, error: 'Context is empty. Call `parsePage` or `parsePageInteractiveElements` first.' };
         }
 
-        const elementIds = await findElementIds(elements, `Reason: ${reasoning}. Element description: ${element_description}`, context.aiService).catch((e) => { reportErrorKey('errors.elementNotFound', e, { description: element_description }); return []; });
+        const elementIds = await findElementIds(elements, element_description, context.aiService).catch((e) => { reportErrorKey('errors.elementNotFound', e, { description: element_description }); return []; });
 
         if (!elementIds || elementIds.length === 0) {
             updateLogI18n('errors.elementNotFound', { description: element_description }, 'error');

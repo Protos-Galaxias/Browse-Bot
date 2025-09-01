@@ -1,12 +1,13 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 import type { ToolContext, ToolOutput } from './types';
-import { reportError } from '../logger';
+import { reportError, updateLog } from '../logger';
 
 export const parsePageInteractiveElementsTool = (context: ToolContext) => tool({
     description: 'Scans all tabs from context and returns their parsed elements in parsedTabs. Also updates interactive elements with the first parsed tab for compatibility.',
     inputSchema: z.object({}),
     async execute(): Promise<ToolOutput> {
+        updateLog({ type: 'ui', kind: 'parse', title: 'Прочитал страницу', text: 'Сканирую интерактивные элементы на всех вкладках' });
         const all = Array.isArray(context.tabs) ? context.tabs : [];
         if (all.length === 0) return { success: false, error: 'No tabs available in context.' };
 

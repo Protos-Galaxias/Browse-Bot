@@ -6,7 +6,7 @@
     <h2>{$_('cap.title')}</h2>
 
     <div class="capability-section">
-        <h3>🤖 {$_('cap.sections.automation.title')}</h3>
+        <h3>{$_('cap.sections.automation.title')}</h3>
         <ul>
             <li>{$_('cap.sections.automation.items.search')}</li>
             <li>{$_('cap.sections.automation.items.addToCart')}</li>
@@ -16,7 +16,7 @@
     </div>
 
     <div class="capability-section">
-        <h3>💬 {$_('cap.sections.chat.title')}</h3>
+        <h3>{$_('cap.sections.chat.title')}</h3>
         <ul>
             <li>{$_('cap.sections.chat.items.autoDetect')}</li>
             <li>{$_('cap.sections.chat.items.directQuestions')}</li>
@@ -26,7 +26,7 @@
     </div>
 
     <div class="capability-section">
-        <h3>🔧 {$_('cap.sections.tools.title')}</h3>
+        <h3>{$_('cap.sections.tools.title')}</h3>
         <ul>
             <li>{$_('cap.sections.tools.items.scan')}</li>
             <li>{$_('cap.sections.tools.items.findElements')}</li>
@@ -37,7 +37,7 @@
     </div>
 
     <div class="capability-section">
-        <h3>📊 {$_('cap.sections.analytics.title')}</h3>
+        <h3>{$_('cap.sections.analytics.title')}</h3>
         <ul>
             <li>{$_('cap.sections.analytics.items.history')}</li>
             <li>{$_('cap.sections.analytics.items.performance')}</li>
@@ -46,7 +46,7 @@
     </div>
 
     <div class="capability-section">
-        <h3>⚙️ {$_('cap.sections.settings.title')}</h3>
+        <h3>{$_('cap.sections.settings.title')}</h3>
         <ul>
             <li>{$_('cap.sections.settings.items.apiKeys')}</li>
             <li>{$_('cap.sections.settings.items.modelChoice')}</li>
@@ -67,7 +67,6 @@
     }
 
     h2 {
-        color: var(--text-primary);
         margin: 0 0 1.5rem 0;
         font-size: 1.2rem;
         font-weight: 300;
@@ -79,7 +78,6 @@
     }
 
     h3 {
-        color: var(--accent-color);
         font-size: 1rem;
         margin: 0 0 0.5rem 0;
         font-weight: 500;
@@ -88,7 +86,6 @@
     ul {
         margin: 0;
         padding-left: 0;
-        color: var(--text-primary);
         font-size: 0.9rem;
         line-height: 1.4;
         list-style: none;

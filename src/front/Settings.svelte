@@ -5,7 +5,6 @@
     import { _, locale } from 'svelte-i18n';
     import { setAppLocale } from './lib/i18n';
     import { ProviderMeta as ProviderConfigs } from '../services/ProviderMeta';
-
     let apiKey = '';
     let openaiApiKey = '';
     let xaiApiKey = '';
@@ -109,9 +108,11 @@
 
     function removeModel(index: number) {
         if (models.length > 1) {
-            models = models.filter((_, i) => i !== index);
-            if (activeModel === models[index]) {
-                activeModel = models[0];
+            const removed = models[index];
+            const next = models.filter((_, i) => i !== index);
+            models = next;
+            if (activeModel === removed) {
+                activeModel = next[0];
             }
             saveSettings();
         }
@@ -266,33 +267,28 @@
         {/if}
 
         <div class="setting-group">
-            <label class="setting-label">
-                {$_('common.models')}
-                <div class="models-container">
-                    {#each models as model, index}
-                        <div class="model-item {activeModel === model ? 'active' : ''}">
+            <div class="setting-label">{$_('common.models')}</div>
+            <div class="models-container">
+                {#each models as model, index (index)}
+                    <div class="model-item {activeModel === model ? 'active' : ''}" on:click={() => setActiveModel(model)}>
                             <span class="model-name">{model}</span>
-                            <div class="model-actions">
-                                <button class="set-active-btn" on:click={() => setActiveModel(model)}>
-                                    {activeModel === model ? $_('common.selected') : $_('common.choose')}
-                                </button>
-                                {#if models.length > 1}
-                                    <button class="remove-btn" on:click={() => removeModel(index)}>×</button>
-                                {/if}
-                            </div>
+                        <div class="model-actions">
+                            {#if models.length > 1}
+                                <button class="remove-btn" on:click|stopPropagation={() => removeModel(index)} type="button">×</button>
+                            {/if}
                         </div>
-                    {/each}
-                </div>
-                <div class="add-model">
-                    <input
-                        type="text"
-                        bind:value={newModel}
-                        placeholder={$_('settings.placeholders.modelName')}
-                        class="setting-input"
-                    />
-                    <button class="add-btn" on:click={addModel}>+</button>
-                </div>
-            </label>
+                    </div>
+                {/each}
+            </div>
+            <div class="add-model">
+                <input
+                    type="text"
+                    bind:value={newModel}
+                    placeholder={$_('settings.placeholders.modelName')}
+                    class="setting-input"
+                />
+                <button class="add-btn" on:click={addModel}>+</button>
+            </div>
         </div>
 
         
@@ -427,14 +423,12 @@
     .tab {
         background: transparent;
         border: 1px solid var(--border-color);
-        color: var(--text-primary);
         padding: 0.35rem 0.6rem;
         border-radius: 8px;
         cursor: pointer;
+        color: var(--text-primary);
     }
-    .tab.active { background: var(--accent-color); border-color: var(--accent-color); color: #fff; }
-
-    
+    .tab.active { background: var(--accent-color); border-color: var(--accent-color); color: #000000; }
 
     .setting-group {
         margin-bottom: 1rem;
@@ -495,9 +489,7 @@
         border-color: var(--accent-color);
         color: white;
     }
-
     
-
     .setting-textarea {
         width: 100%;
         padding: 0.75rem;
@@ -534,14 +526,15 @@
     }
 
     .model-item {
-        display: flex;
-        justify-content: space-between;
+        display: grid;
+        grid-template-columns: 1fr auto;
         align-items: center;
         padding: 0.5rem;
         margin-bottom: 0.25rem;
         border-radius: 6px;
         border: 1px solid var(--border-color);
         transition: all 0.2s;
+        cursor: pointer;
     }
 
     .model-item.active {
@@ -552,7 +545,7 @@
     .model-name {
         color: var(--text-primary);
         font-size: 0.9rem;
-        flex: 1;
+        display: block;
     }
 
     .model-actions {
@@ -560,25 +553,9 @@
         gap: 0.25rem;
     }
 
-    .set-active-btn {
-        background: transparent;
-        border: 1px solid var(--border-color);
-        color: var(--text-primary);
-        padding: 0.25rem 0.5rem;
-        border-radius: 4px;
-        font-size: 0.8rem;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-
-    .set-active-btn:hover {
-        background: var(--border-color);
-    }
-
     .remove-btn {
-        background: #ff4444;
-        border: none;
-        color: white;
+        background: transparent;
+        color: var(--text-secondary);
         width: 24px;
         height: 24px;
         border-radius: 4px;
@@ -587,10 +564,15 @@
         display: flex;
         align-items: center;
         justify-content: center;
+        transition: background-color 0.2s, color 0.2s;
+        outline: none;
+        box-shadow: none;
+        -webkit-tap-highlight-color: transparent;
     }
 
     .remove-btn:hover {
-        background: #cc3333;
+        background: var(--border-color);
+        color: var(--text-primary);
     }
 
     .add-model {
@@ -606,9 +588,8 @@
     .add-btn {
         background: var(--accent-color);
         border: none;
-        color: white;
         width: 32px;
-        height: 32px;
+        height: 40px;
         border-radius: 6px;
         font-size: 1.2rem;
         cursor: pointer;
@@ -630,25 +611,6 @@
         padding: 0.5rem;
         border-radius: 8px;
         margin: 0.5rem 0 1rem 0;
-    }
-
-    .help-text {
-        color: var(--text-secondary);
-        font-size: 0.9rem;
-        line-height: 1.5;
-    }
-
-    .help-text p {
-        margin: 0.5rem 0;
-    }
-
-    .help-text a {
-        color: var(--accent-color);
-        text-decoration: none;
-    }
-
-    .help-text a:hover {
-        text-decoration: underline;
     }
 
     .info-card {

@@ -80,5 +80,5 @@
 	}
 	.model-option { padding: 0.5rem; cursor: pointer; transition: background-color 0.2s; font-size: 0.8rem; color: var(--text-primary); }
 	.model-option:hover { background: var(--border-color); }
-	.model-option.active { background: var(--accent-color); color: white; }
+	.model-option.active { background: var(--accent-color); }
 </style>

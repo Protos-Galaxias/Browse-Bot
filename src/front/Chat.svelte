@@ -6,9 +6,10 @@
     import { _, format } from 'svelte-i18n';
     import { get } from 'svelte/store';
     import { getHost } from './lib/url';
+    import trashIcon from './icons/trash.svg';
 
     let prompt = '';
-    let log: string[] = [];
+    let log: Array<string | { type: 'i18n'; key: string; params?: Record<string, unknown>; prefix?: 'error'|'result'|'system'|'agent'|'user' } | { type: 'ui'; kind: 'click'; title?: string; text: string }> = [];
     let isTyping = false;
     let isTaskRunning = false;
     let models: string[] = [];
@@ -19,7 +20,6 @@
     let activeTabMeta: { id: number; title: string; url?: string; favIconUrl?: string } | null = null;
     let displayMentions: Array<{ id: number; title: string; url?: string; favIconUrl?: string }> = [];
     let domainPrompts: Record<string, string> = {};
-    let domainPromptCollapsed = true;
     let activeDomain = '';
     let domainPromptText = '';
     let hideAgentMessages: boolean = false;
@@ -166,7 +166,7 @@
     chrome.runtime.onMessage.addListener((message) => {
         if (message.type === 'UPDATE_LOG') {
             const payload = message.data;
-            const text = (() => {
+            const computed = (() => {
                 try {
                     if (payload && typeof payload === 'object' && payload.type === 'i18n' && typeof payload.key === 'string') {
                         const fmt = get(format) as (key: string, values?: Record<string, unknown>) => string;
@@ -174,15 +174,18 @@
                         const localized = fmt(payload.key, payload.params || {});
                         return `${prefix ? prefix + ': ' : ''}${localized}`;
                     }
+                    if (payload && typeof payload === 'object' && payload.type === 'ui' && typeof (payload as any).text === 'string') {
+                        return payload; // pass through for UI rendering
+                    }
                 } catch {}
                 return String(payload || '');
             })();
             if (hideAgentMessages) {
                 // В режиме скрытия показываем только итог/ошибку/анализ
-                const isFinalOrError = text.startsWith('[Результат]') || text.startsWith('[Ошибка]') || text.startsWith('[Анализ]');
+                const isFinalOrError = (typeof computed === 'string') && (computed.startsWith('[Результат]') || computed.startsWith('[Ошибка]') || computed.startsWith('[Анализ]'));
                 if (!isFinalOrError) return true;
             }
-            log = [...log, text];
+            log = [...log, computed];
             isTyping = false;
         } else if (message.type === 'TASK_COMPLETE') {
             isTaskRunning = false;
@@ -263,14 +266,7 @@
                 <div class="logo-icon">✦</div>
             </div>
             <h1 class="greeting">{$_('chat.welcome')}</h1>
-            <div class="domain-prompt">
-                <button class="domain-toggle" on:click={() => domainPromptCollapsed = !domainPromptCollapsed}>
-                    {domainPromptCollapsed ? '▼' : '▲'} {$_('chat.domainPrompt')} {activeDomain || '(—)'}
-                </button>
-                {#if !domainPromptCollapsed}
-                    <textarea class="domain-textarea" bind:value={domainPromptText} placeholder={$_('chat.domainPromptPlaceholder')} on:input={saveDomainPrompt}></textarea>
-                {/if}
-            </div>
+            
             <div class="input-card">
                 {#if displayMentions.length > 0}
                     <div class="mentions-bar">
@@ -313,14 +309,6 @@
 
     {#if log.length !== 0}
         <div class="input-area">
-            <div class="domain-prompt">
-                <button class="domain-toggle" on:click={() => domainPromptCollapsed = !domainPromptCollapsed}>
-                    {domainPromptCollapsed ? '▼' : '▲'} {$_('chat.domainPrompt')} {activeDomain || '(—)'}
-                </button>
-                {#if !domainPromptCollapsed}
-                    <textarea class="domain-textarea" bind:value={domainPromptText} placeholder={$_('chat.domainPromptPlaceholder')} on:input={saveDomainPrompt}></textarea>
-                {/if}
-            </div>
             <div class="input-container">
                 {#if displayMentions.length > 0}
                     <div class="mentions-bar">
@@ -342,12 +330,7 @@
                     </div>
                     <div class="right-controls">
                         <button class="clear-btn" on:click={clearHistory} title={$_('chat.clearHistoryTitle')} aria-label={$_('chat.clearHistoryAria')}>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <polyline points="3 6 5 6 21 6"></polyline>
-                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                                <line x1="10" y1="11" x2="10" y2="17"></line>
-                                <line x1="14" y1="11" x2="14" y2="17"></line>
-                            </svg>
+                            <img class="clear-icon" src={trashIcon} alt="Clear" />
                         </button>
                         <button class="send-btn {isTaskRunning ? 'stop-mode' : ''}" on:click={isTaskRunning ? stopTask : startTask} disabled={!isTaskRunning && !prompt.trim()}>
                             <span class="send-icon">{isTaskRunning ? '■' : '↑'}</span>
@@ -439,7 +422,7 @@
 
     .logo-icon {
         font-size: 3rem;
-        color: var(--accent-color);
+        color: #cec993;
         animation: pulse 2s infinite;
     }
 
@@ -465,10 +448,6 @@
         border: 1px solid var(--border-color);
     }
 
-    .domain-prompt { margin: 0 0 0.5rem 0; text-align: left; }
-    .domain-toggle { background: transparent; border: 1px solid var(--border-color); color: var(--text-secondary); padding: 0.25rem 0.4rem; border-radius: 6px; cursor: pointer; }
-    .domain-toggle:hover { background: var(--bg-secondary); color: var(--text-primary); }
-    .domain-textarea { width: 100%; min-height: 64px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 6px; padding: 0.4rem; resize: vertical; margin-top: 0.4rem; }
 
     .mentions-bar {
         display: flex;
@@ -620,13 +599,11 @@
 
     .model-option.active {
         background: var(--accent-color);
-        color: white;
     }
 
     .send-btn {
         background: var(--accent-color);
         border: none;
-        color: white;
         width: 32px;
         height: 32px;
         border-radius: 6px;
@@ -640,10 +617,12 @@
     .send-btn:hover:not(:disabled) {
         background: var(--accent-hover);
         transform: scale(1.05);
+        color: white;
     }
 
     .send-btn:disabled {
         background: var(--border-color);
+        color: white;
         cursor: not-allowed;
         opacity: 0.6;
     }
@@ -699,12 +678,16 @@
     .action-btn.primary {
         background: var(--accent-color);
         border-color: var(--accent-color);
-        color: white;
     }
 
     .action-btn.primary:hover {
         background: var(--accent-hover);
         border-color: var(--accent-hover);
+    }
+
+    /* Ensure readable text on primary action in dark theme */
+    :global(:root[data-theme="dark"]) .action-btn.primary {
+        color: #000000;
     }
 
     .action-icon {
@@ -759,7 +742,7 @@
 
     .user-bubble {
         background: var(--accent-color);
-        color: white;
+        color: #000000;
     }
 
     .message-content {
@@ -891,8 +874,22 @@
         border-color: var(--accent-color);
     }
 
-    .clear-btn svg {
-        width: 16px;
-        height: 16px;
+    /* Dark theme: make clear button white */
+    :global(:root[data-theme="dark"]) .clear-btn {
+        background: #ffffff;
+        border-color: #ffffff;
+        color: #000000;
+    }
+
+    :global(:root[data-theme="dark"]) .clear-btn:hover {
+        background: #f0f0f0;
+        border-color: var(--accent-color);
+        color: #000000;
+    }
+
+    .clear-icon {
+        width: 18px;
+        height: 18px;
+        display: block;
     }
     </style>

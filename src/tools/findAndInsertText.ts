@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { findElementIds } from './findElement';
 import type { ToolContext, ToolOutput } from './types';
 import { resolveTabId, sendToTabOrThrow } from './utils';
-import { reportError, updateLogI18n } from '../logger';
+import { reportError, updateLog } from '../logger';
 
 export const findAndInsertTextTool = (context: ToolContext) => tool({
     description: 'Types text into an input. Use `parsePage` (preferred) or `parsePageInteractiveElements` beforehand to build elements context. For read-only content questions, prefer `parsePageText`.',
@@ -14,6 +14,7 @@ export const findAndInsertTextTool = (context: ToolContext) => tool({
     }),
     async execute({ reasoning, element_description, text }): Promise<ToolOutput> {
         console.log(`findAndInsertText with reasoning: ${reasoning}`);
+        updateLog({ type: 'ui', kind: 'form', title: 'Ввели текст', text: `${reasoning}. ${element_description}. Текст: "${text}"` });
         const elements = context.getInteractiveElements();
         if (elements.length === 0) {
             return { success: false, error: 'Context is empty. Call `parsePage` or `parsePageInteractiveElements` first.' };

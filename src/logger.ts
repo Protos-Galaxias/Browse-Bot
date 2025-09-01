@@ -1,6 +1,7 @@
 export type I18nLog = { type: 'i18n'; key: string; params?: Record<string, unknown>; prefix?: 'error' | 'result' | 'system' | 'agent' | 'user' };
+export type UiLog = { type: 'ui'; kind: 'click' | 'form' | 'parse' | 'find'; title?: string; text: string };
 
-export function updateLog(data: string | I18nLog) {
+export function updateLog(data: string | I18nLog | UiLog) {
     console.log(data);
     chrome.runtime.sendMessage({ type: 'UPDATE_LOG', data }).catch(e => console.error('Failed to send log to UI:', e));
 }
@@ -13,7 +14,7 @@ export function formatError(error: unknown, context?: string): string {
             try { return JSON.stringify(error); } catch { return String(error); }
         })();
         const prefix = context && context.trim().length > 0 ? `${context}: ` : '';
-        return `[Ошибка]: ${prefix}${base}`;
+        return `[Error]: ${prefix}${base}`;
     } catch {
         return '[Ошибка]: Непредвиденная ошибка';
     }
@@ -37,7 +38,7 @@ export function updateLogI18n(key: string, params?: Record<string, unknown>, pre
     try {
         const payload: I18nLog = { type: 'i18n', key, params, prefix };
         updateLog(payload);
-    } catch (e) {
+    } catch {
         // fallback to plain log if something goes wrong
         updateLog(`[i18n:${key}]`);
     }

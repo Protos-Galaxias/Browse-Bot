@@ -12,7 +12,7 @@ export const setRadioTool = (context: ToolContext) => tool({
         element_description: z.string().describe('Description of the radio to select.')
     }),
     async execute({ reasoning, element_description }): Promise<ToolOutput> {
-        updateLog(`${reasoning}. Выбор радио-кнопки.`);
+        updateLog({ type: 'ui', kind: 'form', title: 'Нажали на радио-кнопку', text: `${reasoning}. Выбор радио-кнопки. ${element_description}` });
         const elements = context.getInteractiveElements();
         if (elements.length === 0) return { success: false, error: 'Context is empty. Call `parsePage` or `parsePageInteractiveElements` first.' };
         const elementIds = await findElementIds(elements, element_description, context.aiService).catch((e) => { reportError(e, 'errors.sendMessageRadio'); return []; });

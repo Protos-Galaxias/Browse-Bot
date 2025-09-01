@@ -13,7 +13,7 @@ export const setCheckboxTool = (context: ToolContext) => tool({
         checked: z.boolean().describe('Whether the checkbox should be checked.')
     }),
     async execute({ reasoning, element_description, checked }): Promise<ToolOutput> {
-        updateLog(`${reasoning}. Установка чекбокса: ${checked ? 'включен' : 'выключен'}.`);
+        updateLog({ type: 'ui', kind: 'form', title: 'Нажали на чекбокс', text: `${reasoning}. Установка чекбокса: ${checked ? 'включен' : 'выключен'}. ${element_description}` });
         const elements = context.getInteractiveElements();
         if (elements.length === 0) return { success: false, error: 'Context is empty. Call `parsePage` or `parsePageInteractiveElements` first.' };
         const elementIds = await findElementIds(elements, element_description, context.aiService).catch((e) => { reportError(e, 'errors.sendMessageCheckbox'); return []; });

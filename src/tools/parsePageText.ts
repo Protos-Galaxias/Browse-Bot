@@ -1,12 +1,13 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 import type { ToolContext, ToolOutput } from './types';
-import { reportError } from '../logger';
+import { reportError, updateLog } from '../logger';
 
 export const parsePageTextTool = (context: ToolContext) => tool({
     description: 'Gets meaningful text from the page for analysis (summaries, comparisons, Q&A). Does not collect interactive elements.',
     inputSchema: z.object({}),
     async execute(): Promise<ToolOutput> {
+        updateLog({ type: 'ui', kind: 'parse', title: 'Прочитал страницу', text: 'Получаю смысловой текст со страницы' });
         const all = Array.isArray(context.tabs) ? context.tabs : [];
         if (all.length === 0) return { success: false, error: 'No tabs available in context.' };
 

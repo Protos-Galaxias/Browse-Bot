@@ -2,7 +2,7 @@
     import MessageItem from './MessageItem.svelte';
     import { afterUpdate, onMount } from 'svelte';
     import { _ } from 'svelte-i18n';
-    export let log: string[] = [];
+    export let log: any[] = [];
     export let isTyping = false;
 
     let container: HTMLDivElement | null = null;

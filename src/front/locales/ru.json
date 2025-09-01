@@ -81,7 +81,7 @@
   },
   "chat": {
     "welcome": "Добрый день, пользователь",
-    "domainPrompt": "Промт для домена",
+    "domainPrompt": "Промт для",
     "domainPromptPlaceholder": "Промт для текущего домена...",
     "helpPlaceholder": "Чем могу помочь сегодня?",
     "clearHistoryTitle": "Очистить историю",

@@ -81,7 +81,7 @@
   },
   "chat": {
     "welcome": "Good day, user",
-    "domainPrompt": "Prompt for domain",
+    "domainPrompt": "Prompt for",
     "domainPromptPlaceholder": "Prompt for the current domain...",
     "helpPlaceholder": "How can I help today?",
     "clearHistoryTitle": "Clear history",

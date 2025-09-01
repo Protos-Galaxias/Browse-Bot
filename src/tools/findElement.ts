@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { AIService as AIServiceType } from '../services/AIService';
+import { updateLog } from '../logger';
 
 const FIND_ELEMENT_SYSTEM_PROMPT = `Role: You are an AI assistant specializing in locating web UI elements. Your function is to act as an "intelligent locator."
 
@@ -95,5 +96,9 @@ export async function findElementIds(
 
     const result = foundAids as { aids?: string[] };
 
-    return result.aids || [];
+    const aids = result.aids || [];
+    try {
+        updateLog({ type: 'ui', kind: 'find', title: 'Нашли элемент', text: `Запрос: ${query}. Найдено: ${aids.length}` });
+    } catch {}
+    return aids;
 }
