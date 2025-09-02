@@ -7,6 +7,7 @@ import { ConfigService } from './services/ConfigService';
 import type { AIService } from './services/AIService';
 import systemPromptRaw from './prompts/system.md?raw';
 import { isChrome } from './browser';
+import { StateService } from './services/StateService';
 
 if (chrome.sidePanel) {
     chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
@@ -213,6 +214,14 @@ async function buildSystemPrompt(tabs?: Array<TabMeta>): Promise<string> {
     const trimmed = (globalPrompt ?? '').trim();
     const parts: string[] = [systemPromptRaw];
     if (trimmed) parts.push(`<context_from_user>\n${trimmed}\n</context_from_user>`);
+
+    // Inject short-term agent memory for better follow-ups (e.g., pronoun resolution)
+    try {
+        const mem = StateService.getInstance().getMemory();
+        if (mem && (mem.lastEntities || mem.lastSelection)) {
+            parts.push(`<agent_memory>\n${JSON.stringify(mem, null, 2)}\n</agent_memory>`);
+        }
+    } catch {}
 
     const hosts = new Set<string>();
     if (Array.isArray(tabs)) {

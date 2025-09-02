@@ -9,6 +9,7 @@ import { setCheckboxTool } from './setCheckbox';
 import { setRadioTool } from './setRadio';
 import { finishTaskTool } from './finishTask';
 import { getYouTubeSubtitlesTool } from './getYouTubeSubtitles';
+import { setMemoryTool } from './setMemory';
 
 export const agentTools = (context: ToolContext) => {
     return {
@@ -21,6 +22,7 @@ export const agentTools = (context: ToolContext) => {
         setCheckbox: setCheckboxTool(context),
         setRadio: setRadioTool(context),
         getYouTubeSubtitles: getYouTubeSubtitlesTool(context),
+        setMemory: setMemoryTool(),
         finishTask: finishTaskTool()
     } as const;
 };

@@ -15,6 +15,11 @@ export interface WalkerState {
   lastError: string | null;
 }
 
+export interface WalkerMemory {
+  lastEntities?: unknown;
+  lastSelection?: unknown;
+}
+
 export class StateService {
     private static instance: StateService;
     private state: WalkerState = {
@@ -24,6 +29,7 @@ export class StateService {
         currentPlan: null,
         lastError: null
     };
+    private memory: WalkerMemory = {};
 
     private constructor() {}
 
@@ -36,6 +42,18 @@ export class StateService {
 
     getState(): WalkerState {
         return { ...this.state };
+    }
+
+    getMemory(): WalkerMemory {
+        return { ...this.memory };
+    }
+
+    setMemory(update: Partial<WalkerMemory>): void {
+        this.memory = { ...this.memory, ...update };
+    }
+
+    clearMemory(): void {
+        this.memory = {};
     }
 
     async initialize(): Promise<void> {
