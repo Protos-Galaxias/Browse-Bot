@@ -239,8 +239,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
     case 'PRESS_ENTER': {
         const el = elementCache.get(String(message.aid));
-        const target: HTMLElement | undefined = el || undefined;
-        const eventInit = { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true } as any;
+        const target: HTMLElement | null = (el as HTMLElement) || null;
+        type EnterEventInit = { key: string; code: string; keyCode: number; which: number; bubbles: boolean };
+        const eventInit: EnterEventInit = { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true };
         const dispatchOn = (n: Element | Document | Window) => {
             n.dispatchEvent(new KeyboardEvent('keydown', eventInit));
             n.dispatchEvent(new KeyboardEvent('keypress', eventInit));
@@ -248,7 +249,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         };
         if (target instanceof HTMLElement) {
             dispatchOn(target);
-            try { dispatchOn(target.form || document); } catch {}
+            const form = (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLButtonElement || target instanceof HTMLSelectElement)
+                ? (target.form as HTMLFormElement | null)
+                : null;
+            try {
+                dispatchOn(form || document);
+            } catch { void 0; }
         } else {
             dispatchOn(document);
         }
@@ -307,6 +313,64 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         } else {
             sendResponse({ status: 'error', message: `Radio with aid=${message.aid} not found` });
         }
+        break;
+    }
+    case 'GET_YT_SUBTITLES': {
+        (async () => {
+            const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+            const openTranscriptPanel = async () => {
+                const moreBtn = document.querySelector('#expand') as HTMLElement | null;
+                if (moreBtn) {
+                    moreBtn.click();
+                } else {
+                    console.warn('YouTube: Кнопка "Ещё" не найдена');
+                    return;
+                }
+                await sleep(1000);
+                const transcriptBtn = document.querySelector(
+                    'ytd-video-description-transcript-section-renderer.style-scope:nth-child(2) > div:nth-child(3) > div:nth-child(1) > ytd-button-renderer:nth-child(1) > yt-button-shape:nth-child(1) > button:nth-child(1)'
+                ) as HTMLElement | null;
+                if (transcriptBtn) {
+                    transcriptBtn.click();
+                } else {
+                    console.warn('YouTube: Кнопка "Показать стенограмму" не найдена');
+                }
+            };
+
+            const waitForSegments = async (timeoutMs: number = 12000): Promise<HTMLElement[]> => {
+                const start = Date.now();
+                let lastCount = 0;
+                while (Date.now() - start < timeoutMs) {
+                    const segs = Array.from(document.querySelectorAll('ytd-transcript-segment-renderer')) as HTMLElement[];
+                    if (segs.length > 0 && segs.length === lastCount) {
+                        // stable count across iterations implies loaded
+                        return segs;
+                    }
+                    if (segs.length > 0) lastCount = segs.length;
+                    await sleep(300);
+                }
+                return Array.from(document.querySelectorAll('ytd-transcript-segment-renderer')) as HTMLElement[];
+            };
+
+            try {
+                await openTranscriptPanel();
+                const segments = await waitForSegments(12000);
+                const cleaned = segments
+                    .map(seg => seg.innerText.trim())
+                    .map(text => text
+                        .replace(/^\d{1,2}:\d{2}\s*/g, '')
+                        .replace(/\[.*?\]/g, '')
+                        .trim()
+                    )
+                    .filter(Boolean)
+                    .join('\n');
+                console.log('YouTube: Очищенные субтитры', cleaned);
+                sendResponse({ status: 'ok', subtitles: cleaned });
+            } catch (e) {
+                console.error('Failed to extract YouTube subtitles', e);
+                sendResponse({ status: 'error', message: 'Failed to extract YouTube subtitles' });
+            }
+        })();
         break;
     }
     default: {

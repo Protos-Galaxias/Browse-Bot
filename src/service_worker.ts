@@ -273,7 +273,7 @@ chrome.runtime.onMessage.addListener(async (message) => {
         } catch (e) {
             reportError(e, 'errors.openLinkInBg');
         }
-        return true;
+        return;
     }
     if (message.type === 'START_TASK') {
         const { prompt, tabs } = message as { prompt: string; tabs?: Array<{ id: number; title?: string; url?: string }> };
@@ -304,7 +304,7 @@ chrome.runtime.onMessage.addListener(async (message) => {
 
                     const finalAnswer = await runAgentTask(messages, {} as ToolSet, selectedServiceGeneric);
                     updateLog(`[Результат]: ${finalAnswer}`);
-                    return true;
+                    return;
                 } else {
                     seedTabs = [{ id: activeTab.id, title: activeTab.title, url: activeTab.url }];
                     currentTaskTabs = seedTabs;
@@ -357,5 +357,5 @@ chrome.runtime.onMessage.addListener(async (message) => {
         agentHistory = [];
         currentTaskTabs = [];
     }
-    return true;
+    return;
 });

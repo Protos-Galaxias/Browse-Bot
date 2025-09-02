@@ -191,7 +191,6 @@
             isTaskRunning = false;
             isTyping = false;
         }
-        return true;
     });
 
     $: (async () => {

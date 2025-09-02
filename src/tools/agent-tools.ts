@@ -8,6 +8,7 @@ import { selectOptionTool } from './selectOption';
 import { setCheckboxTool } from './setCheckbox';
 import { setRadioTool } from './setRadio';
 import { finishTaskTool } from './finishTask';
+import { getYouTubeSubtitlesTool } from './getYouTubeSubtitles';
 
 export const agentTools = (context: ToolContext) => {
     return {
@@ -19,6 +20,7 @@ export const agentTools = (context: ToolContext) => {
         selectOption: selectOptionTool(context),
         setCheckbox: setCheckboxTool(context),
         setRadio: setRadioTool(context),
+        getYouTubeSubtitles: getYouTubeSubtitlesTool(context),
         finishTask: finishTaskTool()
     } as const;
 };
