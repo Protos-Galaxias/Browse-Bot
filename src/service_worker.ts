@@ -337,7 +337,7 @@ chrome.runtime.onMessage.addListener(async (message) => {
                 sendMessageToTab: (msg, targetTabId?: number) => chrome.tabs.sendMessage(targetTabId ?? resolvedDefaultTabId, msg)
             };
 
-            const tools = agentTools(toolContext);
+            const tools = await agentTools(toolContext);
 
             const messages: ModelMessage[] = [
                 { role: 'system', content: systemPrompt },

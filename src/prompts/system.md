@@ -23,6 +23,14 @@ For every user request:
 6. **Finish**: When all subtasks are done, call `finishTask` to finalize the response for the user.
 7. **Standby**: If there is no active user request, remain idle.
 
+### MCP Integration (generic)
+- When the user mentions "mcp", external tools, or needs info not on the current page:
+  - Prefer directly available MCP tools (dynamically exposed) when you see them.
+  - If unsure what exists, first discover tools by calling `mcpListTools` and read each tool's `description` and `inputSchema`.
+- Call the chosen tool using `mcpCall` with `name` and JSON `args` that match the tool's `inputSchema`. Do not guess: infer fields from the schema and description.
+- Some tasks require multiple MCP calls (e.g., resolve → fetch → summarize). Plan and execute the chain without asking the user to specify the steps.
+- Never hardcode tool names for a specific server. Always adapt to whatever tools the current MCP server exposes at runtime.
+
 ### Information Gathering Workflow
 - Use `parsePage` to collect both text and elements, especially across tabs.
 - Use `parsePageText` for visible content only.

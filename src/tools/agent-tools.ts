@@ -10,8 +10,10 @@ import { setRadioTool } from './setRadio';
 import { finishTaskTool } from './finishTask';
 import { getYouTubeSubtitlesTool } from './getYouTubeSubtitles';
 import { setMemoryTool } from './setMemory';
+import { createMcpDynamicTools } from './mcp-dynamic';
 
-export const agentTools = (context: ToolContext) => {
+export const agentTools = async (context: ToolContext) => {
+    const dynamicMcp = await createMcpDynamicTools();
     return {
         parsePage: parsePageTool(context),
         parsePageInteractiveElements: parsePageInteractiveElementsTool(context),
@@ -23,6 +25,7 @@ export const agentTools = (context: ToolContext) => {
         setRadio: setRadioTool(context),
         getYouTubeSubtitles: getYouTubeSubtitlesTool(context),
         setMemory: setMemoryTool(),
-        finishTask: finishTaskTool()
+        finishTask: finishTaskTool(),
+        ...dynamicMcp
     } as const;
 };

@@ -20,6 +20,12 @@
     type ProviderId = keyof typeof ProviderConfigs;
     let provider: ProviderId = 'openrouter';
     let ollamaBaseURL = '';
+    let mcps: Array<{ id?: string; label?: string; endpoint: string; enabled: boolean }> = [];
+    let isMcpModalOpen: boolean = false;
+    let editingMcpIndex: number | null = null;
+    let formMcpLabel: string = '';
+    let formMcpEndpoint: string = '';
+    let formMcpEnabled: boolean = true;
 
     onMount(async () => {
         const providerIds = Object.keys(ProviderConfigs) as ProviderId[];
@@ -41,7 +47,17 @@
             if (meta.storageApiKey) keysToLoad.add(meta.storageApiKey);
             if (meta.storageBaseURL) keysToLoad.add(meta.storageBaseURL);
         }
+        keysToLoad.add('mcps');
+        keysToLoad.add('mcp');
         const settings = await chrome.storage.local.get(Array.from(keysToLoad));
+        const mcpsStored = Array.isArray(settings.mcps) ? settings.mcps as Array<{ id?: string; label?: string; endpoint?: string; enabled?: boolean }> : [];
+        const legacyMcp = settings.mcp as { enabled?: boolean; endpoint?: string } | undefined;
+        mcps = mcpsStored
+            .filter(m => m && typeof m.endpoint === 'string' && m.endpoint.trim().length > 0)
+            .map(m => ({ id: m.id, label: m.label, endpoint: String(m.endpoint), enabled: Boolean(m.enabled) })) as any;
+        if (mcps.length === 0 && legacyMcp && legacyMcp.enabled && typeof legacyMcp.endpoint === 'string' && legacyMcp.endpoint.trim().length > 0) {
+            mcps = [{ endpoint: legacyMcp.endpoint.trim(), enabled: true }];
+        }
 
         provider = (providerIds as string[]).includes(settings.provider) ? settings.provider as ProviderId : 'openrouter';
 
@@ -152,6 +168,7 @@
             models,
             activeModel
         };
+        payload['mcps'] = mcps;
         const meta = ProviderConfigs[provider];
         payload[meta.storageModels] = models;
         payload[meta.storageActiveModel] = activeModel;
@@ -160,6 +177,50 @@
         setTimeout(() => {
             saveStatus = 'idle';
         }, 2000);
+    }
+
+    function removeMcp(index: number) {
+        mcps = mcps.filter((_, i) => i !== index);
+        saveSettings();
+    }
+
+    function setMcpEnabled(index: number, value: boolean) {
+        mcps = mcps.map((m, i) => i === index ? { ...m, enabled: value } : m);
+        saveSettings();
+    }
+
+    function openAddMcpModal() {
+        editingMcpIndex = null;
+        formMcpLabel = '';
+        formMcpEndpoint = '';
+        formMcpEnabled = true;
+        isMcpModalOpen = true;
+    }
+
+    function openEditMcpModal(index: number) {
+        const m = mcps[index];
+        editingMcpIndex = index;
+        formMcpLabel = m?.label || '';
+        formMcpEndpoint = m?.endpoint || '';
+        formMcpEnabled = Boolean(m?.enabled);
+        isMcpModalOpen = true;
+    }
+
+    function closeMcpModal() {
+        isMcpModalOpen = false;
+    }
+
+    function submitMcp() {
+        const ep = (formMcpEndpoint || '').trim();
+        const lbl = (formMcpLabel || '').trim();
+        if (!ep) { isMcpModalOpen = false; return; }
+        if (editingMcpIndex === null) {
+            mcps = [...mcps, { label: lbl || undefined, endpoint: ep, enabled: formMcpEnabled }];
+        } else {
+            mcps = mcps.map((m, i) => i === editingMcpIndex ? { ...m, label: lbl || undefined, endpoint: ep, enabled: formMcpEnabled } : m);
+        }
+        isMcpModalOpen = false;
+        saveSettings();
     }
 </script>
 
@@ -290,6 +351,62 @@
                 <button class="add-btn" on:click={addModel}>+</button>
             </div>
         </div>
+
+        <div class="setting-group">
+            <div class="setting-label">MCP Servers</div>
+            {#each mcps as m, index (index)}
+                <div class="mcp-card">
+                    <div class="mcp-card-main">
+                        <div class="mcp-title">{m.label || (new URL(m.endpoint).hostname.replace(/^www\./, ''))}</div>
+                        <div class="mcp-subtitle">{m.endpoint}</div>
+                    </div>
+                    <div class="mcp-actions">
+                        <label class="toggle-row" for={`mcp-enabled-${index}`}>
+                            <input id={`mcp-enabled-${index}`} type="checkbox" checked={m.enabled} on:change={(e) => setMcpEnabled(index, (e.target as HTMLInputElement).checked)} />
+                        </label>
+                        <button class="icon-btn" type="button" aria-label="Edit MCP" on:click={() => openEditMcpModal(index)}>✎</button>
+                        <button class="remove-btn" type="button" aria-label="Remove MCP" on:click={() => removeMcp(index)}>×</button>
+                    </div>
+                </div>
+            {/each}
+            <div class="add-model">
+                <button class="add-btn" type="button" on:click={openAddMcpModal}>+</button>
+            </div>
+        </div>
+
+        {#if isMcpModalOpen}
+            <div class="modal-overlay" on:click|self={closeMcpModal}>
+                <div class="modal">
+                    <div class="modal-header">
+                        <div class="modal-title">MCP Server</div>
+                        <button class="icon-btn" type="button" aria-label="Close" on:click={closeMcpModal}>×</button>
+                    </div>
+                    <div class="modal-body">
+                        <input
+                            type="text"
+                            class="setting-input"
+                            placeholder="Имя сервера"
+                            bind:value={formMcpLabel}
+                            style="margin-bottom: 0.5rem;"
+                        />
+                        <input
+                            type="text"
+                            class="setting-input"
+                            placeholder="https://example.com/mcp"
+                            bind:value={formMcpEndpoint}
+                            style="margin-bottom: 0.5rem;"
+                        />
+                        <div class="toggle-row" style="margin-top: 0.25rem;">
+                            <input id="mcp-enabled-form" type="checkbox" bind:checked={formMcpEnabled} />
+                            <label for="mcp-enabled-form">Включен</label>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="primary-btn" type="button" on:click={submitMcp}>{editingMcpIndex === null ? 'Добавить сервер' : 'Сохранить'}</button>
+                    </div>
+                </div>
+            </div>
+        {/if}
 
         
         {/if}
@@ -624,4 +741,49 @@
     .info-card ol { margin: 0.5rem 0 0.5rem 1.2rem; padding-left: 1rem; }
     .info-card li { margin: 0.25rem 0; }
     .info-card a { color: var(--accent-color); text-decoration: underline; }
+    
+    /* MCP modal styles (match app theme) */
+    .mcp-card {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 0.5rem;
+        padding: 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--bg-secondary);
+        margin-bottom: 0.5rem;
+    }
+    .mcp-card-main { min-width: 0; }
+    .mcp-title { color: var(--text-primary); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .mcp-subtitle { color: var(--text-secondary); font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .mcp-actions { display: flex; align-items: center; gap: 0.5rem; min-height: 28px; }
+    .icon-btn { background: transparent; color: var(--text-primary); width: 28px; height: 28px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 0; padding: 0; }
+    .mcp-actions .remove-btn { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; line-height: 0; padding: 0; }
+
+    .icon-btn:hover {
+        background: var(--border-color);
+        color: var(--text-primary);
+    }
+    .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+    }
+    .modal {
+        width: 520px;
+        max-width: 92vw;
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; border-bottom: 1px solid var(--border-color); }
+    .modal-title { color: var(--text-primary); font-weight: 600; }
+    .modal-body { padding: 0.75rem; }
+    .modal-footer { padding: 0.75rem; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; }
+    .primary-btn { background: var(--accent-color); color: #000; border: none; border-radius: 8px; padding: 0.5rem 0.9rem; cursor: pointer; }
 </style>
