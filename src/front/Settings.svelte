@@ -26,6 +26,15 @@
     let formMcpLabel: string = '';
     let formMcpEndpoint: string = '';
     let formMcpEnabled: boolean = true;
+    // External tools
+    type ExternalTool = { name: string; description?: string; code: string; enabled: boolean };
+    let externalTools: ExternalTool[] = [];
+    let isExtModalOpen: boolean = false;
+    let editingExtIndex: number | null = null;
+    let formExtName: string = '';
+    let formExtDescription: string = '';
+    let formExtCode: string = '';
+    let formExtEnabled: boolean = true;
 
     onMount(async () => {
         const providerIds = Object.keys(ProviderConfigs) as ProviderId[];
@@ -49,6 +58,7 @@
         }
         keysToLoad.add('mcps');
         keysToLoad.add('mcp');
+        keysToLoad.add('externalTools');
         const settings = await chrome.storage.local.get(Array.from(keysToLoad));
         const mcpsStored = Array.isArray(settings.mcps) ? settings.mcps as Array<{ id?: string; label?: string; endpoint?: string; enabled?: boolean }> : [];
         const legacyMcp = settings.mcp as { enabled?: boolean; endpoint?: string } | undefined;
@@ -93,6 +103,11 @@
         theme = settings.theme || 'system';
         sendOnEnter = typeof settings.sendOnEnter === 'boolean' ? settings.sendOnEnter : true;
         hideAgentMessages = typeof settings.hideAgentMessages === 'boolean' ? settings.hideAgentMessages : false;
+        externalTools = Array.isArray(settings.externalTools)
+            ? (settings.externalTools as any[])
+                .filter((t) => t && typeof t.name === 'string' && typeof t.code === 'string')
+                .map((t) => ({ name: String(t.name).trim(), description: (t.description ?? ''), code: String(t.code), enabled: Boolean(t.enabled ?? true) }))
+            : [];
         applyTheme(theme);
         chrome.runtime.sendMessage({ type: 'UPDATE_CONFIG' });
     });
@@ -169,6 +184,7 @@
             activeModel
         };
         payload['mcps'] = mcps;
+        payload['externalTools'] = externalTools;
         const meta = ProviderConfigs[provider];
         payload[meta.storageModels] = models;
         payload[meta.storageActiveModel] = activeModel;
@@ -186,6 +202,54 @@
 
     function setMcpEnabled(index: number, value: boolean) {
         mcps = mcps.map((m, i) => i === index ? { ...m, enabled: value } : m);
+        saveSettings();
+    }
+
+    function openAddExtModal() {
+        editingExtIndex = null;
+        formExtName = '';
+        formExtDescription = '';
+        formExtCode = '';
+        formExtEnabled = true;
+        isExtModalOpen = true;
+    }
+
+    function openEditExtModal(index: number) {
+        const t = externalTools[index];
+        editingExtIndex = index;
+        formExtName = t?.name || '';
+        formExtDescription = t?.description || '';
+        formExtCode = t?.code || '';
+        formExtEnabled = Boolean(t?.enabled);
+        isExtModalOpen = true;
+    }
+
+    function closeExtModal() {
+        isExtModalOpen = false;
+    }
+
+    function submitExt() {
+        const name = (formExtName || '').trim();
+        const code = (formExtCode || '').trim();
+        const description = (formExtDescription || '').trim();
+        if (!name || !/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name) || !code) { isExtModalOpen = false; return; }
+        const entry = { name, description, code, enabled: formExtEnabled } as ExternalTool;
+        if (editingExtIndex === null) {
+            externalTools = [...externalTools, entry];
+        } else {
+            externalTools = externalTools.map((t, i) => i === editingExtIndex ? entry : t);
+        }
+        isExtModalOpen = false;
+        saveSettings();
+    }
+
+    function removeExt(index: number) {
+        externalTools = externalTools.filter((_, i) => i !== index);
+        saveSettings();
+    }
+
+    function setExtEnabled(index: number, value: boolean) {
+        externalTools = externalTools.map((t, i) => i === index ? { ...t, enabled: value } : t);
         saveSettings();
     }
 
@@ -373,6 +437,69 @@
                 <button class="add-btn" type="button" on:click={openAddMcpModal}>+</button>
             </div>
         </div>
+
+        <div class="setting-group">
+            <div class="setting-label">Внешние тулы</div>
+            {#each externalTools as t, index (index)}
+                <div class="mcp-card">
+                    <div class="mcp-card-main">
+                        <div class="mcp-title">{t.name}</div>
+                        <div class="mcp-subtitle">{t.description || 'Без описания'}</div>
+                    </div>
+                    <div class="mcp-actions">
+                        <label class="toggle-row" for={`ext-enabled-${index}`}>
+                            <input id={`ext-enabled-${index}`} type="checkbox" checked={t.enabled} on:change={(e) => setExtEnabled(index, (e.target as HTMLInputElement).checked)} />
+                        </label>
+                        <button class="icon-btn" type="button" aria-label="Edit external tool" on:click={() => openEditExtModal(index)}>✎</button>
+                        <button class="remove-btn" type="button" aria-label="Remove external tool" on:click={() => removeExt(index)}>×</button>
+                    </div>
+                </div>
+            {/each}
+            <div class="add-model">
+                <button class="add-btn" type="button" on:click={openAddExtModal}>+</button>
+            </div>
+        </div>
+
+        {#if isExtModalOpen}
+            <div class="modal-overlay" on:click|self={closeExtModal}>
+                <div class="modal">
+                    <div class="modal-header">
+                        <div class="modal-title">Внешний тул</div>
+                        <button class="icon-btn" type="button" aria-label="Close" on:click={closeExtModal}>×</button>
+                    </div>
+                    <div class="modal-body">
+                        <input
+                            type="text"
+                            class="setting-input"
+                            placeholder="Имя (латиница, a-z, A-Z, 0-9, _)"
+                            bind:value={formExtName}
+                            style="margin-bottom: 0.5rem;"
+                        />
+                        <input
+                            type="text"
+                            class="setting-input"
+                            placeholder="Описание"
+                            bind:value={formExtDescription}
+                            style="margin-bottom: 0.5rem;"
+                        />
+                        <textarea
+                            class="setting-textarea"
+                            placeholder="Вставьте JS код функции или тела async-функции\nПример: async (&#123; args, api &#125;) => &#123; api.log('hi', args); return 123; &#125;"
+                            bind:value={formExtCode}
+                            rows="10"
+                            style="margin-bottom: 0.5rem;"
+                        ></textarea>
+                        <div class="toggle-row" style="margin-top: 0.25rem;">
+                            <input id="ext-enabled-form" type="checkbox" bind:checked={formExtEnabled} />
+                            <label for="ext-enabled-form">Включен</label>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="primary-btn" type="button" on:click={submitExt}>{editingExtIndex === null ? 'Добавить' : 'Сохранить'}</button>
+                    </div>
+                </div>
+            </div>
+        {/if}
 
         {#if isMcpModalOpen}
             <div class="modal-overlay" on:click|self={closeMcpModal}>

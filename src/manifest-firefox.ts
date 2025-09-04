@@ -5,6 +5,9 @@ export default defineManifest({
     manifest_version: 3,
     name: 'Web Walker (Firefox)',
     version: packageJson.version,
+    content_security_policy: {
+        extension_pages: "script-src 'self' 'unsafe-eval'; object-src 'self'"
+    } as any,
     permissions: ['storage', 'activeTab', 'scripting', 'notifications', 'webNavigation', 'tabs', '<all_urls>'],
     background: {
         scripts: ['src/service_worker.ts']

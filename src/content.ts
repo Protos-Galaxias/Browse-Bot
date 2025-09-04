@@ -2,6 +2,247 @@ console.log('Web Walker: Content script injected and running.');
 
 const elementCache = new Map<string, HTMLElement>();
 
+async function runExternalCode(code: string, args: unknown): Promise<unknown> {
+    const api = {
+        query: (selector: string) => document.querySelector(selector),
+        queryAll: (selector: string) => Array.from(document.querySelectorAll(selector)),
+        click: (selector: string) => {
+            const el = document.querySelector(selector) as HTMLElement | null;
+            if (el) { el.click(); return true; }
+            return false;
+        },
+        wait: (ms: number) => new Promise(resolve => setTimeout(resolve, ms)),
+        log: (...a: unknown[]) => console.log('External tool:', ...a)
+    } as const;
+
+    const trimmed = String(code || '').trim();
+    if (!trimmed) throw new Error('No code provided');
+    // Prefer sandbox first to avoid CSP console errors; then try main-world injection; fallback to eval if both fail
+    try {
+        return await runExternalCodeInSandbox(trimmed, args);
+    } catch {
+        try {
+            return await runExternalCodeInPageWorld(trimmed, args);
+        } catch {
+            try {
+                const isFunctionLike = /^(async\s*)?function|^\(.*\)\s*=>|^(async\s*)?\(.*\)\s*=>/.test(trimmed);
+                if (isFunctionLike) {
+                    const fn = (0, eval)(`(${trimmed})`);
+                    if (typeof fn !== 'function') throw new Error('Provided code is not a function');
+                    return await fn({ args, api, document, window });
+                }
+                const runner = new Function('args', 'api', 'document', 'window', '"use strict"; return (async () => {\n' + trimmed + '\n})()');
+                return await (runner as unknown as (a: unknown, b: typeof api, c: Document, d: Window) => Promise<unknown>)(args, api, document, window);
+            } catch (e2) {
+                const msg = e2 instanceof Error ? e2.message : String(e2);
+                throw new Error(msg);
+            }
+        }
+    }
+}
+
+function injectSandboxModule(iframe: HTMLIFrameElement): void {
+    try {
+        const cw = iframe.contentWindow;
+        const doc = cw?.document;
+        if (!cw || !doc) return;
+        /* eslint-disable quotes */
+        const moduleCode = [
+            'const pending = new Map();',
+            "function uuid() { return Math.random().toString(36).slice(2) + Date.now().toString(36); }",
+            "function send(msg) { try { parent.postMessage(Object.assign({ source: 'WW_EXT_IFRAME' }, msg), '*'); } catch (e) {} }",
+            "window.addEventListener('message', async (ev) => {",
+            "  const data = ev && ev.data ? ev.data : {};",
+            "  if (!data || data.source !== 'WW_EXT_PARENT') return;",
+            "  if (data.type === 'RUN') {",
+            "    const { id, code, args } = data;",
+            "    const api = {",
+            "      click: (selector) => new Promise((resolve) => { const callId = uuid(); pending.set(callId, resolve); send({ type: 'API', callId, method: 'click', params: { selector } }); }),",
+            "      query: (selector) => new Promise((resolve) => { const callId = uuid(); pending.set(callId, resolve); send({ type: 'API', callId, method: 'query', params: { selector } }); }),",
+            "      queryAllText: (selector) => new Promise((resolve) => { const callId = uuid(); pending.set(callId, resolve); send({ type: 'API', callId, method: 'queryAllText', params: { selector } }); }),",
+            "      wait: (ms) => new Promise((r) => setTimeout(r, Number(ms)||0)),",
+            "      log: (...a) => send({ type: 'LOG', args: a })",
+            "    };",
+            "    try {",
+            "      const isFunctionLike = /^(async\\s*)?function|^\\(.*\\)\\s*=>|^(async\\s*)?\\(.*\\)\\s*=>/.test(String(code));",
+            "      let result;",
+            "      if (isFunctionLike) {",
+            "        const fn = (0, eval)('(' + String(code) + ')');",
+            "        if (typeof fn !== 'function') throw new Error('Provided code is not a function');",
+            "        result = await fn({ args, api });",
+            "      } else {",
+            "        const body = '\\\"use strict\\\"; return (async (ctx) => {\\n' + String(code) + '\\n})(ctx)';",
+            "        const runner = new Function('ctx', body);",
+            "        result = await runner({ args, api });",
+            "      }",
+            "      send({ type: 'RESULT', id, ok: true, result });",
+            "    } catch (err) {",
+            "      const msg = err && err.message ? err.message : String(err);",
+            "      send({ type: 'RESULT', id, ok: false, error: msg });",
+            "    }",
+            "  } else if (data.type === 'API_RESULT') {",
+            "    const { callId, ok, result, error } = data;",
+            "    const resolve = pending.get(callId);",
+            "    if (resolve) { pending.delete(callId); resolve({ ok, result, error }); }",
+            "  }",
+            "}, false);"
+        ].join('\n');
+        /* eslint-enable quotes */
+        const moduleBlob = new Blob([moduleCode], { type: 'text/javascript' });
+        const moduleUrl = URL.createObjectURL(moduleBlob);
+        const scriptEl = doc.createElement('script');
+        scriptEl.type = 'module';
+        scriptEl.src = moduleUrl;
+        doc.body.appendChild(scriptEl);
+    } catch { /* noop */ }
+}
+
+function ensureSandboxIframe(): HTMLIFrameElement {
+    const existing = document.getElementById('__ww_ext_sandbox') as HTMLIFrameElement | null;
+    if (existing && existing.contentWindow) return existing;
+    const iframe = document.createElement('iframe');
+    iframe.id = '__ww_ext_sandbox';
+    iframe.setAttribute('sandbox', 'allow-scripts');
+    iframe.style.position = 'fixed';
+    iframe.style.width = '0px';
+    iframe.style.height = '0px';
+    iframe.style.border = '0';
+    iframe.style.opacity = '0';
+    iframe.style.pointerEvents = 'none';
+    const html = '<!doctype html><html><head><meta charset="utf-8"></head><body></body></html>';
+    try {
+        const docBlob = new Blob([html], { type: 'text/html' });
+        const docUrl = URL.createObjectURL(docBlob);
+        iframe.src = docUrl;
+        // We intentionally do not revoke immediately; revocation would unload the iframe.
+    } catch {
+        // Fallback to srcdoc if Blob URL creation fails
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        iframe.srcdoc = html;
+    }
+    document.documentElement.appendChild(iframe);
+    const attach = () => { try { injectSandboxModule(iframe); } catch { /* noop */ } };
+    iframe.addEventListener('load', attach, { once: true });
+    try {
+        if (iframe.contentDocument && (iframe.contentDocument.readyState === 'interactive' || iframe.contentDocument.readyState === 'complete')) {
+            attach();
+        }
+    } catch { /* noop */ }
+    return iframe;
+}
+
+async function runExternalCodeInSandbox(code: string, args: unknown, timeoutMs: number = 10000): Promise<unknown> {
+    const iframe = ensureSandboxIframe();
+    const cw = iframe.contentWindow;
+    if (!cw) throw new Error('Sandbox not available');
+    const runId = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    return await new Promise((resolve, reject) => {
+        const onMessage = (ev: MessageEvent) => {
+            const data = ev && ev.data ? ev.data : {};
+            if (!data || data.source !== 'WW_EXT_IFRAME') return;
+            if (data.type === 'RESULT' && data.id === runId) {
+                window.removeEventListener('message', onMessage, false);
+                clearTimeout(timer);
+                if (data.ok) resolve(data.result);
+                else reject(new Error(String(data.error || 'External sandbox error')));
+            } else if (data.type === 'API') {
+                const { callId, method, params } = data;
+                let ok = true; let result: unknown = undefined; let error: string | undefined;
+                try {
+                    if (method === 'click') {
+                        const el = document.querySelector(String(params.selector)) as HTMLElement | null;
+                        if (el) { el.click(); result = true; } else { result = false; }
+                    } else if (method === 'query') {
+                        const el = document.querySelector(String(params.selector)) as HTMLElement | null;
+                        result = Boolean(el);
+                    } else if (method === 'queryAllText') {
+                        const els = Array.from(document.querySelectorAll(String(params.selector))) as HTMLElement[];
+                        result = els.map(n => (n.innerText || n.textContent || '').trim()).filter(Boolean);
+                    } else {
+                        ok = false; error = 'Unknown API method';
+                    }
+                } catch (e) {
+                    ok = false; error = e instanceof Error ? e.message : 'API error';
+                }
+                cw.postMessage({ source: 'WW_EXT_PARENT', type: 'API_RESULT', callId, ok, result, error }, '*');
+            }
+        };
+        window.addEventListener('message', onMessage, false);
+        const timer = setTimeout(() => {
+            try { window.removeEventListener('message', onMessage, false); } catch { /* noop */ }
+            reject(new Error('Sandbox execution timed out'));
+        }, timeoutMs);
+        cw.postMessage({ source: 'WW_EXT_PARENT', type: 'RUN', id: runId, code, args }, '*');
+    });
+}
+
+async function runExternalCodeInPageWorld(code: string, args: unknown, timeoutMs: number = 6000): Promise<unknown> {
+    return await new Promise((resolve, reject) => {
+        try {
+            const eventId = 'ww_ext_result_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+            const onResult = (ev: Event) => {
+                try {
+                    const ce = ev as CustomEvent;
+                    const data = ce?.detail;
+                    if (!data || data.eventId !== eventId) return;
+                    document.removeEventListener('ww_ext_result', onResult as never);
+                    clearTimeout(timer);
+                    if (data && data.ok) resolve(data.result);
+                    else reject(new Error(String(data?.error || 'Main world execution failed')));
+                } catch (e) {
+                    document.removeEventListener('ww_ext_result', onResult as never);
+                    clearTimeout(timer);
+                    reject(e);
+                }
+            };
+            document.addEventListener('ww_ext_result', onResult as never, { once: true });
+
+            const script = document.createElement('script');
+            const argsJson = (() => { try { return JSON.stringify(args ?? null); } catch { return 'null'; } })();
+            const isFunctionLike = /^(async\s*)?function|^\(.*\)\s*=>|^(async\s*)?\(.*\)\s*=>/.test(code);
+            const payload = isFunctionLike
+                ? [
+                    '(function(){',
+                    '  const __WW_ARGS__ = ' + argsJson + ';',
+                    '  try {',
+                    '    const __WW_FN__ = ' + code + ';',
+                    '    Promise.resolve(__WW_FN__(__WW_ARGS__))',
+                    '      .then(function(__res){ document.dispatchEvent(new CustomEvent("ww_ext_result", { detail: { eventId: "' + eventId + '", ok: true, result: __res } })); })',
+                    '      .catch(function(e){ document.dispatchEvent(new CustomEvent("ww_ext_result", { detail: { eventId: "' + eventId + '", ok: false, error: (e && e.message) ? e.message : String(e) } })); });',
+                    '  } catch (e) {',
+                    '    document.dispatchEvent(new CustomEvent("ww_ext_result", { detail: { eventId: "' + eventId + '", ok: false, error: (e && e.message) ? e.message : String(e) } }));',
+                    '  }',
+                    '})();'
+                ].join('\n')
+                : [
+                    '(function(){',
+                    '  const __WW_ARGS__ = ' + argsJson + ';',
+                    '  (async function(){',
+                    '    try {',
+                    '      const __res = await (async function(ctx){',
+                    code,
+                    '      })(__WW_ARGS__);',
+                    '      document.dispatchEvent(new CustomEvent("ww_ext_result", { detail: { eventId: "' + eventId + '", ok: true, result: __res } }));',
+                    '    } catch (e) {',
+                    '      document.dispatchEvent(new CustomEvent("ww_ext_result", { detail: { eventId: "' + eventId + '", ok: false, error: (e && e.message) ? e.message : String(e) } }));',
+                    '    }',
+                    '  })();',
+                    '})();'
+                ].join('\n');
+            script.textContent = payload;
+            (document.head || document.documentElement).appendChild(script);
+            script.remove();
+            const timer = setTimeout(() => {
+                try { document.removeEventListener('ww_ext_result', onResult as never); } catch { /* noop */ }
+                reject(new Error('Page-world execution timed out'));
+            }, timeoutMs);
+        } catch (e) {
+            reject(e);
+        }
+    });
+}
+
 function nodeToMarkdown(node: HTMLElement): string {
     const tagName = node.tagName.toLowerCase();
     let content = node.textContent?.trim().replace(/\s+/g, ' ') || '';
@@ -369,6 +610,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             } catch (e) {
                 console.error('Failed to extract YouTube subtitles', e);
                 sendResponse({ status: 'error', message: 'Failed to extract YouTube subtitles' });
+            }
+        })();
+        break;
+    }
+    case 'EXTERNAL': {
+        (async () => {
+            try {
+                console.log('2325235252432534', message.code, message.args);
+                const result = await runExternalCode(String(message.code || ''), message.args);
+                console.log('1111111', result);
+                sendResponse({ status: 'ok', result });
+            } catch (e) {
+                const err = e instanceof Error ? e.message : String(e);
+                sendResponse({ status: 'error', message: err });
             }
         })();
         break;
