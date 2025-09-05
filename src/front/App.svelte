@@ -9,7 +9,7 @@
     import chatIcon from './icons/chat.svg';
     import ideaIcon from './icons/idea.svg';
     import DomainPromptBar from './components/DomainPromptBar.svelte';
-    import { storage } from '../services/Storage';
+    import { extStorage } from '../services/ExtStorage';
 
 
     let currentView: 'chat' | 'settings' | 'capabilities' = 'chat';
@@ -30,15 +30,31 @@
     updateViewFromHash();
 
     onMount(async () => {
-        const settings = await storage.local.get(['theme', 'apiKey']);
+        const settings = await extStorage.local.get(['theme', 'apiKey']);
         const theme = settings.theme || 'system';
         applyTheme(theme);
 
-        storage.onChanged.addListener((changes) => {
-            if (changes.theme) {
-                applyTheme(changes.theme.newValue);
-            }
-        });
+        try {
+            extStorage.onChanged.addListener((changes) => {
+                if (changes.theme) {
+                    applyTheme(changes.theme.newValue as any);
+                }
+            });
+        } catch {}
+
+        // Connectivity check with background service worker
+        try {
+            chrome.runtime.sendMessage({ type: 'PING' }, (resp) => {
+                const err = chrome.runtime.lastError;
+                if (err) {
+                    console.warn('[UI] PING failed', err.message);
+                } else {
+                    try { console.log('[UI] PING ok', resp); } catch {}
+                }
+            });
+        } catch (e) {
+            console.warn('[UI] PING threw', e);
+        }
 
         // Если API ключ не задан – открываем настройки
         const apiKey = settings.apiKey || '';

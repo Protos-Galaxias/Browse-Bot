@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { _ } from 'svelte-i18n';
-    import { storage } from '../services/Storage';
+    import { extStorage } from '../services/ExtStorage';
 
     let domainPrompts: Record<string, string> = {};
     let entries: Array<{ domain: string; prompt: string }> = [];
@@ -16,7 +16,7 @@
 
     async function load() {
         try {
-            const store = await storage.local.get(['domainPrompts']);
+            const store = await extStorage.local.get(['domainPrompts']);
             domainPrompts = (store?.domainPrompts && typeof store.domainPrompts === 'object') ? store.domainPrompts : {};
         } catch {
             domainPrompts = {};
@@ -25,7 +25,7 @@
     }
 
     async function persist() {
-        try { await storage.local.set({ domainPrompts }); } catch {}
+        try { await extStorage.local.set({ domainPrompts }); } catch {}
         rebuildEntries();
     }
 

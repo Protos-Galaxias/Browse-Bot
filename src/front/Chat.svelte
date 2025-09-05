@@ -7,7 +7,7 @@
     import { get } from 'svelte/store';
     import { getHost } from './lib/url';
     import trashIcon from './icons/trash.svg';
-    import { storage } from '../services/Storage';
+    import { extStorage } from '../services/ExtStorage';
 
     let prompt = '';
     let log: Array<string | { type: 'i18n'; key: string; params?: Record<string, unknown>; prefix?: 'error'|'result'|'system'|'agent'|'user' } | { type: 'ui'; kind: 'click'; title?: string; text: string }> = [];
@@ -35,7 +35,7 @@
     let provider: 'openrouter' | 'openai' | 'ollama' | 'xai' = 'openrouter';
 
     async function loadModelsFromStorage() {
-        const store = await storage.local.get([
+        const store = await extStorage.local.get([
             'provider',
             'models_openrouter',
             'activeModel_openrouter',
@@ -96,7 +96,7 @@
 
     onMount(async () => {
         await loadModelsFromStorage();
-        const settings = await storage.local.get(['chatLog', 'chatPrompt', 'sendOnEnter', 'hideAgentMessages']);
+        const settings = await extStorage.local.get(['chatLog', 'chatPrompt', 'sendOnEnter', 'hideAgentMessages']);
         log = Array.isArray(settings.chatLog) ? settings.chatLog : [];
         prompt = typeof settings.chatPrompt === 'string' ? settings.chatPrompt : '';
         sendOnEnter = typeof settings.sendOnEnter === 'boolean' ? settings.sendOnEnter : true;
@@ -105,7 +105,7 @@
         await ensureActiveMention();
 
         try {
-            const store = await storage.local.get(['domainPrompts']);
+            const store = await extStorage.local.get(['domainPrompts']);
             domainPrompts = (store?.domainPrompts && typeof store.domainPrompts === 'object') ? store.domainPrompts : {};
         } catch {}
 
@@ -125,7 +125,7 @@
 
     function saveChatState() {
         try {
-            storage.local.set({ chatLog: log, chatPrompt: prompt });
+            (async () => { await extStorage.local.set({ chatLog: log, chatPrompt: prompt }); })();
         } catch {
         // Error handled silently
         }
@@ -150,7 +150,18 @@
         saveChatState();
 
         const tabs = displayMentions.map(t => ({ id: t.id, title: t.title, url: t.url }));
-        chrome.runtime.sendMessage({ type: 'START_TASK', prompt, tabs });
+        try {
+            chrome.runtime.sendMessage({ type: 'START_TASK', prompt, tabs }, (resp) => {
+                const err = chrome.runtime.lastError;
+                if (err) {
+                    console.warn('[UI] send START_TASK failed', err.message);
+                } else {
+                    try { console.log('[UI] START_TASK ack', resp); } catch {}
+                }
+            });
+        } catch (e) {
+            console.warn('[UI] send START_TASK threw', e);
+        }
         prompt = '';
         mentions = [];
         // После отправки снова показываем активную вкладку
@@ -161,7 +172,7 @@
     function stopTask() {
         isTaskRunning = false;
         isTyping = false;
-        chrome.runtime.sendMessage({ type: 'STOP_TASK' });
+        try { chrome.runtime.sendMessage({ type: 'STOP_TASK' }); } catch {}
     }
 
     chrome.runtime.onMessage.addListener((message) => {
@@ -196,7 +207,7 @@
 
     $: (async () => {
         try {
-            await storage.local.set({ chatPrompt: prompt });
+            await extStorage.local.set({ chatPrompt: prompt });
         } catch {
         // Error handled silently
         }
@@ -215,12 +226,11 @@
         } else {
             payload['activeModel_openrouter'] = activeModel;
         }
-        storage.local.set(payload);
+        (async () => { await extStorage.local.set(payload); })();
     }
 
     try {
-        storage.onChanged.addListener(async (changes, area) => {
-            if (area !== 'local') return;
+        extStorage.onChanged.addListener(async (changes) => {
             const providerChanged = Boolean(changes.provider);
             const modelKeysChanged =
                 Boolean(changes.models_openrouter) ||
@@ -243,7 +253,7 @@
     async function saveDomainPrompt() {
         if (!activeDomain) return;
         domainPrompts = { ...domainPrompts, [activeDomain]: domainPromptText };
-        try { await storage.local.set({ domainPrompts }); } catch {}
+        try { await extStorage.local.set({ domainPrompts }); } catch {}
     }
 
     function buildMentionTitle(m: { title?: string; url?: string }) {
@@ -356,6 +366,8 @@
     {/if}
 
 </div>
+
+<!-- tabs mention dropdown moved into InputEditor.svelte -->
 
 <style>
     .model-name {

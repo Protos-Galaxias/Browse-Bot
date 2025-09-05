@@ -22,11 +22,13 @@ export default defineConfig({
         // Явно определяем, что наш главный HTML файл - это точка входа.
         // Vite/CRX плагин должен делать это сам, но мы подстрахуемся.
         sidebar: resolve(__dirname, 'index.html'),
+        // Доп. входы, чтобы зафиксировать имена без хэшей
+        'src/content': resolve(__dirname, 'src/content.ts'),
       },
       output: {
         // Убедимся, что файл называется index.html в корне сборки
         entryFileNames: (chunkInfo) => {
-          // Для фонового скрипта оставляем имя service_worker.js
+          // Для фонового скрипта фиксируем имя без хэша
           if (chunkInfo.name === 'src/service_worker') {
             return 'src/service_worker.js';
           }

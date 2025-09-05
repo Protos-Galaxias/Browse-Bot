@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { _ } from 'svelte-i18n';
-    import { storage } from '../../services/Storage';
+    import { extStorage } from '../../services/ExtStorage';
 
     let domainPrompts: Record<string, string> = {};
     let domainPromptCollapsed = true;
@@ -11,7 +11,7 @@
 
     onMount(async () => {
         try {
-            const store = await storage.local.get(['domainPrompts']);
+            const store = await extStorage.local.get(['domainPrompts']);
             domainPrompts = (store?.domainPrompts && typeof store.domainPrompts === 'object') ? store.domainPrompts : {};
         } catch {}
         try {
@@ -27,10 +27,10 @@
             });
         } catch {}
         try {
-            storage.onChanged.addListener((changes, area) => {
-                if (area === 'local' && changes.domainPrompts) {
-                    const next = changes.domainPrompts.newValue;
-                    if (next && typeof next === 'object') domainPrompts = next;
+            extStorage.onChanged.addListener((changes) => {
+                if (changes.domainPrompts) {
+                    const next = changes.domainPrompts.newValue as any;
+                    if (next && typeof next === 'object') domainPrompts = next as Record<string,string>;
                 }
             });
         } catch {}
@@ -42,7 +42,7 @@
     async function saveDomainPrompt() {
         if (!activeDomain) return;
         domainPrompts = { ...domainPrompts, [activeDomain]: domainPromptText };
-        try { await storage.local.set({ domainPrompts }); } catch {}
+        try { await extStorage.local.set({ domainPrompts }); } catch {}
     }
 </script>
 

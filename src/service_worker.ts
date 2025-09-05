@@ -9,6 +9,8 @@ import systemPromptRaw from './prompts/system.md?raw';
 import { isChrome } from './browser';
 import { StateService } from './services/StateService';
 
+console.log('[SW] booting service worker');
+
 if (chrome.sidePanel) {
     chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 }
@@ -221,7 +223,7 @@ async function buildSystemPrompt(tabs?: Array<TabMeta>): Promise<string> {
         if (mem && (mem.lastEntities || mem.lastSelection)) {
             parts.push(`<agent_memory>\n${JSON.stringify(mem, null, 2)}\n</agent_memory>`);
         }
-    } catch {}
+    } catch { /* ignore */ }
 
     const hosts = new Set<string>();
     if (Array.isArray(tabs)) {
@@ -249,7 +251,13 @@ async function buildSystemPrompt(tabs?: Array<TabMeta>): Promise<string> {
     return parts.join('\n\n');
 }
 
-chrome.runtime.onMessage.addListener(async (message) => {
+chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
+    try { console.log('[SW] onMessage', message); } catch {}
+    if (message && message.type === 'PING') {
+        try { console.log('[SW] PING received'); } catch {}
+        try { sendResponse({ ok: true, pong: true }); } catch {}
+        return true;
+    }
     if (message.type === 'OPEN_LINK_IN_BG') {
         try {
             const url = String(message.url || '');
