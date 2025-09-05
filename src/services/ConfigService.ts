@@ -4,13 +4,13 @@ interface Config {
   apiKey: string;
   model: string;
   theme?: Theme;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export class ConfigService {
     private static instance: ConfigService;
     private config: Partial<Config> = {};
-    private cache: Map<string, any> = new Map();
+    private cache: Map<string, { value: unknown; timestamp: number }> = new Map();
     private readonly CACHE_TTL = 0; // disable cache to always read fresh values
 
     private constructor() {}
@@ -24,7 +24,8 @@ export class ConfigService {
 
     async initialize(): Promise<void> {
         try {
-            const result = await chrome.storage.local.get(null);
+            const { storage } = await import('./Storage');
+            const result = await storage.local.get(null);
             this.config = result as Config;
             this.cache.clear();
         } catch (error) {
@@ -33,42 +34,38 @@ export class ConfigService {
         }
     }
 
-    async get<T = any>(key: string, defaultValue?: T): Promise<T> {
+    async get<T = unknown>(key: string, defaultValue?: T): Promise<T> {
     // Check cache first
         const cached = this.cache.get(key);
         if (cached && (Date.now() - cached.timestamp < this.CACHE_TTL)) {
-            return cached.value;
+            return cached.value as T;
         }
 
         // Get from storage
         try {
-            const result = await chrome.storage.local.get(key);
-            const value = result[key] !== undefined ? result[key] : defaultValue;
+            const { storage } = await import('./Storage');
+            const result = await storage.local.get(key);
+            const value = (result as Record<string, unknown>)[key] !== undefined ? (result as Record<string, unknown>)[key] as T : defaultValue as T;
 
             // Update cache
             if (value !== undefined) {
-                this.cache.set(key, {
-                    value,
-                    timestamp: Date.now()
-                });
+                this.cache.set(key, { value, timestamp: Date.now() });
             }
 
-            return value;
+            return value as T;
         } catch (error) {
             console.error(`Failed to get config value for key: ${key}`, error);
             return defaultValue as T;
         }
     }
 
-    async set<T = any>(key: string, value: T): Promise<void> {
+    async set<T = unknown>(key: string, value: T): Promise<void> {
         try {
-            await chrome.storage.local.set({ [key]: value });
+            const { storage } = await import('./Storage');
+            await storage.local.set({ [key]: value });
 
             // Update cache
-            this.cache.set(key, {
-                value,
-                timestamp: Date.now()
-            });
+            this.cache.set(key, { value, timestamp: Date.now() });
 
             // Update in-memory config
             this.config = {
@@ -83,7 +80,8 @@ export class ConfigService {
 
     async getAll(): Promise<Config> {
         try {
-            const result = await chrome.storage.local.get(null);
+            const { storage } = await import('./Storage');
+            const result = await storage.local.get(null);
             const config = result as Config;
             this.config = config;
             return config;
@@ -95,7 +93,8 @@ export class ConfigService {
 
     async clear(): Promise<void> {
         try {
-            await chrome.storage.local.clear();
+            const { storage } = await import('./Storage');
+            await storage.local.clear();
             this.config = {};
             this.cache.clear();
         } catch (error) {

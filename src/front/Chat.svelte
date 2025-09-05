@@ -7,6 +7,7 @@
     import { get } from 'svelte/store';
     import { getHost } from './lib/url';
     import trashIcon from './icons/trash.svg';
+    import { storage } from '../services/Storage';
 
     let prompt = '';
     let log: Array<string | { type: 'i18n'; key: string; params?: Record<string, unknown>; prefix?: 'error'|'result'|'system'|'agent'|'user' } | { type: 'ui'; kind: 'click'; title?: string; text: string }> = [];
@@ -34,7 +35,7 @@
     let provider: 'openrouter' | 'openai' | 'ollama' | 'xai' = 'openrouter';
 
     async function loadModelsFromStorage() {
-        const store = await chrome.storage.local.get([
+        const store = await storage.local.get([
             'provider',
             'models_openrouter',
             'activeModel_openrouter',
@@ -95,7 +96,7 @@
 
     onMount(async () => {
         await loadModelsFromStorage();
-        const settings = await chrome.storage.local.get(['chatLog', 'chatPrompt', 'sendOnEnter', 'hideAgentMessages']);
+        const settings = await storage.local.get(['chatLog', 'chatPrompt', 'sendOnEnter', 'hideAgentMessages']);
         log = Array.isArray(settings.chatLog) ? settings.chatLog : [];
         prompt = typeof settings.chatPrompt === 'string' ? settings.chatPrompt : '';
         sendOnEnter = typeof settings.sendOnEnter === 'boolean' ? settings.sendOnEnter : true;
@@ -104,7 +105,7 @@
         await ensureActiveMention();
 
         try {
-            const store = await chrome.storage.local.get(['domainPrompts']);
+            const store = await storage.local.get(['domainPrompts']);
             domainPrompts = (store?.domainPrompts && typeof store.domainPrompts === 'object') ? store.domainPrompts : {};
         } catch {}
 
@@ -124,7 +125,7 @@
 
     function saveChatState() {
         try {
-            chrome.storage.local.set({ chatLog: log, chatPrompt: prompt });
+            storage.local.set({ chatLog: log, chatPrompt: prompt });
         } catch {
         // Error handled silently
         }
@@ -195,7 +196,7 @@
 
     $: (async () => {
         try {
-            await chrome.storage.local.set({ chatPrompt: prompt });
+            await storage.local.set({ chatPrompt: prompt });
         } catch {
         // Error handled silently
         }
@@ -214,11 +215,11 @@
         } else {
             payload['activeModel_openrouter'] = activeModel;
         }
-        chrome.storage.local.set(payload);
+        storage.local.set(payload);
     }
 
     try {
-        chrome.storage.onChanged.addListener(async (changes, area) => {
+        storage.onChanged.addListener(async (changes, area) => {
             if (area !== 'local') return;
             const providerChanged = Boolean(changes.provider);
             const modelKeysChanged =
@@ -242,7 +243,7 @@
     async function saveDomainPrompt() {
         if (!activeDomain) return;
         domainPrompts = { ...domainPrompts, [activeDomain]: domainPromptText };
-        try { await chrome.storage.local.set({ domainPrompts }); } catch {}
+        try { await storage.local.set({ domainPrompts }); } catch {}
     }
 
     function buildMentionTitle(m: { title?: string; url?: string }) {
@@ -355,8 +356,6 @@
     {/if}
 
 </div>
-
-<!-- tabs mention dropdown moved into InputEditor.svelte -->
 
 <style>
     .model-name {

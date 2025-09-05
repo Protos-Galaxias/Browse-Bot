@@ -9,6 +9,7 @@
     import chatIcon from './icons/chat.svg';
     import ideaIcon from './icons/idea.svg';
     import DomainPromptBar from './components/DomainPromptBar.svelte';
+    import { storage } from '../services/Storage';
 
 
     let currentView: 'chat' | 'settings' | 'capabilities' = 'chat';
@@ -29,11 +30,11 @@
     updateViewFromHash();
 
     onMount(async () => {
-        const settings = await chrome.storage.local.get(['theme', 'apiKey']);
+        const settings = await storage.local.get(['theme', 'apiKey']);
         const theme = settings.theme || 'system';
         applyTheme(theme);
 
-        chrome.storage.onChanged.addListener((changes) => {
+        storage.onChanged.addListener((changes) => {
             if (changes.theme) {
                 applyTheme(changes.theme.newValue);
             }

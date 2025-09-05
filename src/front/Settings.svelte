@@ -5,6 +5,7 @@
     import { _, locale } from 'svelte-i18n';
     import { setAppLocale } from './lib/i18n';
     import { ProviderMeta as ProviderConfigs } from '../services/ProviderMeta';
+    import { storage } from '../services/Storage';
     let apiKey = '';
     let openaiApiKey = '';
     let xaiApiKey = '';
@@ -59,7 +60,7 @@
         keysToLoad.add('mcps');
         keysToLoad.add('mcp');
         keysToLoad.add('externalTools');
-        const settings = await chrome.storage.local.get(Array.from(keysToLoad));
+        const settings = await storage.local.get(Array.from(keysToLoad));
         const mcpsStored = Array.isArray(settings.mcps) ? settings.mcps as Array<{ id?: string; label?: string; endpoint?: string; enabled?: boolean }> : [];
         const legacyMcp = settings.mcp as { enabled?: boolean; endpoint?: string } | undefined;
         mcps = mcpsStored
@@ -157,7 +158,7 @@
     async function setProvider(newProvider: ProviderId) {
         provider = newProvider;
         const meta = ProviderConfigs[newProvider];
-        const store = await chrome.storage.local.get([meta.storageModels, meta.storageActiveModel]);
+        const store = await storage.local.get([meta.storageModels, meta.storageActiveModel]);
         const fallbackModels = meta.defaultModels;
         const storedModels = Array.isArray(store[meta.storageModels]) ? store[meta.storageModels] as string[] : undefined;
         const nextModels: string[] = storedModels && storedModels.length > 0 ? storedModels : fallbackModels;
@@ -188,7 +189,7 @@
         const meta = ProviderConfigs[provider];
         payload[meta.storageModels] = models;
         payload[meta.storageActiveModel] = activeModel;
-        await chrome.storage.local.set(payload);
+        await storage.local.set(payload);
         saveStatus = 'saved';
         setTimeout(() => {
             saveStatus = 'idle';

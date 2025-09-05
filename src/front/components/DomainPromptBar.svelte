@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { _ } from 'svelte-i18n';
+    import { storage } from '../../services/Storage';
 
     let domainPrompts: Record<string, string> = {};
     let domainPromptCollapsed = true;
@@ -10,7 +11,7 @@
 
     onMount(async () => {
         try {
-            const store = await chrome.storage.local.get(['domainPrompts']);
+            const store = await storage.local.get(['domainPrompts']);
             domainPrompts = (store?.domainPrompts && typeof store.domainPrompts === 'object') ? store.domainPrompts : {};
         } catch {}
         try {
@@ -26,7 +27,7 @@
             });
         } catch {}
         try {
-            chrome.storage.onChanged.addListener((changes, area) => {
+            storage.onChanged.addListener((changes, area) => {
                 if (area === 'local' && changes.domainPrompts) {
                     const next = changes.domainPrompts.newValue;
                     if (next && typeof next === 'object') domainPrompts = next;
@@ -41,7 +42,7 @@
     async function saveDomainPrompt() {
         if (!activeDomain) return;
         domainPrompts = { ...domainPrompts, [activeDomain]: domainPromptText };
-        try { await chrome.storage.local.set({ domainPrompts }); } catch {}
+        try { await storage.local.set({ domainPrompts }); } catch {}
     }
 </script>
 
