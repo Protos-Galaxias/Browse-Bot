@@ -252,10 +252,10 @@ async function buildSystemPrompt(tabs?: Array<TabMeta>): Promise<string> {
 }
 
 chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
-    try { console.log('[SW] onMessage', message); } catch {}
+    try { console.log('[SW] onMessage', message); } catch (e) { void e; }
     if (message && message.type === 'PING') {
-        try { console.log('[SW] PING received'); } catch {}
-        try { sendResponse({ ok: true, pong: true }); } catch {}
+        try { console.log('[SW] PING received'); } catch (e) { void e; }
+        try { sendResponse({ ok: true, pong: true }); } catch (e) { void e; }
         return true;
     }
     if (message.type === 'OPEN_LINK_IN_BG') {
@@ -290,6 +290,12 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
         } catch (e) {
             reportError(e, 'errors.openLinkInBg');
         }
+        return;
+    }
+    if (message.type === 'RESET_CONTEXT') {
+        try { StateService.getInstance().clearMemory(); } catch (e) { void e; }
+        agentHistory = [];
+        currentTaskTabs = [];
         return;
     }
     if (message.type === 'START_TASK') {

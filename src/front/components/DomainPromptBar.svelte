@@ -4,7 +4,7 @@
     import { extStorage } from '../../services/ExtStorage';
 
     let domainPrompts: Record<string, string> = {};
-    let domainPromptCollapsed = true;
+    let isModalOpen = false;
     let activeTabMeta: { id: number; title: string; url?: string; favIconUrl?: string } | null = null;
     let activeDomain = '';
     let domainPromptText = '';
@@ -49,8 +49,8 @@
 <div class="dpb">
     <nav class="bar">
         <div class="domain-prompt-top">
-            <button class="domain-toggle" on:click={() => domainPromptCollapsed = !domainPromptCollapsed}>
-                {domainPromptCollapsed ? '▼' : '▲'} {$_('chat.domainPrompt')} {activeDomain || '(—)'}
+            <button class="domain-toggle" on:click={() => isModalOpen = true}>
+                ✎ {$_('chat.domainPrompt')} {activeDomain || '(—)'}
             </button>
         </div>
         <div class="right">
@@ -58,9 +58,31 @@
         </div>
     </nav>
 
-    {#if !domainPromptCollapsed}
-        <div class="domain-prompt-panel">
-            <textarea class="domain-textarea" bind:value={domainPromptText} placeholder={$_('chat.domainPromptPlaceholder')} on:input={saveDomainPrompt}></textarea>
+    {#if isModalOpen}
+        <div
+            class="modal-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Domain prompt — ${activeDomain || '(—)'}`}
+            tabindex="0"
+            on:keydown={(e) => { if (e.key === 'Escape') { isModalOpen = false; } }}
+            on:click|self={() => isModalOpen = false}
+        >
+            <div class="modal">
+                <div class="modal-header">
+                    <div class="modal-title">{$_('chat.domainPrompt')} — {activeDomain || '(—)'}</div>
+                    <button class="icon-btn" type="button" aria-label="Close" on:click={() => isModalOpen = false}>×</button>
+                </div>
+                <div class="modal-body">
+                    <textarea
+                        class="domain-textarea"
+                        bind:value={domainPromptText}
+                        placeholder={$_('chat.domainPromptPlaceholder')}
+                        on:input={saveDomainPrompt}
+                        rows="8"
+                    ></textarea>
+                </div>
+            </div>
         </div>
     {/if}
 </div>
@@ -71,19 +93,6 @@
     .domain-prompt-top { margin-right: auto; display: flex; align-items: center; padding-left: 0.5rem; min-width: 0; }
     .domain-toggle { background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-secondary); padding: 0.25rem 0.5rem; border-radius: 10px; cursor: pointer; text-align: left; min-width: 0; max-width: calc(100vw - 160px); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; display: inline-flex; align-items: center; gap: 0.25rem; }
     .domain-toggle:hover { background: var(--bg-secondary); color: var(--text-primary); }
-    .domain-prompt-panel {
-        position: absolute;
-        top: calc(100% + 6px);
-        left: 0.5rem;
-        background: var(--bg-secondary);
-        padding: 0.5rem;
-        border: 1px solid var(--border-color);
-        border-radius: 10px;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.35);
-        z-index: 9999;
-        width: min(420px, calc(100vw - 3rem));
-        overflow: hidden;
-    }
     .domain-textarea {
         width: 100%;
         box-sizing: border-box;
@@ -104,5 +113,29 @@
     .right :global(button:hover) { background: var(--border-color); }
     .right :global(button:active) { background: var(--accent-color); color: white; }
     :global(.nav-icon) { width: 18px; height: 18px; display: block; }
+
+    /* Modal styles (consistent with Settings.svelte) */
+    .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+    }
+    .modal {
+        width: 520px;
+        max-width: 92vw;
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; border-bottom: 1px solid var(--border-color); }
+    .modal-title { color: var(--text-primary); font-weight: 600; }
+    .modal-body { padding: 0.75rem; }
+    .icon-btn { background: transparent; color: var(--text-primary); width: 28px; height: 28px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 0; padding: 0; }
+    .icon-btn:hover { background: var(--border-color); color: var(--text-primary); }
 </style>
 

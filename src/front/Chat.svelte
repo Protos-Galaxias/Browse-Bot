@@ -8,6 +8,7 @@
     import { getHost } from './lib/url';
     import trashIcon from './icons/trash.svg';
     import { extStorage } from '../services/ExtStorage';
+    import { ChatStorage, type ChatMeta } from '../services/ChatStorage';
 
     let prompt = '';
     let log: Array<string | { type: 'i18n'; key: string; params?: Record<string, unknown>; prefix?: 'error'|'result'|'system'|'agent'|'user' } | { type: 'ui'; kind: 'click'; title?: string; text: string }> = [];
@@ -24,7 +25,9 @@
     let activeDomain = '';
     let domainPromptText = '';
     let hideAgentMessages: boolean = false;
-    let showClearConfirm = false;
+    let showChatList = false;
+    let chats: ChatMeta[] = [];
+    let activeChatId: string | null = null;
     const DEFAULT_MODELS: Record<'openrouter' | 'openai' | 'ollama' | 'xai', string[]> = {
         openrouter: ['openai/gpt-4.1-mini'],
         openai: ['gpt-4.1-mini'],
@@ -70,6 +73,78 @@
         }
     }
 
+    async function loadChats() {
+        try {
+            const list = await ChatStorage.getChatList();
+            chats = [...list].sort((a, b) => b.updatedAt - a.updatedAt);
+            activeChatId = await ChatStorage.getActiveChatId();
+        } catch {}
+    }
+
+    async function ensureActiveChatInitialized() {
+        try {
+            activeChatId = await ChatStorage.getActiveChatId();
+            if (!activeChatId) {
+                const settings = await extStorage.local.get(['chatLog']);
+                const initialLog = Array.isArray(settings.chatLog) ? settings.chatLog : [];
+                const meta = await ChatStorage.createChat(initialLog.length > 0 ? 'Imported chat' : undefined, initialLog);
+                activeChatId = meta.id;
+            }
+        } catch {}
+    }
+
+    async function loadActiveChatLog() {
+        try {
+            if (!activeChatId) return;
+            log = await ChatStorage.getChatLog(activeChatId);
+        } catch {}
+    }
+
+    async function selectChat(id: string) {
+        if (activeChatId === id) { showChatList = false; return; }
+        try {
+            activeChatId = id;
+            await ChatStorage.setActiveChatId(id);
+            log = await ChatStorage.getChatLog(id);
+            await loadChats();
+        } catch {}
+        showChatList = false;
+        // reset agent memory/history in background to isolate chats
+        try { chrome.runtime.sendMessage({ type: 'RESET_CONTEXT' }); } catch {}
+    }
+
+    async function newChat() {
+        try {
+            // reset agent memory/history to isolate chats
+            try { chrome.runtime.sendMessage({ type: 'RESET_CONTEXT' }); } catch {}
+            const meta = await ChatStorage.createChat();
+            // Immediately clear current view to avoid showing previous history
+            log = [];
+            isTyping = false;
+            isTaskRunning = false;
+            await loadChats();
+            await selectChat(meta.id);
+        } catch {}
+    }
+
+    async function removeChat(id: string) {
+        try {
+            await ChatStorage.deleteChat(id);
+            await loadChats();
+            const nextActive = await ChatStorage.getActiveChatId();
+            activeChatId = nextActive;
+            if (nextActive) {
+                log = await ChatStorage.getChatLog(nextActive);
+            } else {
+                log = [];
+            }
+        } catch {}
+        // Close the chat list after deletion
+        showChatList = false;
+        // Also reset agent memory/history when chat context changes due to deletion
+        try { chrome.runtime.sendMessage({ type: 'RESET_CONTEXT' }); } catch {}
+    }
+
     async function fetchActiveTab(): Promise<{ id: number; title: string; url?: string; favIconUrl?: string } | null> {
         try {
             const [activeTab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
@@ -96,11 +171,14 @@
 
     onMount(async () => {
         await loadModelsFromStorage();
-        const settings = await extStorage.local.get(['chatLog', 'chatPrompt', 'sendOnEnter', 'hideAgentMessages']);
-        log = Array.isArray(settings.chatLog) ? settings.chatLog : [];
+        const settings = await extStorage.local.get(['chatPrompt', 'sendOnEnter', 'hideAgentMessages']);
         prompt = typeof settings.chatPrompt === 'string' ? settings.chatPrompt : '';
         sendOnEnter = typeof settings.sendOnEnter === 'boolean' ? settings.sendOnEnter : true;
         hideAgentMessages = typeof settings.hideAgentMessages === 'boolean' ? settings.hideAgentMessages : false;
+
+        await ensureActiveChatInitialized();
+        await loadChats();
+        await loadActiveChatLog();
 
         await ensureActiveMention();
 
@@ -125,21 +203,22 @@
 
     function saveChatState() {
         try {
-            (async () => { await extStorage.local.set({ chatLog: log, chatPrompt: prompt }); })();
+            (async () => {
+                try {
+                    if (!activeChatId) {
+                        const meta = await ChatStorage.createChat(prompt.trim() ? prompt.slice(0, 30) : undefined, log);
+                        activeChatId = meta.id;
+                    } else {
+                        await ChatStorage.setChatLog(activeChatId, log);
+                    }
+                    await loadChats();
+                } catch {}
+                await extStorage.local.set({ chatPrompt: prompt });
+            })();
         } catch {
         // Error handled silently
         }
     }
-
-    function clearHistory() { showClearConfirm = true; }
-    function confirmClearHistory() {
-        log = [];
-        saveChatState();
-        mentions = [];
-        ensureActiveMention();
-        showClearConfirm = false;
-    }
-    function cancelClearHistory() { showClearConfirm = false; }
 
     function startTask() {
         if (!prompt.trim()) return;
@@ -199,6 +278,7 @@
             }
             log = [...log, computed];
             isTyping = false;
+            saveChatState();
         } else if (message.type === 'TASK_COMPLETE') {
             isTaskRunning = false;
             isTyping = false;
@@ -250,12 +330,6 @@
     $: activeDomain = (activeTabMeta?.url ? (() => { try { return new URL(activeTabMeta!.url!).hostname.replace(/^www\./,''); } catch { return ''; } })() : '');
     $: domainPromptText = (activeDomain && domainPrompts[activeDomain]) ? domainPrompts[activeDomain] : '';
 
-    async function saveDomainPrompt() {
-        if (!activeDomain) return;
-        domainPrompts = { ...domainPrompts, [activeDomain]: domainPromptText };
-        try { await extStorage.local.set({ domainPrompts }); } catch {}
-    }
-
     function buildMentionTitle(m: { title?: string; url?: string }) {
         const base = m.title || m.url || '';
         try {
@@ -267,6 +341,7 @@
         }
     }
 
+    export function openChatSidebar() { showChatList = true; }
 </script>
 
 <div class="chat-container">
@@ -339,9 +414,6 @@
                         <ModelSelector {models} {activeModel} bind:open={showModelDropdown} on:change={onModelChange} />
                     </div>
                     <div class="right-controls">
-                        <button class="clear-btn" on:click={clearHistory} title={$_('chat.clearHistoryTitle')} aria-label={$_('chat.clearHistoryAria')}>
-                            <img class="clear-icon" src={trashIcon} alt="Clear" />
-                        </button>
                         <button class="send-btn {isTaskRunning ? 'stop-mode' : ''}" on:click={isTaskRunning ? stopTask : startTask} disabled={!isTaskRunning && !prompt.trim()}>
                             <span class="send-icon">{isTaskRunning ? '■' : '↑'}</span>
                         </button>
@@ -352,16 +424,34 @@
         </div>
     {/if}
 
-    {#if showClearConfirm}
-        <div class="modal-backdrop" on:click={cancelClearHistory}>
-            <div class="modal" on:click|stopPropagation>
-                <div class="modal-title">{$_('chat.clearConfirm.title')}</div>
-                <div class="modal-text">{$_('chat.clearConfirm.text')}</div>
-                <div class="modal-actions">
-                    <button class="modal-btn secondary" on:click={cancelClearHistory}>{$_('chat.clearConfirm.cancel')}</button>
-                    <button class="modal-btn danger" on:click={confirmClearHistory}>{$_('chat.clearConfirm.confirm')}</button>
+    {#if showChatList}
+        <div class="sidebar-overlay">
+            <div class="sidebar-backdrop" role="button" tabindex="0" on:click={() => showChatList = false} on:keydown={(e) => { if (e.key === 'Escape' || e.key === 'Enter') showChatList = false; }}></div>
+            <aside class="sidebar" aria-label="Chats" tabindex="-1" on:keydown={(e) => { if (e.key === 'Escape') showChatList = false; }}>
+                <div class="sidebar-header">
+                    <div class="sidebar-title">Chats</div>
+                    <button class="sidebar-close" on:click={() => showChatList = false} aria-label="Close">×</button>
                 </div>
-            </div>
+                <div class="sidebar-actions">
+                    <button class="action primary" on:click={newChat}>New chat</button>
+                </div>
+                <div class="chatlist">
+                    {#if chats.length === 0}
+                        <div class="chatlist-empty">No chats yet</div>
+                    {:else}
+                        {#each chats as c}
+                            <div class="chatlist-item {c.id === activeChatId ? 'active' : ''}">
+                                <button class="chatlist-select" on:click={() => selectChat(c.id)} title={new Date(c.updatedAt).toLocaleString()}>
+                                    {c.title}
+                                </button>
+                                <button class="chatlist-delete" on:click={() => removeChat(c.id)} title="Delete chat" aria-label="Delete chat">
+                                    <img class="clear-icon" src={trashIcon} alt="Delete" />
+                                </button>
+                            </div>
+                        {/each}
+                    {/if}
+                </div>
+            </aside>
         </div>
     {/if}
 
@@ -382,7 +472,8 @@
     .chat-container {
         display: flex;
         flex-direction: column;
-        height: 100vh;
+        height: 100%;
+        min-height: 0; /* allow internal sections to size/scroll */
         background: var(--bg-primary);
         padding: 0;
         margin: 0;
@@ -527,6 +618,102 @@
     .modal-btn.secondary:hover { background: var(--bg-primary); }
     .modal-btn.danger { background: #dc3545; color: #fff; border-color: #dc3545; }
     .modal-btn.danger:hover { background: #c82333; }
+
+    .chatlist {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+        margin-bottom: 0.6rem;
+        max-height: 240px;
+        overflow-y: auto;
+    }
+    .chatlist-empty { color: var(--text-secondary); font-size: 0.85rem; }
+    .chatlist-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.4rem;
+        padding: 0.3rem;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background: var(--bg-primary);
+    }
+    .chatlist-item.active { border-color: var(--accent-color); }
+    .chatlist-select {
+        background: transparent;
+        border: none;
+        color: var(--text-primary);
+        text-align: left;
+        flex: 1;
+        cursor: pointer;
+        padding: 0.3rem;
+        border-radius: 4px;
+    }
+    .chatlist-select:hover { background: var(--bg-secondary); }
+    .chatlist-delete {
+        background: transparent;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        cursor: pointer;
+        padding: 0.25rem;
+    }
+
+    /* Sidebar */
+    .sidebar-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 100000;
+        pointer-events: none;
+    }
+    .sidebar-backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(0,0,0,0.45);
+        pointer-events: auto;
+    }
+    .sidebar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        width: 320px;
+        max-width: 85vw;
+        background: var(--bg-secondary);
+        border-right: 1px solid var(--border-color);
+        box-shadow: 6px 0 18px rgba(0,0,0,0.35);
+        transform: translateX(0);
+        display: flex;
+        flex-direction: column;
+        padding: 0.5rem;
+        pointer-events: auto;
+    }
+    .sidebar-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.25rem 0.25rem 0.5rem;
+        border-bottom: 1px solid var(--border-color);
+        margin-bottom: 0.5rem;
+    }
+    .sidebar-title { font-weight: 600; color: var(--text-primary); }
+    .sidebar-close {
+        padding: 0;
+        background: transparent;
+        color: var(--text-primary);
+        width: 28px;
+        height: 28px;
+        border-radius: 6px;
+        cursor: pointer;
+    }
+    .sidebar-actions { display: flex; gap: 0.4rem; padding: 0.4rem 0; }
+    .action.primary {
+        background: var(--accent-color);
+        border: 1px solid var(--accent-color);
+        color: #000000;
+        padding: 0.35rem 0.6rem;
+        border-radius: 6px;
+        cursor: pointer;
+    }
 
     .left-controls, .right-controls {
         display: flex;
@@ -706,6 +893,7 @@
 
     .chat-messages {
         flex: 1;
+        min-height: 0;
         overflow-y: auto;
         padding: 1rem;
         display: flex;
@@ -804,6 +992,8 @@
     .input-area {
         background: var(--bg-primary);
         padding: 0;
+        position: sticky;
+        bottom: 0;
     }
 
     .input-container {
@@ -837,15 +1027,6 @@
         font-size: 0.7rem;
         margin-top: 0.25rem;
         line-height: 1.3;
-    }
-
-    .chat-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0.75rem 1rem;
-        background: var(--bg-secondary);
-        border-bottom: 1px solid var(--border-color);
     }
 
     .header-left {

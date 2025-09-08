@@ -8,11 +8,13 @@
     import settingsIcon from './icons/settings.svg';
     import chatIcon from './icons/chat.svg';
     import ideaIcon from './icons/idea.svg';
+    import menuIcon from './icons/menu.svg';
     import DomainPromptBar from './components/DomainPromptBar.svelte';
     import { extStorage } from '../services/ExtStorage';
 
 
     let currentView: 'chat' | 'settings' | 'capabilities' = 'chat';
+    let chatRef: InstanceType<typeof Chat> | null = null;
 
     function updateViewFromHash() {
         const hash = window.location.hash;
@@ -78,6 +80,9 @@
 
 <main>
     <header class="header">
+        <button on:click={() => chatRef?.openChatSidebar?.()} title="Chats" aria-label="Open chats">
+            <img class="nav-icon" src={menuIcon} alt="Chats" />
+        </button>
         <DomainPromptBar/>
         <nav>
             <button on:click={() => currentView = 'chat'}>
@@ -95,7 +100,7 @@
 
     <div class="view">
         {#if currentView === 'chat'}
-            <Chat />
+            <Chat bind:this={chatRef} />
         {:else if currentView === 'settings'}
             <Settings />
         {:else if currentView === 'capabilities'}

@@ -83,7 +83,7 @@
     .item-actions { display: flex; gap: 0.25rem; }
     .delete-btn { background: transparent; color: var(--text-secondary); border: 1px solid var(--border-color); border-radius: 6px; padding: 0.2rem 0.4rem; cursor: pointer; }
     .delete-btn:hover { background: var(--bg-primary); color: var(--text-primary); }
-    .item-textarea { width: 100%; min-height: 64px; background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 6px; padding: 0.4rem; resize: vertical; }
+    .item-textarea { width: 98%; min-height: 64px; background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 6px; resize: vertical; }
 </style>
 
 
