@@ -1,0 +1,195 @@
+{
+  "app": {
+    "title": "Browse Bot",
+    "disclaimer": "Агент может допускать ошибки. Пожалуйста, проверяйте результаты.",
+    "nav": {
+      "chat": "Чат",
+      "capabilities": "Возможности",
+      "settings": "Настройки"
+    }
+  },
+  "common": {
+    "provider": "Провайдер",
+    "openrouter": "OpenRouter",
+    "openai": "OpenAI",
+    "ollama": "Ollama",
+    "xai": "xAI (Grok)",
+    "models": "Модели AI",
+    "choose": "Выбрать",
+    "selected": "✓",
+    "add": "+",
+    "remove": "Удалить",
+    "save": "Сохранить",
+    "saved": "✓ Настройки сохранены",
+    "language": "Язык",
+    "ru": "Русский",
+    "en": "Английский"
+  },
+  "tabs": {
+    "general": "Общие",
+    "behavior": "Поведение",
+    "prompt": "Глобальный промт",
+    "about": "О программе"
+  },
+  "settings": {
+    "apiKeyOpenRouter": "OpenRouter API ключ",
+    "apiKeyOpenAI": "OpenAI API ключ",
+    "apiKeyXAI": "xAI API ключ",
+    "ollamaBaseURL": "Ollama Base URL",
+    "sendOnEnter": "Enter — отправка, Ctrl/Cmd+Enter — новая строка",
+    "hideAgentMessages": "Показывать только итоговый ответ",
+    "theme": {
+      "light": "Светлая",
+      "dark": "Темная",
+      "system": "Системная"
+    },
+    "help": {
+      "needKey": "API ключ необходим для обращения к моделям через {provider}.",
+      "openrouterHint": "Получить ключ можно на openrouter.ai",
+      "openaiHint": "Получить ключ можно на platform.openai.com",
+      "ollamaHint": "Укажите базовый URL, по умолчанию http://localhost:11434/api",
+      "openrouterCta": "Получить ключ можно на сайте: {url}",
+      "steps": {
+        "signInGoToApiKeys": "Авторизуйтесь и перейдите в раздел API Keys.",
+        "createKey": "Создайте новый ключ и скопируйте его значение.",
+        "pasteAutoSave": "Вставьте ключ в поле выше — сохранится автоматически."
+      },
+      "xai": {
+        "link": "https://api.x.ai",
+        "signInGetKey": "Авторизуйтесь и получите API ключ.",
+        "pasteAutoSave": "Вставьте ключ в поле выше — сохранится автоматически."
+      },
+      "ollama": {
+        "install": "Установите Ollama локально и запустите службу.",
+        "ensurePort": "Убедитесь, что порт доступен: 11434.",
+        "changeBaseUrl": "При необходимости измените Base URL ниже."
+      }
+    }
+    ,
+    "placeholders": {
+      "openrouterKey": "Введите ваш OpenRouter API ключ",
+      "openaiKey": "Введите ваш OpenAI API ключ",
+      "xaiKey": "Введите ваш xAI API ключ",
+      "ollamaBaseUrl": "Например: http://localhost:11434/api",
+      "modelName": "Название модели",
+      "globalPrompt": "Этот текст будет добавляться ко всем запросам в LLM как системная подсказка."
+    },
+    "globalPromptLabel": "Глобальный промт / информация о вас",
+    "domainPrompts": "Промты для доменов",
+    "externalTools": {
+      "label": "Внешние тулы",
+      "noDescription": "Без описания",
+      "modalTitle": "Внешний тул",
+      "namePlaceholder": "Имя (латиница, a-z, A-Z, 0-9, _)",
+      "descriptionPlaceholder": "Описание",
+      "codePlaceholder": "Вставьте JS код функции или тела async-функции\nПример: async ({ args, api }) => { api.log('hi', args); return 123; }",
+      "enabled": "Включен",
+      "add": "Добавить",
+      "save": "Сохранить",
+      "editAriaLabel": "Редактировать внешний тул",
+      "removeAriaLabel": "Удалить внешний тул"
+    },
+    "sendOnEnterLabel": "Отправка по Enter",
+    "themeLabel": "Цветовая схема",
+    "hideAgentMessagesLabel": "Скрывать промежуточные сообщения агента"
+  },
+  "chat": {
+    "welcome": "Добрый день, пользователь",
+    "domainPrompt": "Промт для",
+    "domainPromptPlaceholder": "Промт для текущего домена...",
+    "helpPlaceholder": "Чем могу помочь сегодня?",
+    "clearHistoryTitle": "Очистить историю",
+    "clearHistoryAria": "Очистить историю чата",
+    "capabilities": "Возможности",
+    "clearConfirm": {
+      "title": "Очистить историю чата?",
+      "text": "Это действие удалит текущий список сообщений. Отменить нельзя.",
+      "cancel": "Отмена",
+      "confirm": "Очистить"
+    },
+    "typing": "Агент думает..."
+  },
+  "cap": {
+    "title": "Возможности Browse Bot",
+    "sections": {
+      "automation": {
+        "title": "Автоматизация браузера",
+        "items": {
+          "search": "Поиск товаров на сайтах",
+          "addToCart": "Добавление в корзину",
+          "fillForms": "Заполнение форм",
+          "navigate": "Навигация по сайтам"
+        }
+      },
+      "chat": {
+        "title": "Умный чат",
+        "items": {
+          "autoDetect": "Автоматическое определение типа запроса",
+          "directQuestions": "Прямые вопросы к ИИ",
+          "analysis": "Анализ проделанной работы",
+          "context": "Контекстное понимание"
+        }
+      },
+      "tools": {
+        "title": "Инструменты",
+        "items": {
+          "scan": "Сканирование страницы",
+          "findElements": "Поиск элементов",
+          "clickElements": "Клик по элементам",
+          "typeText": "Ввод текста",
+          "observeChanges": "Отслеживание изменений"
+        }
+      },
+      "analytics": {
+        "title": "Аналитика",
+        "items": {
+          "history": "История действий",
+          "performance": "Анализ эффективности",
+          "reports": "Отчеты о работе"
+        }
+      },
+      "settings": {
+        "title": "Настройки",
+        "items": {
+          "apiKeys": "Настройка API ключей",
+          "modelChoice": "Выбор модели ИИ",
+          "dataSecurity": "Безопасность данных"
+        }
+      }
+    }
+  },
+  "domains": {
+    "filterPlaceholder": "Фильтр по домену",
+    "empty": "Нет сохранённых доменных промтов"
+  },
+  "errors": {
+    "agentAborted": "Задача была прервана пользователем",
+    "openLinkInBg": "Не удалось открыть ссылку в фоне",
+    "noElementsContext": "Нет контекста элементов. Сначала вызовите parsePage/parsePageInteractiveElements",
+    "elementNotFound": "Элемент не найден по описанию: {description}",
+    "aiInvalidJson": "Неверный JSON ответ от модели",
+    "sendMessageGetLinkInfo": "Ошибка получения информации о ссылке",
+    "sendMessageOpenLink": "Не удалось открыть ссылку",
+    "sendMessageClick": "Не удалось кликнуть по элементу",
+    "sendMessageInsert": "Не удалось ввести текст",
+    "sendMessageEnter": "Не удалось нажать Enter",
+    "sendMessageSelect": "Не удалось выбрать опцию",
+    "sendMessageCheckbox": "Не удалось установить чекбокс",
+    "sendMessageRadio": "Не удалось выбрать радио-кнопку",
+    "parseAll": "Не удалось распарсить страницу (все)",
+    "parseInteractive": "Не удалось распарсить интерактивные элементы",
+    "parseText": "Не удалось распарсить текст страницы"
+  },
+  "system": {
+    "noActiveTabNoTools": "Нет активной вкладки — отвечаю без инструментов, но с историей",
+    "taskStoppedByUser": "Задача остановлена пользователем"
+  },
+  "about": {
+    "description": "Расширение для браузера с поддержкой ИИ, которое помогает взаимодействовать с веб-страницами на естественном языке",
+    "github": "Посмотреть на GitHub",
+    "copyright": "© 2025 PROTOS GALAXIAS LIMITED",
+    "license": "Лицензировано под BSL 1.1"
+  }
+}
+
+
