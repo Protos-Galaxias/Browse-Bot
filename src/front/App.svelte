@@ -1,3 +1,8 @@
+<!--
+Copyright (c) 2025 PROTOS GALAXIAS LIMITED
+SPDX-License-Identifier: BSL-1.1
+-->
+
 <script lang="ts">
     import { onMount } from 'svelte';
     import Chat from './Chat.svelte';
@@ -94,11 +99,11 @@
             <button on:click={() => currentView = 'chat'}>
                 <img class="nav-icon" src={chatIcon} alt="Chat" />
             </button>
-            <button on:click={() => currentView = 'capabilities'}>
-                <img class="nav-icon" src={ideaIcon} alt="Capabilities" />
-            </button>
             <button on:click={() => currentView = 'settings'}>
                 <img class="nav-icon" src={settingsIcon} alt="Settings" />
+            </button>
+            <button on:click={() => currentView = 'capabilities'}>
+                <img class="nav-icon" src={ideaIcon} alt="Capabilities" />
             </button>
         </nav>
     </header>

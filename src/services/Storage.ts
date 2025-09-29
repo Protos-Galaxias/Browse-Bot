@@ -1,3 +1,6 @@
+// Copyright (c) 2025 PROTOS GALAXIAS LIMITED
+// SPDX-License-Identifier: BSL-1.1
+
 // Lightweight IndexedDB-backed storage with a chrome.storage-like API
 
 type StorageChanges = Record<string, { oldValue?: any; newValue?: any }>;

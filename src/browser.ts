@@ -1,3 +1,6 @@
+// Copyright (c) 2025 PROTOS GALAXIAS LIMITED
+// SPDX-License-Identifier: BSL-1.1
+
 // Build-time constant defined via Vite `define` in each target config
 
 declare const __BROWSER__: 'chrome' | 'firefox';

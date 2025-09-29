@@ -1,3 +1,6 @@
+// Copyright (c) 2025 PROTOS GALAXIAS LIMITED
+// SPDX-License-Identifier: BSL-1.1
+
 console.log('Browse Bot: Content script injected and running.');
 
 const elementCache = new Map<string, HTMLElement>();

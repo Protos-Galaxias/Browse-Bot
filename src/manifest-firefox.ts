@@ -1,3 +1,6 @@
+// Copyright (c) 2025 PROTOS GALAXIAS LIMITED
+// SPDX-License-Identifier: BSL-1.1
+
 import { defineManifest } from '@crxjs/vite-plugin';
 import packageJson from '../package.json';
 
@@ -36,7 +39,7 @@ export default defineManifest({
         },
         browser_specific_settings: {
             gecko: {
-                id: 'browse-bot@example.org'
+                id: 'browse-bot@protosgalaxias.com'
             }
         }
     } as any),

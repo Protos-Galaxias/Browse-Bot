@@ -1,3 +1,6 @@
+// Copyright (c) 2025 PROTOS GALAXIAS LIMITED
+// SPDX-License-Identifier: BSL-1.1
+
 import { mount } from 'svelte';
 import './app.css';
 import App from './front/App.svelte';

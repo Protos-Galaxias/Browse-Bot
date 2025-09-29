@@ -1,3 +1,6 @@
+// Copyright (c) 2025 PROTOS GALAXIAS LIMITED
+// SPDX-License-Identifier: BSL-1.1
+
 import type { ToolContext } from './types';
 import { parsePageTool } from './parsePage';
 import { parsePageInteractiveElementsTool } from './parsePageInteractiveElements';

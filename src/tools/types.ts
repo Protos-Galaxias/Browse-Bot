@@ -1,3 +1,6 @@
+// Copyright (c) 2025 PROTOS GALAXIAS LIMITED
+// SPDX-License-Identifier: BSL-1.1
+
 import type { AIService as AIServiceType } from '../services/AIService';
 
 export interface ToolContext {

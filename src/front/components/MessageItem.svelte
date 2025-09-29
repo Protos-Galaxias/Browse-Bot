@@ -1,3 +1,8 @@
+<!--
+Copyright (c) 2025 PROTOS GALAXIAS LIMITED
+SPDX-License-Identifier: BSL-1.1
+-->
+
 <script lang="ts">
     import {renderMarkdownSafe} from '../lib/markdown';
     import {renderUserMessage} from '../lib/renderUser';

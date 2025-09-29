@@ -1,3 +1,6 @@
+// Copyright (c) 2025 PROTOS GALAXIAS LIMITED
+// SPDX-License-Identifier: BSL-1.1
+
 import { ConfigService } from './ConfigService';
 import { generateObject, generateText, stepCountIs } from 'ai';
 import type { GenerateTextResult, ModelMessage, ToolSet, LanguageModel } from 'ai';

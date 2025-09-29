@@ -1,3 +1,6 @@
+// Copyright (c) 2025 PROTOS GALAXIAS LIMITED
+// SPDX-License-Identifier: BSL-1.1
+
 // Avoid importing ExtStorage in the background (Firefox MV3 classic background scripts
 // choke on top-level ESM imports via code-splitting). Implement minimal IDB helpers here.
 const IDB_DB_NAME = 'web-walker-ext-storage';

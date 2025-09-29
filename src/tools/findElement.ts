@@ -1,3 +1,6 @@
+// Copyright (c) 2025 PROTOS GALAXIAS LIMITED
+// SPDX-License-Identifier: BSL-1.1
+
 import { z } from 'zod';
 import type { AIService as AIServiceType } from '../services/AIService';
 import { updateLog } from '../logger';

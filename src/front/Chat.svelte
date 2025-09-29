@@ -1,3 +1,8 @@
+<!--
+Copyright (c) 2025 PROTOS GALAXIAS LIMITED
+SPDX-License-Identifier: BSL-1.1
+-->
+
 <script lang="ts">
     import { onMount } from 'svelte';
     import MessageList from './components/MessageList.svelte';

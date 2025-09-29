@@ -1,3 +1,6 @@
+// Copyright (c) 2025 PROTOS GALAXIAS LIMITED
+// SPDX-License-Identifier: BSL-1.1
+
 import { register, init, getLocaleFromNavigator, locale as $locale } from 'svelte-i18n';
 import { extStorage } from '../../services/ExtStorage';
 
