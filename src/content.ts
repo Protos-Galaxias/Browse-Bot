@@ -1,4 +1,4 @@
-console.log('Web Walker: Content script injected and running.');
+console.log('Browse Bot: Content script injected and running.');
 
 const elementCache = new Map<string, HTMLElement>();
 
@@ -380,25 +380,25 @@ function parsePageForMeaningfulText(): string[] {
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    console.log('Web Walker: Message received in content script', message);
+    console.log('Browse Bot: Message received in content script', message);
 
     switch (message.type) {
     case 'PARSE_PAGE_ALL': {
         const parsedElements = parsePageForInteractiveElements(message.tid);
         const blocks = parsePageForMeaningfulText();
-        console.log(`Web Walker: Parsed ${parsedElements.length} interactive elements and ${blocks.length} text blocks.`);
+        console.log(`Browse Bot: Parsed ${parsedElements.length} interactive elements and ${blocks.length} text blocks.`);
         sendResponse({ type: 'PARSE_ALL_RESULT', data: { interactive: parsedElements, text: blocks } });
         break;
     }
     case 'PARSE_CURRENT_PAGE': {
         const parsedElements = parsePageForInteractiveElements(message.tid);
-        console.log(`Web Walker: Parsed ${parsedElements.length} interactive elements.`);
+        console.log(`Browse Bot: Parsed ${parsedElements.length} interactive elements.`);
         sendResponse({ type: 'PARSE_RESULT', data: parsedElements });
         break;
     }
     case 'PARSE_PAGE_TEXT': {
         const blocks = parsePageForMeaningfulText();
-        console.log(`Web Walker: Parsed ${blocks.length} text blocks.`);
+        console.log(`Browse Bot: Parsed ${blocks.length} text blocks.`);
         sendResponse({ type: 'TEXT_PARSE_RESULT', data: blocks });
         break;
     }
@@ -408,7 +408,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             elementToClick.click();
             sendResponse({ status: 'ok' });
         } else {
-            console.error(`Web Walker: Element with aid=${message.aid} not found.`);
+            console.error(`Browse Bot: Element with aid=${message.aid} not found.`);
             sendResponse({ status: 'error', message: `Element with aid=${message.aid} not found` });
         }
         break;
@@ -473,7 +473,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             elementToInsert.dispatchEvent(new Event('input', { bubbles: true }));
             sendResponse({ status: 'ok' });
         } else {
-            console.error(`Web Walker: Input element with aid=${message.aid} not found.`);
+            console.error(`Browse Bot: Input element with aid=${message.aid} not found.`);
             sendResponse({ status: 'error', message: `Input element with aid=${message.aid} not found` });
         }
         break;
@@ -617,9 +617,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     case 'EXTERNAL': {
         (async () => {
             try {
-                console.log('2325235252432534', message.code, message.args);
                 const result = await runExternalCode(String(message.code || ''), message.args);
-                console.log('1111111', result);
                 sendResponse({ status: 'ok', result });
             } catch (e) {
                 const err = e instanceof Error ? e.message : String(e);
@@ -629,7 +627,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         break;
     }
     default: {
-        console.warn('Web Walker: Unknown message type received', message.type);
+        console.warn('Browse Bot: Unknown message type received', message.type);
         sendResponse({ status: 'error', message: 'Unknown message type' });
         break;
     }
@@ -637,4 +635,4 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
 });
 
-console.log('Web Walker: Content script setup complete.');
+console.log('Browse Bot: Content script setup complete.');

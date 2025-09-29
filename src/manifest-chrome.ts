@@ -3,7 +3,7 @@ import packageJson from '../package.json';
 
 export default defineManifest({
     manifest_version: 3,
-    name: 'Web Walker (Chrome)',
+    name: 'Browse Bot (Chrome)',
     version: packageJson.version,
     permissions: ['storage', 'activeTab', 'scripting', 'notifications', 'webNavigation', 'tabs', 'sidePanel'],
     host_permissions: ['<all_urls>'],
@@ -21,7 +21,7 @@ export default defineManifest({
         default_path: 'index.html'
     },
     action: {
-        default_title: 'Открыть Web Walker'
+        default_title: 'Open Browse Bot'
     },
     omnibox: {
         keyword: '@ai'

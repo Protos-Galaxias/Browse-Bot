@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "Web Walker",
+    "title": "Browse Bot",
     "disclaimer": "The agent may make mistakes. Please verify the results.",
     "nav": {
       "chat": "Chat",
@@ -109,7 +109,7 @@
     "typing": "The agent is thinking..."
   },
   "cap": {
-    "title": "Web Walker capabilities",
+    "title": "Browse Bot capabilities",
     "sections": {
       "automation": {
         "title": "Browser automation",

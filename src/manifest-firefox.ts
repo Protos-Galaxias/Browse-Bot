@@ -3,7 +3,7 @@ import packageJson from '../package.json';
 
 export default defineManifest({
     manifest_version: 3,
-    name: 'Web Walker (Firefox)',
+    name: 'Browse Bot (Firefox)',
     version: packageJson.version,
     content_security_policy: {
         extension_pages: "script-src 'self' 'unsafe-eval'; object-src 'self'"
@@ -32,16 +32,16 @@ export default defineManifest({
     ...({
         sidebar_action: {
             default_panel: 'index.html',
-            default_title: 'Web Walker'
+            default_title: 'Browse Bot'
         },
         browser_specific_settings: {
             gecko: {
-                id: 'web-walker@example.org'
+                id: 'browse-bot@example.org'
             }
         }
     } as any),
     action: {
-        default_title: 'Открыть Web Walker'
+        default_title: 'Open Browse Bot'
     },
     omnibox: {
         keyword: '@ai'

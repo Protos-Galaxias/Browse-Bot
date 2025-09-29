@@ -7,8 +7,8 @@ const { version } = packageJson;
 const browser = process.env.BROWSER || 'chrome';
 
 const commonManifest = {
-    name: 'Web Walker',
-    description: 'AI-агент для вашего браузера.',
+    name: 'Browse Bot',
+    description: 'AI-agent for your browser.',
     version: version,
     permissions: [
         'storage',
@@ -27,7 +27,7 @@ const commonManifest = {
         keyword: '@ai'
     },
     action: {
-        default_title: 'Открыть Web Walker'
+        default_title: 'Open Browse Bot'
     }
 };
 
@@ -47,7 +47,7 @@ const getManifest = () => {
             // },
             // sidebar_action: {
             //   default_panel: "index.html",
-            //   default_title: "Web Walker",
+            //   default_title: "Browse Bot",
             // },
             // browser_specific_settings and sidebar_action are handled in manifest-firefox.ts
         });
