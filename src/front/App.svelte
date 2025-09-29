@@ -4,7 +4,7 @@
     import Settings from './Settings.svelte';
     import Capabilities from './Capabilities.svelte';
     import type { Theme } from '../services/ConfigService';
-    import { _ } from 'svelte-i18n';
+    import { } from 'svelte-i18n';
     import settingsIcon from './icons/settings.svg';
     import chatIcon from './icons/chat.svg';
     import ideaIcon from './icons/idea.svg';
@@ -42,7 +42,9 @@
                     applyTheme(changes.theme.newValue as any);
                 }
             });
-        } catch {}
+        } catch {
+        // ignored
+        }
 
         // Connectivity check with background service worker
         try {
@@ -51,7 +53,9 @@
                 if (err) {
                     console.warn('[UI] PING failed', err.message);
                 } else {
-                    try { console.log('[UI] PING ok', resp); } catch {}
+                    try { console.log('[UI] PING ok', resp); } catch {
+                    // ignored
+                    }
                 }
             });
         } catch (e) {
@@ -62,7 +66,9 @@
         const apiKey = settings.apiKey || '';
         if (!apiKey) {
             currentView = 'settings';
-            try { window.location.hash = '#settings'; } catch {}
+            try { window.location.hash = '#settings'; } catch {
+            // ignored
+            }
         }
     });
 

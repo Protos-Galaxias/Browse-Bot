@@ -1,5 +1,5 @@
 // Build-time constant defined via Vite `define` in each target config
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
 declare const __BROWSER__: 'chrome' | 'firefox';
 
 export function isChrome(): boolean {

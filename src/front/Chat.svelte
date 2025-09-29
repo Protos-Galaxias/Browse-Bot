@@ -78,7 +78,9 @@
             const list = await ChatStorage.getChatList();
             chats = [...list].sort((a, b) => b.updatedAt - a.updatedAt);
             activeChatId = await ChatStorage.getActiveChatId();
-        } catch {}
+        } catch {
+        // ignored
+        }
     }
 
     async function ensureActiveChatInitialized() {
@@ -90,14 +92,18 @@
                 const meta = await ChatStorage.createChat(initialLog.length > 0 ? 'Imported chat' : undefined, initialLog);
                 activeChatId = meta.id;
             }
-        } catch {}
+        } catch {
+        // ignored
+        }
     }
 
     async function loadActiveChatLog() {
         try {
             if (!activeChatId) return;
             log = await ChatStorage.getChatLog(activeChatId);
-        } catch {}
+        } catch {
+        // ignored
+        }
     }
 
     async function selectChat(id: string) {
@@ -107,16 +113,18 @@
             await ChatStorage.setActiveChatId(id);
             log = await ChatStorage.getChatLog(id);
             await loadChats();
-        } catch {}
+        } catch {
+        // ignored
+        }
         showChatList = false;
         // reset agent memory/history in background to isolate chats
-        try { chrome.runtime.sendMessage({ type: 'RESET_CONTEXT' }); } catch {}
+        try { chrome.runtime.sendMessage({ type: 'RESET_CONTEXT' }); } catch { /* ignored */ }
     }
 
     async function newChat() {
         try {
             // reset agent memory/history to isolate chats
-            try { chrome.runtime.sendMessage({ type: 'RESET_CONTEXT' }); } catch {}
+            try { chrome.runtime.sendMessage({ type: 'RESET_CONTEXT' }); } catch { /* ignored */ }
             const meta = await ChatStorage.createChat();
             // Immediately clear current view to avoid showing previous history
             log = [];
@@ -124,7 +132,9 @@
             isTaskRunning = false;
             await loadChats();
             await selectChat(meta.id);
-        } catch {}
+        } catch {
+        // ignored
+        }
     }
 
     async function removeChat(id: string) {
@@ -138,11 +148,13 @@
             } else {
                 log = [];
             }
-        } catch {}
+        } catch {
+        // ignored
+        }
         // Close the chat list after deletion
         showChatList = false;
         // Also reset agent memory/history when chat context changes due to deletion
-        try { chrome.runtime.sendMessage({ type: 'RESET_CONTEXT' }); } catch {}
+        try { chrome.runtime.sendMessage({ type: 'RESET_CONTEXT' }); } catch { /* ignored */ }
     }
 
     async function fetchActiveTab(): Promise<{ id: number; title: string; url?: string; favIconUrl?: string } | null> {
@@ -151,6 +163,7 @@
             if (!activeTab?.id) return null;
             return { id: activeTab.id, title: activeTab.title || '', url: activeTab.url, favIconUrl: (activeTab as any).favIconUrl };
         } catch {
+            // ignored
             try {
                 return await new Promise((resolve) => {
                     chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
@@ -158,7 +171,7 @@
                         resolve(t?.id ? { id: t.id as number, title: t.title || '', url: t.url, favIconUrl: (t as any).favIconUrl } : null);
                     });
                 });
-            } catch { return null; }
+            } catch { /* ignored */ return null; }
         }
     }
 
@@ -185,16 +198,20 @@
         try {
             const store = await extStorage.local.get(['domainPrompts']);
             domainPrompts = (store?.domainPrompts && typeof store.domainPrompts === 'object') ? store.domainPrompts : {};
-        } catch {}
+        } catch {
+        // ignored
+        }
 
         try {
             chrome.tabs.onActivated.addListener(async (activeInfo) => {
-                try { const tab = await chrome.tabs.get(activeInfo.tabId); setActiveTabMeta({ id: tab.id as number, title: tab.title || '', url: tab.url, favIconUrl: (tab as any).favIconUrl }); } catch {}
+                try { const tab = await chrome.tabs.get(activeInfo.tabId); setActiveTabMeta({ id: tab.id as number, title: tab.title || '', url: tab.url, favIconUrl: (tab as any).favIconUrl }); } catch { /* ignored */ }
             });
             chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-                try { if (tab.active) setActiveTabMeta({ id: tab.id as number, title: tab.title || '', url: tab.url, favIconUrl: (tab as any).favIconUrl }); } catch {}
+                try { if (tab.active) setActiveTabMeta({ id: tab.id as number, title: tab.title || '', url: tab.url, favIconUrl: (tab as any).favIconUrl }); } catch { /* ignored */ }
             });
-        } catch {}
+        } catch {
+        // ignored
+        }
     });
 
     $: displayMentions = activeTabMeta && !mentions.some(m => m.id === activeTabMeta!.id)
@@ -212,7 +229,9 @@
                         await ChatStorage.setChatLog(activeChatId, log);
                     }
                     await loadChats();
-                } catch {}
+                } catch {
+                // ignored
+                }
                 await extStorage.local.set({ chatPrompt: prompt });
             })();
         } catch {
@@ -235,7 +254,7 @@
                 if (err) {
                     console.warn('[UI] send START_TASK failed', err.message);
                 } else {
-                    try { console.log('[UI] START_TASK ack', resp); } catch {}
+                    try { console.log('[UI] START_TASK ack', resp); } catch { /* ignored */ }
                 }
             });
         } catch (e) {
@@ -251,7 +270,7 @@
     function stopTask() {
         isTaskRunning = false;
         isTyping = false;
-        try { chrome.runtime.sendMessage({ type: 'STOP_TASK' }); } catch {}
+        try { chrome.runtime.sendMessage({ type: 'STOP_TASK' }); } catch { /* ignored */ }
     }
 
     chrome.runtime.onMessage.addListener((message) => {
@@ -268,7 +287,9 @@
                     if (payload && typeof payload === 'object' && payload.type === 'ui' && typeof (payload as any).text === 'string') {
                         return payload; // pass through for UI rendering
                     }
-                } catch {}
+                } catch {
+                // ignored
+                }
                 return String(payload || '');
             })();
             if (hideAgentMessages) {
@@ -314,20 +335,22 @@
             const providerChanged = Boolean(changes.provider);
             const modelKeysChanged =
                 Boolean(changes.models_openrouter) ||
-                Boolean(changes.activeModel_openrouter) ||
-                Boolean(changes.models_openai) ||
-                Boolean(changes.activeModel_openai) ||
-                Boolean(changes.models_ollama) ||
-                Boolean(changes.activeModel_ollama) ||
-                Boolean(changes.models_xai) ||
-                Boolean(changes.activeModel_xai);
+                    Boolean(changes.activeModel_openrouter) ||
+                    Boolean(changes.models_openai) ||
+                    Boolean(changes.activeModel_openai) ||
+                    Boolean(changes.models_ollama) ||
+                    Boolean(changes.activeModel_ollama) ||
+                    Boolean(changes.models_xai) ||
+                    Boolean(changes.activeModel_xai);
             if (providerChanged || modelKeysChanged) {
                 await loadModelsFromStorage();
             }
         });
-    } catch {}
+    } catch {
+    // ignored
+    }
 
-    $: activeDomain = (activeTabMeta?.url ? (() => { try { return new URL(activeTabMeta!.url!).hostname.replace(/^www\./,''); } catch { return ''; } })() : '');
+    $: activeDomain = (activeTabMeta?.url ? (() => { try { return new URL(activeTabMeta!.url!).hostname.replace(/^www\./,''); } catch { /* ignored */ return ''; } })() : '');
     $: domainPromptText = (activeDomain && domainPrompts[activeDomain]) ? domainPrompts[activeDomain] : '';
 
     function buildMentionTitle(m: { title?: string; url?: string }) {
@@ -337,6 +360,7 @@
             const prompt = (host && domainPrompts[host]) ? String(domainPrompts[host]).trim() : '';
             return prompt ? `${base}\n\n${prompt}` : base;
         } catch {
+            // ignored
             return base;
         }
     }
@@ -351,7 +375,7 @@
                 <div class="logo-icon">✦</div>
             </div>
             <h1 class="greeting">{$_('chat.welcome')}</h1>
-            
+
             <div class="input-card">
                 {#if displayMentions.length > 0}
                     <div class="mentions-bar">

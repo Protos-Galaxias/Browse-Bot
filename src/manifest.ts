@@ -3,6 +3,7 @@ import packageJson from '../package.json';
 
 const { version } = packageJson;
 
+// eslint-disable-next-line no-undef
 const browser = process.env.BROWSER || 'chrome';
 
 const commonManifest = {
