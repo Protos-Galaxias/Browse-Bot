@@ -1,54 +1,124 @@
-# Svelte + TS + Vite
+# Browse Bot - AI-Powered Web Extension
 
-This template should help get you started developing with Svelte and TypeScript in Vite.
+An intelligent browser extension that uses AI to help users navigate and interact with web pages. Built with Svelte, TypeScript, and Vite for both Chrome and Firefox.
 
-## Recommended IDE Setup
+## Features
 
-[VS Code](https://code.visualstudio.com/) + [Svelte](https://marketplace.visualstudio.com/items?itemName=svelte.svelte-vscode).
+- **AI-Powered Web Actions**: Perform complex web tasks using natural language
+- **Smart Content Processing**: Summarize, clean, and aggregate web content
+- **Multi-Step Planning**: AI plans and executes multi-step web interactions
+- **Cross-Browser Support**: Works on both Chrome (Manifest V3) and Firefox
+- **Side Panel UI**: Modern interface using Chrome's side panel API
 
-## Need an official Svelte framework?
+## Architecture
 
-Check out [SvelteKit](https://github.com/sveltejs/kit#readme), which is also powered by Vite. Deploy anywhere with its serverless-first approach and adapt to various platforms, with out of the box support for TypeScript, SCSS, and Less, and easily-added support for mdsvex, GraphQL, PostCSS, Tailwind CSS, and more.
+This extension uses a sophisticated AI-powered architecture:
 
-## Technical considerations
+- **OpenRouter AI Service**: Integration with multiple AI models
+- **Tool-Based Operations**: Structured AI interactions including:
+  - `plannerTool`: Plans multi-step web actions
+  - `performWebAction`: Executes actions on web pages  
+  - `summarizationTool`: Summarizes text content
+  - `aggregationAndCleaningTool`: Processes and cleans data
+- **Service Layer**: Singleton services for AI, configuration, messaging, and state
+- **Content Scripts**: Injected scripts for web page interaction
 
-**Why use this over SvelteKit?**
+## Tech Stack
 
-- It brings its own routing solution which might not be preferable for some users.
-- It is first and foremost a framework that just happens to use Vite under the hood, not a Vite app.
+- **Frontend**: Svelte 5 + TypeScript
+- **Build Tool**: Vite with separate Chrome/Firefox configurations
+- **AI Integration**: OpenRouter API with multiple model support
+- **Browser APIs**: Manifest V3, Side Panel, Content Scripts
 
-This template contains as little as possible to get started with Vite + TypeScript + Svelte, while taking into account the developer experience with regards to HMR and intellisense. It demonstrates capabilities on par with the other `create-vite` templates and is a good starting point for beginners dipping their toes into a Vite + Svelte project.
+## Development
 
-Should you later need the extended capabilities and extensibility provided by SvelteKit, the template has been structured similarly to SvelteKit so that it is easy to migrate.
+### Prerequisites
 
-**Why `global.d.ts` instead of `compilerOptions.types` inside `jsconfig.json` or `tsconfig.json`?**
+- Node.js (latest LTS version)
+- npm or yarn
+- Chrome/Firefox browser for testing
 
-Setting `compilerOptions.types` shuts out all other types not explicitly listed in the configuration. Using triple-slash references keeps the default TypeScript setting of accepting type information from the entire workspace, while also adding `svelte` and `vite/client` type information.
+### Installation
 
-**Why include `.vscode/extensions.json`?**
-
-Other templates indirectly recommend extensions via the README, but this file allows VS Code to prompt the user to install the recommended extension upon opening the project.
-
-**Why enable `allowJs` in the TS template?**
-
-While `allowJs: false` would indeed prevent the use of `.js` files in the project, it does not prevent the use of JavaScript syntax in `.svelte` files. In addition, it would force `checkJs: false`, bringing the worst of both worlds: not being able to guarantee the entire codebase is TypeScript, and also having worse typechecking for the existing JavaScript. In addition, there are valid use cases in which a mixed codebase may be relevant.
-
-**Why is HMR not preserving my local component state?**
-
-HMR state preservation comes with a number of gotchas! It has been disabled by default in both `svelte-hmr` and `@sveltejs/vite-plugin-svelte` due to its often surprising behavior. You can read the details [here](https://github.com/rixo/svelte-hmr#svelte-hmr).
-
-If you have state that's important to retain within a component, consider creating an external store which would not be replaced by HMR.
-
-```ts
-// store.ts
-// An extremely simple external store
-import { writable } from 'svelte/store'
-export default writable(0)
+```bash
+npm install
 ```
 
-# Использование в Firefox
+### Development Commands
 
-- Открой about:debugging в адресной строке
-- Нажми "This Firefox" (Этот Firefox)
-- Нажми "Load Temporary Add-on" (Загрузить временное дополнение)
-- Выбери файл manifest.json из папки твоего расширения
+Start development server for Chrome:
+```bash
+npm run dev:chrome
+```
+
+Start development server for Firefox:
+```bash
+npm run dev:firefox
+```
+
+### Building
+
+Build for Chrome:
+```bash
+npm run build:chrome
+```
+
+Build for Firefox:
+```bash
+npm run build:firefox
+```
+
+### Code Quality
+
+Lint code:
+```bash
+npm run lint
+```
+
+Auto-fix linting issues:
+```bash
+npm run lint:fix
+```
+
+## Installation
+
+### Chrome
+1. Build the extension: `npm run build:chrome`
+2. Open Chrome and go to `chrome://extensions/`
+3. Enable "Developer mode"
+4. Click "Load unpacked" and select the `dist` folder
+
+### Firefox
+1. Build the extension: `npm run build:firefox`
+2. Open Firefox and go to `about:debugging`
+3. Click "This Firefox"
+4. Click "Load Temporary Add-on"
+5. Select the `manifest.json` file from the `dist` folder
+
+## Configuration
+
+The extension requires an OpenRouter API key for AI functionality:
+
+1. Get an API key from [OpenRouter](https://openrouter.ai)
+2. Open the extension settings
+3. Enter your API key
+4. Configure your preferred AI model
+
+## Project Structure
+
+```
+├── src/
+│   ├── components/          # Svelte UI components
+│   ├── services/           # Core services (AI, Config, State)
+│   ├── content/            # Content scripts
+│   ├── background/         # Background scripts
+│   └── manifest/           # Extension manifests
+├── vite.config.chrome.ts   # Chrome build configuration
+├── vite.config.firefox.ts  # Firefox build configuration
+└── CLAUDE.md              # AI assistant instructions
+```
+
+## License
+
+This project is licensed under BSL 1.1  
+Commercial use restrictions apply until 2030-09-29
