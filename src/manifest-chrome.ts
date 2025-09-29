@@ -6,7 +6,7 @@ import packageJson from '../package.json';
 
 export default defineManifest({
     manifest_version: 3,
-    name: 'Browse Bot (Chrome)',
+    name: 'Browse Bot',
     version: packageJson.version,
     permissions: ['storage', 'activeTab', 'scripting', 'notifications', 'webNavigation', 'tabs', 'sidePanel'],
     host_permissions: ['<all_urls>'],

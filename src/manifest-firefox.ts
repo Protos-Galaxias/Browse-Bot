@@ -6,7 +6,7 @@ import packageJson from '../package.json';
 
 export default defineManifest({
     manifest_version: 3,
-    name: 'Browse Bot (Firefox)',
+    name: 'Browse Bot',
     version: packageJson.version,
     content_security_policy: {
         extension_pages: "script-src 'self' 'unsafe-eval'; object-src 'self'"
