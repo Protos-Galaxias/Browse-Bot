@@ -75,6 +75,19 @@
     },
     "globalPromptLabel": "Глобальный промт / информация о вас",
     "domainPrompts": "Промты для доменов",
+    "externalTools": {
+      "label": "Внешние тулы",
+      "noDescription": "Без описания",
+      "modalTitle": "Внешний тул",
+      "namePlaceholder": "Имя (латиница, a-z, A-Z, 0-9, _)",
+      "descriptionPlaceholder": "Описание",
+      "codePlaceholder": "Вставьте JS код функции или тела async-функции\nПример: async ({ args, api }) => { api.log('hi', args); return 123; }",
+      "enabled": "Включен",
+      "add": "Добавить",
+      "save": "Сохранить",
+      "editAriaLabel": "Редактировать внешний тул",
+      "removeAriaLabel": "Удалить внешний тул"
+    },
     "sendOnEnterLabel": "Отправка по Enter",
     "themeLabel": "Цветовая схема",
     "hideAgentMessagesLabel": "Скрывать промежуточные сообщения агента"

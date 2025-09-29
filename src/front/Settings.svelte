@@ -290,13 +290,13 @@
 </script>
 
 <div class="settings-container">
-        <div class="tabs">
-            <button class="tab {activeTab === 'general' ? 'active' : ''}" on:click={() => activeTab = 'general'}>{$_('tabs.general')}</button>
-            <button class="tab {activeTab === 'behavior' ? 'active' : ''}" on:click={() => activeTab = 'behavior'}>{$_('tabs.behavior')}</button>
-            <button class="tab {activeTab === 'prompt' ? 'active' : ''}" on:click={() => activeTab = 'prompt'}>{$_('tabs.prompt')}</button>
-        </div>
+    <div class="tabs">
+        <button class="tab {activeTab === 'general' ? 'active' : ''}" on:click={() => activeTab = 'general'}>{$_('tabs.general')}</button>
+        <button class="tab {activeTab === 'behavior' ? 'active' : ''}" on:click={() => activeTab = 'behavior'}>{$_('tabs.behavior')}</button>
+        <button class="tab {activeTab === 'prompt' ? 'active' : ''}" on:click={() => activeTab = 'prompt'}>{$_('tabs.prompt')}</button>
+    </div>
 
-        {#if activeTab === 'general'}
+    {#if activeTab === 'general'}
         <div class="setting-group">
             <label class="setting-label">
                 {$_('common.language')}
@@ -397,7 +397,7 @@
             <div class="models-container">
                 {#each models as model, index (index)}
                     <div class="model-item {activeModel === model ? 'active' : ''}" on:click={() => setActiveModel(model)}>
-                            <span class="model-name">{model}</span>
+                        <span class="model-name">{model}</span>
                         <div class="model-actions">
                             {#if models.length > 1}
                                 <button class="remove-btn" on:click|stopPropagation={() => removeModel(index)} type="button">×</button>
@@ -440,19 +440,19 @@
         </div>
 
         <div class="setting-group">
-            <div class="setting-label">Внешние тулы</div>
+            <div class="setting-label">{$_('settings.externalTools.label')}</div>
             {#each externalTools as t, index (index)}
                 <div class="mcp-card">
                     <div class="mcp-card-main">
                         <div class="mcp-title">{t.name}</div>
-                        <div class="mcp-subtitle">{t.description || 'Без описания'}</div>
+                        <div class="mcp-subtitle">{t.description || $_('settings.externalTools.noDescription')}</div>
                     </div>
                     <div class="mcp-actions">
                         <label class="toggle-row" for={`ext-enabled-${index}`}>
                             <input id={`ext-enabled-${index}`} type="checkbox" checked={t.enabled} on:change={(e) => setExtEnabled(index, (e.target as HTMLInputElement).checked)} />
                         </label>
-                        <button class="icon-btn" type="button" aria-label="Edit external tool" on:click={() => openEditExtModal(index)}>✎</button>
-                        <button class="remove-btn" type="button" aria-label="Remove external tool" on:click={() => removeExt(index)}>×</button>
+                        <button class="icon-btn" type="button" aria-label="{$_('settings.externalTools.editAriaLabel')}" on:click={() => openEditExtModal(index)}>✎</button>
+                        <button class="remove-btn" type="button" aria-label="{$_('settings.externalTools.removeAriaLabel')}" on:click={() => removeExt(index)}>×</button>
                     </div>
                 </div>
             {/each}
@@ -465,38 +465,38 @@
             <div class="modal-overlay" on:click|self={closeExtModal}>
                 <div class="modal">
                     <div class="modal-header">
-                        <div class="modal-title">Внешний тул</div>
+                        <div class="modal-title">{$_('settings.externalTools.modalTitle')}</div>
                         <button class="icon-btn" type="button" aria-label="Close" on:click={closeExtModal}>×</button>
                     </div>
                     <div class="modal-body">
                         <input
                             type="text"
                             class="setting-input"
-                            placeholder="Имя (латиница, a-z, A-Z, 0-9, _)"
+                            placeholder="{$_('settings.externalTools.namePlaceholder')}"
                             bind:value={formExtName}
                             style="margin-bottom: 0.5rem;"
                         />
                         <input
                             type="text"
                             class="setting-input"
-                            placeholder="Описание"
+                            placeholder="{$_('settings.externalTools.descriptionPlaceholder')}"
                             bind:value={formExtDescription}
                             style="margin-bottom: 0.5rem;"
                         />
                         <textarea
                             class="setting-textarea"
-                            placeholder="Вставьте JS код функции или тела async-функции\nПример: async (&#123; args, api &#125;) => &#123; api.log('hi', args); return 123; &#125;"
+                            placeholder="{$_('settings.externalTools.codePlaceholder')}"
                             bind:value={formExtCode}
                             rows="10"
                             style="margin-bottom: 0.5rem;"
                         ></textarea>
                         <div class="toggle-row" style="margin-top: 0.25rem;">
                             <input id="ext-enabled-form" type="checkbox" bind:checked={formExtEnabled} />
-                            <label for="ext-enabled-form">Включен</label>
+                            <label for="ext-enabled-form">{$_('settings.externalTools.enabled')}</label>
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button class="primary-btn" type="button" on:click={submitExt}>{editingExtIndex === null ? 'Добавить' : 'Сохранить'}</button>
+                        <button class="primary-btn" type="button" on:click={submitExt}>{editingExtIndex === null ? $_('settings.externalTools.add') : $_('settings.externalTools.save')}</button>
                     </div>
                 </div>
             </div>
@@ -536,10 +536,10 @@
             </div>
         {/if}
 
-        
-        {/if}
 
-        {#if activeTab === 'prompt'}
+    {/if}
+
+    {#if activeTab === 'prompt'}
         <div class="setting-group">
             <label class="setting-label">
                 {$_('settings.globalPromptLabel')}
@@ -557,9 +557,9 @@
             <div class="setting-label">{$_('settings.domainPrompts')}</div>
             <DomainPrompts />
         </div>
-        {/if}
+    {/if}
 
-        {#if activeTab === 'behavior'}
+    {#if activeTab === 'behavior'}
         <div class="setting-group">
             <label class="setting-label">
                 {$_('settings.sendOnEnterLabel')}
@@ -605,11 +605,11 @@
                 </div>
             </label>
         </div>
-        {/if}
+    {/if}
 
-        {#if saveStatus === 'saved'}
-            <div class="save-toast">{$_('common.saved')}</div>
-        {/if}
+    {#if saveStatus === 'saved'}
+        <div class="save-toast">{$_('common.saved')}</div>
+    {/if}
 </div>
 
 <style>
@@ -734,7 +734,7 @@
         border-color: var(--accent-color);
         color: white;
     }
-    
+
     .setting-textarea {
         width: 100%;
         padding: 0.75rem;
@@ -869,7 +869,7 @@
     .info-card ol { margin: 0.5rem 0 0.5rem 1.2rem; padding-left: 1rem; }
     .info-card li { margin: 0.25rem 0; }
     .info-card a { color: var(--accent-color); text-decoration: underline; }
-    
+
     /* MCP modal styles (match app theme) */
     .mcp-card {
         display: grid;
