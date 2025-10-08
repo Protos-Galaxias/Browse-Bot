@@ -1,3 +1,6 @@
+// Copyright (c) 2025 PROTOS GALAXIAS LIMITED
+// SPDX-License-Identifier: BSL-1.1
+
 import type { ProviderDescriptor } from './ProviderConfigs';
 
 // UI-only descriptor without client/model factories. Mirrors metadata fields.

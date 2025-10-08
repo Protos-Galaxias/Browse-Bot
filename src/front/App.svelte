@@ -1,3 +1,8 @@
+<!--
+Copyright (c) 2025 PROTOS GALAXIAS LIMITED
+SPDX-License-Identifier: BSL-1.1
+-->
+
 <script lang="ts">
     import { onMount } from 'svelte';
     import Chat from './Chat.svelte';
@@ -5,7 +10,7 @@
     import Capabilities from './Capabilities.svelte';
     import Wizard from './Wizard.svelte';
     import type { Theme } from '../services/ConfigService';
-    import { _ } from 'svelte-i18n';
+    import { } from 'svelte-i18n';
     import settingsIcon from './icons/settings.svg';
     import chatIcon from './icons/chat.svg';
     import ideaIcon from './icons/idea.svg';
@@ -45,7 +50,9 @@
                     applyTheme(changes.theme.newValue as any);
                 }
             });
-        } catch {}
+        } catch {
+        // ignored
+        }
 
         // Connectivity check with background service worker
         try {
@@ -54,7 +61,9 @@
                 if (err) {
                     console.warn('[UI] PING failed', err.message);
                 } else {
-                    try { console.log('[UI] PING ok', resp); } catch {}
+                    try { console.log('[UI] PING ok', resp); } catch {
+                    // ignored
+                    }
                 }
             });
         } catch (e) {
@@ -64,11 +73,11 @@
         // Check if we need to show wizard (no provider configured)
         const hasProvider = settings.provider;
         const hasAnyKey = settings.apiKey || settings.openaiApiKey || settings.xaiApiKey || settings.ollamaBaseURL;
-        
+
         if (!hasProvider || !hasAnyKey) {
             showWizard = true;
         }
-        
+
         checkingSetup = false;
     });
 
@@ -106,11 +115,11 @@
                 <button on:click={() => currentView = 'chat'}>
                     <img class="nav-icon" src={chatIcon} alt="Chat" />
                 </button>
-                <button on:click={() => currentView = 'capabilities'}>
-                    <img class="nav-icon" src={ideaIcon} alt="Capabilities" />
-                </button>
                 <button on:click={() => currentView = 'settings'}>
                     <img class="nav-icon" src={settingsIcon} alt="Settings" />
+                </button>
+                <button on:click={() => currentView = 'capabilities'}>
+                    <img class="nav-icon" src={ideaIcon} alt="Capabilities" />
                 </button>
             </nav>
         </header>

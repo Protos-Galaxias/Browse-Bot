@@ -1,3 +1,8 @@
+<!--
+Copyright (c) 2025 PROTOS GALAXIAS LIMITED
+SPDX-License-Identifier: BSL-1.1
+-->
+
 <script lang="ts">
     import { onMount, createEventDispatcher } from 'svelte';
     import { _ } from 'svelte-i18n';
@@ -62,7 +67,7 @@
             });
             syncMentionsOut();
         } catch {
-            // ignore
+        // ignore
         }
     }
     function handleInput() {
@@ -318,21 +323,21 @@
 </div>
 
 <style>
-	.welcome-input { width: 100%; background: transparent; border: none; resize: none; color: var(--text-primary); font-size: 0.9rem; outline: none; }
-	.inline-editor { min-height: 20px; white-space: pre-wrap; word-break: break-word; text-align: left; }
-	:global(.mention-chip) { display: inline-block; padding: 0 0.25rem; border: 1px solid var(--accent-color); border-radius: 4px; background: rgba(0,0,0,0.05); color: var(--text-primary); display: inline-flex; align-items: center; gap: 0.25rem; white-space: nowrap; max-width: 280px; overflow: hidden; }
-	:global(.mention-chip .chip-favicon) { width: 14px; height: 14px; border-radius: 2px; }
-	:global(.mention-chip .chip-label) { display: inline-block; max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-	:global(.mention-chip .chip-close) { margin-left: 0.25rem; cursor: pointer; color: var(--text-secondary); user-select: none; -webkit-user-select: none; }
-	:global(.mention-chip .chip-close:hover) { color: var(--text-primary); }
+    .welcome-input { width: 100%; background: transparent; border: none; resize: none; color: var(--text-primary); font-size: 0.9rem; outline: none; }
+    .inline-editor { min-height: 20px; white-space: pre-wrap; word-break: break-word; text-align: left; }
+    :global(.mention-chip) { display: inline-block; padding: 0 0.25rem; border: 1px solid var(--accent-color); border-radius: 4px; background: rgba(0,0,0,0.05); color: var(--text-primary); display: inline-flex; align-items: center; gap: 0.25rem; white-space: nowrap; max-width: 280px; overflow: hidden; }
+    :global(.mention-chip .chip-favicon) { width: 14px; height: 14px; border-radius: 2px; }
+    :global(.mention-chip .chip-label) { display: inline-block; max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    :global(.mention-chip .chip-close) { margin-left: 0.25rem; cursor: pointer; color: var(--text-secondary); user-select: none; -webkit-user-select: none; }
+    :global(.mention-chip .chip-close:hover) { color: var(--text-primary); }
 
-	.tabs-dropdown { position: fixed; z-index: 10000; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); min-width: 220px; max-width: 400px; max-height: 240px; overflow-y: auto; text-align: left; }
-	.tabs-dropdown-item { padding: 0.4rem 0.6rem; cursor: pointer; color: var(--text-primary); font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 0.4rem; justify-content: flex-start; text-align: left; }
-	.tabs-dropdown-item:nth-child(even):not(.empty) { background: var(--bg-primary); }
-	.tabs-dropdown-item:nth-child(even):not(.empty):hover,
-	.tabs-dropdown-item:nth-child(even).active,
-	.tabs-dropdown-item:hover:not(.empty),
-	.tabs-dropdown-item.active { background: var(--accent-color); color: white; }
-	.tabs-dropdown-item.empty { color: var(--text-secondary); cursor: default; }
-	.tab-favicon { width: 16px; height: 16px; border-radius: 2px; }
+    .tabs-dropdown { position: fixed; z-index: 10000; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); min-width: 220px; max-width: 400px; max-height: 240px; overflow-y: auto; text-align: left; }
+    .tabs-dropdown-item { padding: 0.4rem 0.6rem; cursor: pointer; color: var(--text-primary); font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 0.4rem; justify-content: flex-start; text-align: left; }
+    .tabs-dropdown-item:nth-child(even):not(.empty) { background: var(--bg-primary); }
+    .tabs-dropdown-item:nth-child(even):not(.empty):hover,
+    .tabs-dropdown-item:nth-child(even).active,
+    .tabs-dropdown-item:hover:not(.empty),
+    .tabs-dropdown-item.active { background: var(--accent-color); color: white; }
+    .tabs-dropdown-item.empty { color: var(--text-secondary); cursor: default; }
+    .tab-favicon { width: 16px; height: 16px; border-radius: 2px; }
 </style>

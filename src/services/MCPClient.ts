@@ -1,3 +1,6 @@
+// Copyright (c) 2025 PROTOS GALAXIAS LIMITED
+// SPDX-License-Identifier: BSL-1.1
+
 /*
  Minimal MCP client for Streamable HTTP transport (2025-03-26).
  Supports: initialize, tools/list, tools/call. Handles JSON and SSE responses.

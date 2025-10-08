@@ -1,3 +1,6 @@
+// Copyright (c) 2025 PROTOS GALAXIAS LIMITED
+// SPDX-License-Identifier: BSL-1.1
+
 import { updateLog, reportError, updateLogI18n } from './logger';
 import { AiService } from './services/AIService';
 import { agentTools } from './tools/agent-tools';

@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "Web Walker",
+    "title": "Browse Bot",
     "disclaimer": "The agent may make mistakes. Please verify the results.",
     "nav": {
       "chat": "Chat",
@@ -75,6 +75,19 @@
     },
     "globalPromptLabel": "Global prompt / about you",
     "domainPrompts": "Domain prompts",
+    "externalTools": {
+      "label": "External Tools",
+      "noDescription": "No description",
+      "modalTitle": "External Tool",
+      "namePlaceholder": "Name (alphanumeric, a-z, A-Z, 0-9, _)",
+      "descriptionPlaceholder": "Description",
+      "codePlaceholder": "Paste JS function or async function body code\nExample: async ({ args, api }) => { api.log('hi', args); return 123; }",
+      "enabled": "Enabled",
+      "add": "Add",
+      "save": "Save",
+      "editAriaLabel": "Edit external tool",
+      "removeAriaLabel": "Remove external tool"
+    },
     "sendOnEnterLabel": "Send on Enter",
     "themeLabel": "Theme",
     "hideAgentMessagesLabel": "Hide intermediate agent messages"
@@ -96,7 +109,7 @@
     "typing": "The agent is thinking..."
   },
   "cap": {
-    "title": "Web Walker capabilities",
+    "title": "Browse Bot capabilities",
     "sections": {
       "automation": {
         "title": "Browser automation",

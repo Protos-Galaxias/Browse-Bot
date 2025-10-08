@@ -1,3 +1,6 @@
+// Copyright (c) 2025 PROTOS GALAXIAS LIMITED
+// SPDX-License-Identifier: BSL-1.1
+
 export type I18nLog = { type: 'i18n'; key: string; params?: Record<string, unknown>; prefix?: 'error' | 'result' | 'system' | 'agent' | 'user' };
 export type UiLog = { type: 'ui'; kind: 'click' | 'form' | 'parse' | 'find'; title?: string; text: string };
 

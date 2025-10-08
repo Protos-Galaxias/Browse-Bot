@@ -1,140 +1,124 @@
-# Web Walker Extension
+# Browse Bot - AI-Powered Web Extension
 
-AI-powered browser automation extension for Chrome and Firefox.
+An intelligent browser extension that uses AI to help users navigate and interact with web pages. Built with Svelte, TypeScript, and Vite for both Chrome and Firefox.
 
-## ✨ Особенности
+## Features
 
-- 🤖 **AI Автоматизация** - автоматическое взаимодействие с веб-страницами через LLM
-- 🎯 **Умный визард** - простая настройка при первом запуске с проверкой доступности провайдеров
-- 🌐 **Мультипровайдер** - поддержка OpenRouter, OpenAI, xAI (Grok), Ollama
-- 🔧 **Инструменты** - клик, ввод текста, парсинг страниц, работа с формами
-- 💬 **Чат** - удобный интерфейс для общения с AI агентом
-- 🌍 **Локализация** - полная поддержка русского и английского языков
-- 🎨 **Темы** - светлая, тёмная и системная тема
+- **AI-Powered Web Actions**: Perform complex web tasks using natural language
+- **Smart Content Processing**: Summarize, clean, and aggregate web content
+- **Multi-Step Planning**: AI plans and executes multi-step web interactions
+- **Cross-Browser Support**: Works on both Chrome (Manifest V3) and Firefox
+- **Side Panel UI**: Modern interface using Chrome's side panel API
 
-## 🚀 Быстрый старт
+## Architecture
 
-### Установка зависимостей
+This extension uses a sophisticated AI-powered architecture:
+
+- **OpenRouter AI Service**: Integration with multiple AI models
+- **Tool-Based Operations**: Structured AI interactions including:
+  - `plannerTool`: Plans multi-step web actions
+  - `performWebAction`: Executes actions on web pages  
+  - `summarizationTool`: Summarizes text content
+  - `aggregationAndCleaningTool`: Processes and cleans data
+- **Service Layer**: Singleton services for AI, configuration, messaging, and state
+- **Content Scripts**: Injected scripts for web page interaction
+
+## Tech Stack
+
+- **Frontend**: Svelte 5 + TypeScript
+- **Build Tool**: Vite with separate Chrome/Firefox configurations
+- **AI Integration**: OpenRouter API with multiple model support
+- **Browser APIs**: Manifest V3, Side Panel, Content Scripts
+
+## Development
+
+### Prerequisites
+
+- Node.js (latest LTS version)
+- npm or yarn
+- Chrome/Firefox browser for testing
+
+### Installation
 
 ```bash
 npm install
 ```
 
-### Сборка для Chrome
+### Development Commands
 
+Start development server for Chrome:
+```bash
+npm run dev:chrome
+```
+
+Start development server for Firefox:
+```bash
+npm run dev:firefox
+```
+
+### Building
+
+Build for Chrome:
 ```bash
 npm run build:chrome
 ```
 
-Собранное расширение будет в папке `dist-chrome/`.
-
-### Сборка для Firefox
-
+Build for Firefox:
 ```bash
 npm run build:firefox
 ```
 
-Собранное расширение будет в папке `dist-firefox/`.
+### Code Quality
 
-## 📦 Установка расширения
+Lint code:
+```bash
+npm run lint
+```
+
+Auto-fix linting issues:
+```bash
+npm run lint:fix
+```
+
+## Installation
 
 ### Chrome
-
-1. Открой `chrome://extensions/`
-2. Включи "Режим разработчика" (Developer mode)
-3. Нажми "Загрузить распакованное расширение" (Load unpacked)
-4. Выбери папку `dist-chrome/`
+1. Build the extension: `npm run build:chrome`
+2. Open Chrome and go to `chrome://extensions/`
+3. Enable "Developer mode"
+4. Click "Load unpacked" and select the `dist` folder
 
 ### Firefox
+1. Build the extension: `npm run build:firefox`
+2. Open Firefox and go to `about:debugging`
+3. Click "This Firefox"
+4. Click "Load Temporary Add-on"
+5. Select the `manifest.json` file from the `dist` folder
 
-1. Открой `about:debugging` в адресной строке
-2. Нажми "This Firefox" (Этот Firefox)
-3. Нажми "Load Temporary Add-on" (Загрузить временное дополнение)
-4. Выбери файл `manifest.json` из папки `dist-firefox/`
+## Configuration
 
-## 🎓 Визард первого запуска
+The extension requires an OpenRouter API key for AI functionality:
 
-При первом запуске расширения (когда нет настроек) автоматически открывается визард:
+1. Get an API key from [OpenRouter](https://openrouter.ai)
+2. Open the extension settings
+3. Enter your API key
+4. Configure your preferred AI model
 
-1. **Выбор провайдера** - показывает список AI провайдеров с проверкой доступности
-2. **Ввод учётных данных** - запрашивает API ключ или Base URL
-3. **Автоматическое сохранение** - настройки сохраняются и открывается чат
-
-### Проверка доступности провайдеров
-
-Визард автоматически проверяет доступность каждого провайдера:
-- ✅ **Доступен** - можно использовать
-- ⏳ **Проверка...** - идёт проверка
-- ❌ **Недоступен** - временно недоступен
-
-Если внешний сервис проверки недоступен, используется fallback (все провайдеры помечаются как доступные).
-
-## 🔑 API ключи
-
-### OpenRouter
-- Получить: [openrouter.ai/keys](https://openrouter.ai/keys)
-- Формат: `sk-or-...`
-
-### OpenAI
-- Получить: [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
-- Формат: `sk-...`
-
-### xAI (Grok)
-- Получить: [console.x.ai](https://console.x.ai/)
-- Формат: `xai-...`
-
-### Ollama (локальный)
-- Установить: [ollama.com](https://ollama.com/)
-- Default URL: `http://localhost:11434`
-
-## 📚 Документация
-
-- `WIZARD_README.md` - подробное описание визарда
-- `AVAILABILITY_WORKER_DEPLOY.md` - как развернуть сервис проверки доступности
-- `availability-worker.js` - код Cloudflare Worker для проверки доступности
-
-## 🛠️ Разработка
-
-### Структура проекта
+## Project Structure
 
 ```
-src/
-├── front/              # UI компоненты (Svelte)
-│   ├── Wizard.svelte   # Визард первого запуска
-│   ├── Chat.svelte     # Чат с AI
-│   ├── Settings.svelte # Настройки
-│   └── locales/        # Переводы
-├── services/           # Сервисы
-│   ├── ConfigService.ts    # Управление настройками
-│   ├── ProviderConfigs.ts  # Конфигурация провайдеров
-│   └── ChatStorage.ts      # Хранение истории чата
-├── tools/              # Инструменты для AI
-└── content.ts          # Content script
+├── src/
+│   ├── components/          # Svelte UI components
+│   ├── services/           # Core services (AI, Config, State)
+│   ├── content/            # Content scripts
+│   ├── background/         # Background scripts
+│   └── manifest/           # Extension manifests
+├── vite.config.chrome.ts   # Chrome build configuration
+├── vite.config.firefox.ts  # Firefox build configuration
+└── CLAUDE.md              # AI assistant instructions
 ```
 
-### Технологии
+## License
 
-- **Svelte 5** - реактивный UI фреймворк
-- **TypeScript** - типизация
-- **Vite** - сборщик
-- **AI SDK** - работа с LLM
-- **IndexedDB** - локальное хранилище
-
-## 🔄 Обновление
-
-Чтобы очистить настройки и увидеть визард снова:
-
-```javascript
-// В консоли браузера на странице расширения
-chrome.storage.local.clear()
-```
-
-Затем перезагрузи расширение.
-
-## 📝 Лицензия
-
-MIT
-
-## 🤝 Contributing
-
-Pull requests приветствуются!
+This project is licensed under BSL 1.1  
+Commercial use restrictions apply until 2030-09-29

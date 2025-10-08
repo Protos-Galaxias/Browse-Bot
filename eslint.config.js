@@ -75,6 +75,7 @@ export default [
         ignores: [
             'dist/',
             'dist-firefox/',
+            'dist-chrome/',
             'node_modules/',
             '*.config.js',
             '*.config.ts',

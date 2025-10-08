@@ -1,3 +1,6 @@
+// Copyright (c) 2025 PROTOS GALAXIAS LIMITED
+// SPDX-License-Identifier: BSL-1.1
+
 import type { ToolContext } from './types';
 
 export const resolveTabId = (context: ToolContext, tabId?: number): number => {

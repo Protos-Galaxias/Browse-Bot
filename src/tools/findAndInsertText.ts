@@ -1,3 +1,6 @@
+// Copyright (c) 2025 PROTOS GALAXIAS LIMITED
+// SPDX-License-Identifier: BSL-1.1
+
 import { tool } from 'ai';
 import { z } from 'zod';
 import { findElementIds } from './findElement';
