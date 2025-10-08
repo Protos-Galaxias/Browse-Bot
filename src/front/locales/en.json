@@ -169,6 +169,27 @@
   "system": {
     "noActiveTabNoTools": "No active tab — answering without tools, but with history",
     "taskStoppedByUser": "Task stopped by user"
+  },
+  "wizard": {
+    "welcome": "Welcome to Web Walker",
+    "selectProvider": "Choose your AI provider to get started",
+    "checking": "Checking...",
+    "available": "Available",
+    "unavailable": "Unavailable",
+    "recheckAvailability": "Recheck Availability",
+    "setupProvider": "Set up {provider}",
+    "apiKey": "API Key",
+    "baseUrl": "Base URL",
+    "getApiKey": "Get API Key",
+    "ollamaHelp": "Make sure Ollama is running locally. Default URL: http://localhost:11434",
+    "back": "Back",
+    "continue": "Continue",
+    "saving": "Saving...",
+    "errors": {
+      "apiKeyRequired": "Please enter your API key",
+      "baseUrlRequired": "Please enter the base URL",
+      "saveFailed": "Failed to save settings. Please try again."
+    }
   }
 }
 

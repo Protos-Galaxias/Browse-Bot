@@ -3,6 +3,7 @@
     import Chat from './Chat.svelte';
     import Settings from './Settings.svelte';
     import Capabilities from './Capabilities.svelte';
+    import Wizard from './Wizard.svelte';
     import type { Theme } from '../services/ConfigService';
     import { _ } from 'svelte-i18n';
     import settingsIcon from './icons/settings.svg';
@@ -15,6 +16,8 @@
 
     let currentView: 'chat' | 'settings' | 'capabilities' = 'chat';
     let chatRef: InstanceType<typeof Chat> | null = null;
+    let showWizard = false;
+    let checkingSetup = true;
 
     function updateViewFromHash() {
         const hash = window.location.hash;
@@ -32,7 +35,7 @@
     updateViewFromHash();
 
     onMount(async () => {
-        const settings = await extStorage.local.get(['theme', 'apiKey']);
+        const settings = await extStorage.local.get(['theme', 'provider', 'apiKey', 'openaiApiKey', 'xaiApiKey', 'ollamaBaseURL']);
         const theme = settings.theme || 'system';
         applyTheme(theme);
 
@@ -58,13 +61,21 @@
             console.warn('[UI] PING threw', e);
         }
 
-        // Если API ключ не задан – открываем настройки
-        const apiKey = settings.apiKey || '';
-        if (!apiKey) {
-            currentView = 'settings';
-            try { window.location.hash = '#settings'; } catch {}
+        // Check if we need to show wizard (no provider configured)
+        const hasProvider = settings.provider;
+        const hasAnyKey = settings.apiKey || settings.openaiApiKey || settings.xaiApiKey || settings.ollamaBaseURL;
+        
+        if (!hasProvider || !hasAnyKey) {
+            showWizard = true;
         }
+        
+        checkingSetup = false;
     });
+
+    function onWizardComplete() {
+        showWizard = false;
+        currentView = 'chat';
+    }
 
     function applyTheme(selectedTheme: Theme) {
         const root = document.documentElement;
@@ -79,34 +90,41 @@
 </script>
 
 <main>
-    <header class="header">
-        <button on:click={() => chatRef?.openChatSidebar?.()} title="Chats" aria-label="Open chats">
-            <img class="nav-icon" src={menuIcon} alt="Chats" />
-        </button>
-        <DomainPromptBar/>
-        <nav>
-            <button on:click={() => currentView = 'chat'}>
-                <img class="nav-icon" src={chatIcon} alt="Chat" />
+    {#if checkingSetup}
+        <div class="loading-screen">
+            <div class="loading-spinner"></div>
+        </div>
+    {:else if showWizard}
+        <Wizard onComplete={onWizardComplete} />
+    {:else}
+        <header class="header">
+            <button on:click={() => chatRef?.openChatSidebar?.()} title="Chats" aria-label="Open chats">
+                <img class="nav-icon" src={menuIcon} alt="Chats" />
             </button>
-            <button on:click={() => currentView = 'capabilities'}>
-                <img class="nav-icon" src={ideaIcon} alt="Capabilities" />
-            </button>
-            <button on:click={() => currentView = 'settings'}>
-                <img class="nav-icon" src={settingsIcon} alt="Settings" />
-            </button>
-        </nav>
-    </header>
+            <DomainPromptBar/>
+            <nav>
+                <button on:click={() => currentView = 'chat'}>
+                    <img class="nav-icon" src={chatIcon} alt="Chat" />
+                </button>
+                <button on:click={() => currentView = 'capabilities'}>
+                    <img class="nav-icon" src={ideaIcon} alt="Capabilities" />
+                </button>
+                <button on:click={() => currentView = 'settings'}>
+                    <img class="nav-icon" src={settingsIcon} alt="Settings" />
+                </button>
+            </nav>
+        </header>
 
-
-    <div class="view">
-        {#if currentView === 'chat'}
-            <Chat bind:this={chatRef} />
-        {:else if currentView === 'settings'}
-            <Settings />
-        {:else if currentView === 'capabilities'}
-            <Capabilities />
-        {/if}
-    </div>
+        <div class="view">
+            {#if currentView === 'chat'}
+                <Chat bind:this={chatRef} />
+            {:else if currentView === 'settings'}
+                <Settings />
+            {:else if currentView === 'capabilities'}
+                <Capabilities />
+            {/if}
+        </div>
+    {/if}
 </main>
 
 <style>
@@ -212,5 +230,26 @@
     /* Make stroke-based SVG icons white in dark theme */
     :global(:root[data-theme="dark"]) .nav-icon {
         filter: invert(1);
+    }
+
+    .loading-screen {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        background: var(--bg-primary);
+    }
+
+    .loading-spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid var(--border-color);
+        border-top-color: var(--accent-color);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
     }
 </style>

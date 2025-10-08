@@ -169,6 +169,27 @@
   "system": {
     "noActiveTabNoTools": "Нет активной вкладки — отвечаю без инструментов, но с историей",
     "taskStoppedByUser": "Задача остановлена пользователем"
+  },
+  "wizard": {
+    "welcome": "Добро пожаловать в Web Walker",
+    "selectProvider": "Выберите AI провайдера для начала работы",
+    "checking": "Проверка...",
+    "available": "Доступен",
+    "unavailable": "Недоступен",
+    "recheckAvailability": "Проверить снова",
+    "setupProvider": "Настройка {provider}",
+    "apiKey": "API ключ",
+    "baseUrl": "Base URL",
+    "getApiKey": "Получить API ключ",
+    "ollamaHelp": "Убедитесь, что Ollama запущена локально. URL по умолчанию: http://localhost:11434",
+    "back": "Назад",
+    "continue": "Продолжить",
+    "saving": "Сохранение...",
+    "errors": {
+      "apiKeyRequired": "Введите API ключ",
+      "baseUrlRequired": "Введите базовый URL",
+      "saveFailed": "Не удалось сохранить настройки. Попробуйте снова."
+    }
   }
 }
 

@@ -1,54 +1,140 @@
-# Svelte + TS + Vite
+# Web Walker Extension
 
-This template should help get you started developing with Svelte and TypeScript in Vite.
+AI-powered browser automation extension for Chrome and Firefox.
 
-## Recommended IDE Setup
+## ✨ Особенности
 
-[VS Code](https://code.visualstudio.com/) + [Svelte](https://marketplace.visualstudio.com/items?itemName=svelte.svelte-vscode).
+- 🤖 **AI Автоматизация** - автоматическое взаимодействие с веб-страницами через LLM
+- 🎯 **Умный визард** - простая настройка при первом запуске с проверкой доступности провайдеров
+- 🌐 **Мультипровайдер** - поддержка OpenRouter, OpenAI, xAI (Grok), Ollama
+- 🔧 **Инструменты** - клик, ввод текста, парсинг страниц, работа с формами
+- 💬 **Чат** - удобный интерфейс для общения с AI агентом
+- 🌍 **Локализация** - полная поддержка русского и английского языков
+- 🎨 **Темы** - светлая, тёмная и системная тема
 
-## Need an official Svelte framework?
+## 🚀 Быстрый старт
 
-Check out [SvelteKit](https://github.com/sveltejs/kit#readme), which is also powered by Vite. Deploy anywhere with its serverless-first approach and adapt to various platforms, with out of the box support for TypeScript, SCSS, and Less, and easily-added support for mdsvex, GraphQL, PostCSS, Tailwind CSS, and more.
+### Установка зависимостей
 
-## Technical considerations
-
-**Why use this over SvelteKit?**
-
-- It brings its own routing solution which might not be preferable for some users.
-- It is first and foremost a framework that just happens to use Vite under the hood, not a Vite app.
-
-This template contains as little as possible to get started with Vite + TypeScript + Svelte, while taking into account the developer experience with regards to HMR and intellisense. It demonstrates capabilities on par with the other `create-vite` templates and is a good starting point for beginners dipping their toes into a Vite + Svelte project.
-
-Should you later need the extended capabilities and extensibility provided by SvelteKit, the template has been structured similarly to SvelteKit so that it is easy to migrate.
-
-**Why `global.d.ts` instead of `compilerOptions.types` inside `jsconfig.json` or `tsconfig.json`?**
-
-Setting `compilerOptions.types` shuts out all other types not explicitly listed in the configuration. Using triple-slash references keeps the default TypeScript setting of accepting type information from the entire workspace, while also adding `svelte` and `vite/client` type information.
-
-**Why include `.vscode/extensions.json`?**
-
-Other templates indirectly recommend extensions via the README, but this file allows VS Code to prompt the user to install the recommended extension upon opening the project.
-
-**Why enable `allowJs` in the TS template?**
-
-While `allowJs: false` would indeed prevent the use of `.js` files in the project, it does not prevent the use of JavaScript syntax in `.svelte` files. In addition, it would force `checkJs: false`, bringing the worst of both worlds: not being able to guarantee the entire codebase is TypeScript, and also having worse typechecking for the existing JavaScript. In addition, there are valid use cases in which a mixed codebase may be relevant.
-
-**Why is HMR not preserving my local component state?**
-
-HMR state preservation comes with a number of gotchas! It has been disabled by default in both `svelte-hmr` and `@sveltejs/vite-plugin-svelte` due to its often surprising behavior. You can read the details [here](https://github.com/rixo/svelte-hmr#svelte-hmr).
-
-If you have state that's important to retain within a component, consider creating an external store which would not be replaced by HMR.
-
-```ts
-// store.ts
-// An extremely simple external store
-import { writable } from 'svelte/store'
-export default writable(0)
+```bash
+npm install
 ```
 
-# Использование в Firefox
+### Сборка для Chrome
 
-- Открой about:debugging в адресной строке
-- Нажми "This Firefox" (Этот Firefox)
-- Нажми "Load Temporary Add-on" (Загрузить временное дополнение)
-- Выбери файл manifest.json из папки твоего расширения
+```bash
+npm run build:chrome
+```
+
+Собранное расширение будет в папке `dist-chrome/`.
+
+### Сборка для Firefox
+
+```bash
+npm run build:firefox
+```
+
+Собранное расширение будет в папке `dist-firefox/`.
+
+## 📦 Установка расширения
+
+### Chrome
+
+1. Открой `chrome://extensions/`
+2. Включи "Режим разработчика" (Developer mode)
+3. Нажми "Загрузить распакованное расширение" (Load unpacked)
+4. Выбери папку `dist-chrome/`
+
+### Firefox
+
+1. Открой `about:debugging` в адресной строке
+2. Нажми "This Firefox" (Этот Firefox)
+3. Нажми "Load Temporary Add-on" (Загрузить временное дополнение)
+4. Выбери файл `manifest.json` из папки `dist-firefox/`
+
+## 🎓 Визард первого запуска
+
+При первом запуске расширения (когда нет настроек) автоматически открывается визард:
+
+1. **Выбор провайдера** - показывает список AI провайдеров с проверкой доступности
+2. **Ввод учётных данных** - запрашивает API ключ или Base URL
+3. **Автоматическое сохранение** - настройки сохраняются и открывается чат
+
+### Проверка доступности провайдеров
+
+Визард автоматически проверяет доступность каждого провайдера:
+- ✅ **Доступен** - можно использовать
+- ⏳ **Проверка...** - идёт проверка
+- ❌ **Недоступен** - временно недоступен
+
+Если внешний сервис проверки недоступен, используется fallback (все провайдеры помечаются как доступные).
+
+## 🔑 API ключи
+
+### OpenRouter
+- Получить: [openrouter.ai/keys](https://openrouter.ai/keys)
+- Формат: `sk-or-...`
+
+### OpenAI
+- Получить: [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
+- Формат: `sk-...`
+
+### xAI (Grok)
+- Получить: [console.x.ai](https://console.x.ai/)
+- Формат: `xai-...`
+
+### Ollama (локальный)
+- Установить: [ollama.com](https://ollama.com/)
+- Default URL: `http://localhost:11434`
+
+## 📚 Документация
+
+- `WIZARD_README.md` - подробное описание визарда
+- `AVAILABILITY_WORKER_DEPLOY.md` - как развернуть сервис проверки доступности
+- `availability-worker.js` - код Cloudflare Worker для проверки доступности
+
+## 🛠️ Разработка
+
+### Структура проекта
+
+```
+src/
+├── front/              # UI компоненты (Svelte)
+│   ├── Wizard.svelte   # Визард первого запуска
+│   ├── Chat.svelte     # Чат с AI
+│   ├── Settings.svelte # Настройки
+│   └── locales/        # Переводы
+├── services/           # Сервисы
+│   ├── ConfigService.ts    # Управление настройками
+│   ├── ProviderConfigs.ts  # Конфигурация провайдеров
+│   └── ChatStorage.ts      # Хранение истории чата
+├── tools/              # Инструменты для AI
+└── content.ts          # Content script
+```
+
+### Технологии
+
+- **Svelte 5** - реактивный UI фреймворк
+- **TypeScript** - типизация
+- **Vite** - сборщик
+- **AI SDK** - работа с LLM
+- **IndexedDB** - локальное хранилище
+
+## 🔄 Обновление
+
+Чтобы очистить настройки и увидеть визард снова:
+
+```javascript
+// В консоли браузера на странице расширения
+chrome.storage.local.clear()
+```
+
+Затем перезагрузи расширение.
+
+## 📝 Лицензия
+
+MIT
+
+## 🤝 Contributing
+
+Pull requests приветствуются!
