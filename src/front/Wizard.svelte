@@ -8,144 +8,130 @@
 
     type ProviderId = keyof typeof ProviderMeta;
     
-    interface ProviderAvailability {
+    interface ProviderConfig {
         id: ProviderId;
         name: string;
-        available: boolean;
-        checking: boolean;
+        description?: string;
         needsApiKey: boolean;
         apiKeyUrl: string;
         apiKeyPlaceholder: string;
         needsBaseUrl: boolean;
         baseUrlPlaceholder: string;
+        enabled: boolean;
+        priority?: number;
     }
 
     let step: 'provider' | 'credentials' = 'provider';
-    let providers: ProviderAvailability[] = [];
+    let providers: ProviderConfig[] = [];
     let selectedProvider: ProviderId | null = null;
     let apiKeyInput = '';
     let baseUrlInput = '';
     let saving = false;
     let errorMessage = '';
+    let loading = true;
+    let loadError = '';
 
-    // Можно заменить на свой URL после деплоя Worker (см. AVAILABILITY_WORKER_DEPLOY.md)
-    // Если сервер недоступен - будет использован fallback (все провайдеры доступны)
-    const AVAILABILITY_CHECK_URL = 'https://web-walker-availability.molchanov-artem-1994.workers.dev/';
-    const CHECK_TIMEOUT = 3000; // 3 секунды на проверку
-
-    const providerDetails: Record<ProviderId, {
-        needsApiKey: boolean;
-        apiKeyUrl: string;
-        apiKeyPlaceholder: string;
-        needsBaseUrl: boolean;
-        baseUrlPlaceholder: string;
-    }> = {
-        openrouter: {
+    // URL для загрузки конфигурации провайдеров
+    // Положи providers-config.json на любой статический хостинг (GitHub/GitLab Raw, Pages, Cloudflare R2, etc.)
+    const PROVIDERS_CONFIG_URL = 'https://raw.githubusercontent.com/твой-username/твой-repo/main/providers-config.json';
+    
+    // Fallback конфигурация (если загрузка не удалась)
+    const FALLBACK_PROVIDERS: ProviderConfig[] = [
+        {
+            id: 'openrouter',
+            name: 'OpenRouter',
+            description: 'Доступ к 200+ моделям',
             needsApiKey: true,
             apiKeyUrl: 'https://openrouter.ai/keys',
             apiKeyPlaceholder: 'sk-or-...',
             needsBaseUrl: false,
-            baseUrlPlaceholder: ''
+            baseUrlPlaceholder: '',
+            enabled: true,
+            priority: 1
         },
-        openai: {
+        {
+            id: 'openai',
+            name: 'OpenAI',
+            description: 'GPT-5, GPT-4.1-mini, ...',
             needsApiKey: true,
             apiKeyUrl: 'https://platform.openai.com/api-keys',
             apiKeyPlaceholder: 'sk-...',
             needsBaseUrl: false,
-            baseUrlPlaceholder: ''
+            baseUrlPlaceholder: '',
+            enabled: true,
+            priority: 2
         },
-        xai: {
+        {
+            id: 'xai',
+            name: 'xAI (Grok)',
+            description: 'Модели Grok',
             needsApiKey: true,
             apiKeyUrl: 'https://console.x.ai/',
             apiKeyPlaceholder: 'xai-...',
             needsBaseUrl: false,
-            baseUrlPlaceholder: ''
+            baseUrlPlaceholder: '',
+            enabled: true,
+            priority: 3
         },
-        ollama: {
+        {
+            id: 'ollama',
+            name: 'Ollama (Локально)',
+            description: 'Запуск моделей локально',
             needsApiKey: false,
             apiKeyUrl: '',
             apiKeyPlaceholder: '',
             needsBaseUrl: true,
-            baseUrlPlaceholder: 'http://localhost:11434'
+            baseUrlPlaceholder: 'http://localhost:11434',
+            enabled: true,
+            priority: 4
         }
-    };
+    ];
 
     onMount(async () => {
-        await checkProvidersAvailability();
+        await loadProvidersConfig();
     });
 
-    async function checkProvidersAvailability() {
-        const providerIds = Object.keys(ProviderMeta) as ProviderId[];
+    async function loadProvidersConfig() {
+        loading = true;
+        loadError = '';
         
-        providers = providerIds.map(id => ({
-            id,
-            name: id,
-            available: false,
-            checking: true,
-            ...providerDetails[id]
-        }));
-
-        // Try to check with external service
-        let usesFallback = false;
         try {
-            // Quick check if service is available
+            // Пробуем загрузить конфигурацию с внешнего URL
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), CHECK_TIMEOUT);
+            const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 секунд таймаут
             
-            const testResponse = await fetch(`${AVAILABILITY_CHECK_URL}?provider=openai`, {
+            const response = await fetch(PROVIDERS_CONFIG_URL, {
                 signal: controller.signal
             });
             clearTimeout(timeoutId);
             
-            if (!testResponse.ok) {
-                throw new Error('Service unavailable');
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            // Валидация и фильтрация
+            if (data.providers && Array.isArray(data.providers)) {
+                providers = data.providers
+                    .filter((p: any) => p.enabled !== false && Object.keys(ProviderMeta).includes(p.id))
+                    .sort((a: any, b: any) => (a.priority || 999) - (b.priority || 999));
+                
+                console.log(`[Wizard] Loaded ${providers.length} providers from ${PROVIDERS_CONFIG_URL}`);
+            } else {
+                throw new Error('Invalid config format');
             }
         } catch (error) {
-            console.warn('Availability check service unavailable, using fallback:', error);
-            usesFallback = true;
-        }
-
-        // Check each provider
-        for (let i = 0; i < providers.length; i++) {
-            const provider = providers[i];
+            console.warn('[Wizard] Failed to load providers config, using fallback:', error);
+            loadError = error instanceof Error ? error.message : 'Unknown error';
             
-            if (usesFallback) {
-                // Fallback: все провайдеры доступны
-                providers[i] = {
-                    ...provider,
-                    available: true,
-                    checking: false
-                };
-            } else {
-                try {
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), CHECK_TIMEOUT);
-                    
-                    const response = await fetch(`${AVAILABILITY_CHECK_URL}?provider=${provider.id}`, {
-                        signal: controller.signal
-                    });
-                    clearTimeout(timeoutId);
-                    
-                    const data = await response.json();
-                    providers[i] = {
-                        ...provider,
-                        available: data.available === true,
-                        checking: false
-                    };
-                } catch (error) {
-                    console.warn(`Failed to check ${provider.id}, marking as available:`, error);
-                    // Если проверка не удалась - помечаем как доступный
-                    providers[i] = {
-                        ...provider,
-                        available: true,
-                        checking: false
-                    };
-                }
-            }
+            // Используем fallback конфигурацию
+            providers = FALLBACK_PROVIDERS
+                .filter(p => p.enabled)
+                .sort((a, b) => (a.priority || 999) - (b.priority || 999));
+        } finally {
+            loading = false;
         }
-        
-        // Force reactivity
-        providers = [...providers];
     }
 
     function selectProvider(providerId: ProviderId) {
@@ -232,13 +218,8 @@
     }
 
     function getProviderDisplayName(id: ProviderId): string {
-        const names: Record<ProviderId, string> = {
-            openrouter: 'OpenRouter',
-            openai: 'OpenAI',
-            xai: 'xAI (Grok)',
-            ollama: 'Ollama (Local)'
-        };
-        return names[id] || id;
+        const provider = providers.find(p => p.id === id);
+        return provider?.name || id;
     }
 </script>
 
@@ -249,35 +230,38 @@
                 <h1 class="wizard-title">{$_('wizard.welcome')}</h1>
                 <p class="wizard-description">{$_('wizard.selectProvider')}</p>
 
-                <div class="providers-grid">
-                    {#each providers as provider (provider.id)}
-                        <button
-                            class="provider-card"
-                            class:checking={provider.checking}
-                            class:available={provider.available && !provider.checking}
-                            class:unavailable={!provider.available && !provider.checking}
-                            on:click={() => selectProvider(provider.id)}
-                            disabled={provider.checking || !provider.available}
-                        >
-                            <div class="provider-name">{getProviderDisplayName(provider.id)}</div>
-                            <div class="provider-status">
-                                {#if provider.checking}
-                                    <span class="status-badge checking">{$_('wizard.checking')}</span>
-                                {:else if provider.available}
-                                    <span class="status-badge available">✓ {$_('wizard.available')}</span>
-                                {:else}
-                                    <span class="status-badge unavailable">✗ {$_('wizard.unavailable')}</span>
+                {#if loading}
+                    <div class="loading-state">
+                        <div class="loading-spinner"></div>
+                        <p>{$_('wizard.loadingProviders')}</p>
+                    </div>
+                {:else}
+                    <div class="providers-grid">
+                        {#each providers as provider (provider.id)}
+                            <button
+                                class="provider-card"
+                                on:click={() => selectProvider(provider.id)}
+                            >
+                                <div class="provider-name">{provider.name}</div>
+                                {#if provider.description}
+                                    <div class="provider-description">{provider.description}</div>
                                 {/if}
-                            </div>
-                        </button>
-                    {/each}
-                </div>
+                            </button>
+                        {/each}
+                    </div>
 
-                <div class="wizard-actions">
-                    <button class="refresh-btn" on:click={checkProvidersAvailability}>
-                        🔄 {$_('wizard.recheckAvailability')}
-                    </button>
-                </div>
+                    {#if loadError}
+                        <div class="info-message">
+                            ⚠️ {$_('wizard.usingFallback')}
+                        </div>
+                    {/if}
+
+                    <div class="wizard-actions">
+                        <button class="refresh-btn" on:click={loadProvidersConfig}>
+                            🔄 {$_('wizard.reload')}
+                        </button>
+                    </div>
+                {/if}
             </div>
         {:else if step === 'credentials' && selectedProvider}
             {@const provider = providers.find(p => p.id === selectedProvider)}
@@ -426,31 +410,36 @@
         margin-bottom: 0.5rem;
     }
 
-    .provider-status {
-        margin-top: 0.5rem;
-    }
-
-    .status-badge {
-        display: inline-block;
-        padding: 0.25rem 0.75rem;
-        border-radius: 12px;
+    .provider-description {
         font-size: 0.85rem;
-        font-weight: 500;
+        color: var(--text-secondary);
+        line-height: 1.3;
     }
 
-    .status-badge.checking {
-        background: rgba(255, 193, 7, 0.2);
-        color: #ffc107;
+    .loading-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 3rem 1rem;
+        gap: 1rem;
     }
 
-    .status-badge.available {
-        background: rgba(40, 167, 69, 0.2);
-        color: #28a745;
+    .loading-state p {
+        margin: 0;
+        color: var(--text-secondary);
+        font-size: 0.95rem;
     }
 
-    .status-badge.unavailable {
-        background: rgba(220, 53, 69, 0.2);
-        color: #dc3545;
+    .info-message {
+        background: rgba(255, 193, 7, 0.1);
+        border: 1px solid rgba(255, 193, 7, 0.3);
+        border-radius: 8px;
+        padding: 0.75rem;
+        margin-bottom: 1rem;
+        color: var(--text-primary);
+        font-size: 0.9rem;
+        text-align: center;
     }
 
     .wizard-actions {

@@ -186,10 +186,9 @@
   "wizard": {
     "welcome": "Welcome to Web Walker",
     "selectProvider": "Choose your AI provider to get started",
-    "checking": "Checking...",
-    "available": "Available",
-    "unavailable": "Unavailable",
-    "recheckAvailability": "Recheck Availability",
+    "loadingProviders": "Loading providers...",
+    "usingFallback": "Using local configuration",
+    "reload": "Reload",
     "setupProvider": "Set up {provider}",
     "apiKey": "API Key",
     "baseUrl": "Base URL",

@@ -1,0 +1,55 @@
+{
+  "providers": [
+    {
+      "id": "openrouter",
+      "name": "OpenRouter",
+      "description": "Доступ к 200+ моделям включая GPT-4, Claude, Llama",
+      "needsApiKey": true,
+      "apiKeyUrl": "https://openrouter.ai/keys",
+      "apiKeyPlaceholder": "sk-or-...",
+      "needsBaseUrl": false,
+      "baseUrlPlaceholder": "",
+      "enabled": true,
+      "priority": 1
+    },
+    {
+      "id": "openai",
+      "name": "OpenAI",
+      "description": "GPT-4, GPT-4 Turbo, GPT-3.5",
+      "needsApiKey": true,
+      "apiKeyUrl": "https://platform.openai.com/api-keys",
+      "apiKeyPlaceholder": "sk-...",
+      "needsBaseUrl": false,
+      "baseUrlPlaceholder": "",
+      "enabled": true,
+      "priority": 2
+    },
+    {
+      "id": "xai",
+      "name": "xAI (Grok)",
+      "description": "Модели Grok от xAI",
+      "needsApiKey": true,
+      "apiKeyUrl": "https://console.x.ai/",
+      "apiKeyPlaceholder": "xai-...",
+      "needsBaseUrl": false,
+      "baseUrlPlaceholder": "",
+      "enabled": true,
+      "priority": 3
+    },
+    {
+      "id": "ollama",
+      "name": "Ollama (Локально)",
+      "description": "Запуск моделей локально на вашем компьютере",
+      "needsApiKey": false,
+      "apiKeyUrl": "",
+      "apiKeyPlaceholder": "",
+      "needsBaseUrl": true,
+      "baseUrlPlaceholder": "http://localhost:11434",
+      "enabled": true,
+      "priority": 4
+    }
+  ],
+  "version": "1.0.0",
+  "lastUpdated": "2025-01-10"
+}
+

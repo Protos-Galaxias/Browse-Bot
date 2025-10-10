@@ -186,10 +186,9 @@
   "wizard": {
     "welcome": "Добро пожаловать в Web Walker",
     "selectProvider": "Выберите AI провайдера для начала работы",
-    "checking": "Проверка...",
-    "available": "Доступен",
-    "unavailable": "Недоступен",
-    "recheckAvailability": "Проверить снова",
+    "loadingProviders": "Загрузка провайдеров...",
+    "usingFallback": "Используется локальная конфигурация",
+    "reload": "Обновить",
     "setupProvider": "Настройка {provider}",
     "apiKey": "API ключ",
     "baseUrl": "Base URL",
