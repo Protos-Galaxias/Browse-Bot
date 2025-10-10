@@ -3,23 +3,11 @@
     import { _ } from 'svelte-i18n';
     import { ProviderMeta } from '../services/ProviderMeta';
     import { extStorage } from '../services/ExtStorage';
+    import { loadProvidersConfig, type ProviderConfig } from '../services/ProviderLoader';
 
     export let onComplete: () => void;
 
     type ProviderId = keyof typeof ProviderMeta;
-    
-    interface ProviderConfig {
-        id: ProviderId;
-        name: string;
-        description?: string;
-        needsApiKey: boolean;
-        apiKeyUrl: string;
-        apiKeyPlaceholder: string;
-        needsBaseUrl: boolean;
-        baseUrlPlaceholder: string;
-        enabled: boolean;
-        priority?: number;
-    }
 
     let step: 'provider' | 'credentials' = 'provider';
     let providers: ProviderConfig[] = [];
@@ -31,108 +19,19 @@
     let loading = true;
     let loadError = '';
 
-    // URL для загрузки конфигурации провайдеров
-    // Положи providers-config.json на любой статический хостинг (GitHub/GitLab Raw, Pages, Cloudflare R2, etc.)
-    const PROVIDERS_CONFIG_URL = 'https://raw.githubusercontent.com/molchanovartem/web-walker-config/refs/heads/main/providers-config.json';
-    
-    // Fallback конфигурация (если загрузка не удалась)
-    const FALLBACK_PROVIDERS: ProviderConfig[] = [
-        {
-            id: 'openrouter',
-            name: 'OpenRouter',
-            description: 'Доступ к 200+ моделям',
-            needsApiKey: true,
-            apiKeyUrl: 'https://openrouter.ai/keys',
-            apiKeyPlaceholder: 'sk-or-...',
-            needsBaseUrl: false,
-            baseUrlPlaceholder: '',
-            enabled: true,
-            priority: 1
-        },
-        {
-            id: 'openai',
-            name: 'OpenAI',
-            description: 'GPT-5, GPT-4.1-mini, ...',
-            needsApiKey: true,
-            apiKeyUrl: 'https://platform.openai.com/api-keys',
-            apiKeyPlaceholder: 'sk-...',
-            needsBaseUrl: false,
-            baseUrlPlaceholder: '',
-            enabled: true,
-            priority: 2
-        },
-        {
-            id: 'xai',
-            name: 'xAI (Grok)',
-            description: 'Модели Grok',
-            needsApiKey: true,
-            apiKeyUrl: 'https://console.x.ai/',
-            apiKeyPlaceholder: 'xai-...',
-            needsBaseUrl: false,
-            baseUrlPlaceholder: '',
-            enabled: true,
-            priority: 3
-        },
-        {
-            id: 'ollama',
-            name: 'Ollama (Локально)',
-            description: 'Запуск моделей локально',
-            needsApiKey: false,
-            apiKeyUrl: '',
-            apiKeyPlaceholder: '',
-            needsBaseUrl: true,
-            baseUrlPlaceholder: 'http://localhost:11434',
-            enabled: true,
-            priority: 4
-        }
-    ];
-
     onMount(async () => {
-        await loadProvidersConfig();
-    });
-
-    async function loadProvidersConfig() {
         loading = true;
         loadError = '';
         
         try {
-            // Пробуем загрузить конфигурацию с внешнего URL
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 секунд таймаут
-            
-            const response = await fetch(PROVIDERS_CONFIG_URL, {
-                signal: controller.signal
-            });
-            clearTimeout(timeoutId);
-            
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-            
-            const data = await response.json();
-            
-            // Валидация и фильтрация
-            if (data.providers && Array.isArray(data.providers)) {
-                providers = data.providers
-                    .filter((p: any) => p.enabled !== false && Object.keys(ProviderMeta).includes(p.id))
-                    .sort((a: any, b: any) => (a.priority || 999) - (b.priority || 999));
-                
-                console.log(`[Wizard] Loaded ${providers.length} providers from ${PROVIDERS_CONFIG_URL}`);
-            } else {
-                throw new Error('Invalid config format');
-            }
+            providers = await loadProvidersConfig();
         } catch (error) {
-            console.warn('[Wizard] Failed to load providers config, using fallback:', error);
             loadError = error instanceof Error ? error.message : 'Unknown error';
-            
-            // Используем fallback конфигурацию
-            providers = FALLBACK_PROVIDERS
-                .filter(p => p.enabled)
-                .sort((a, b) => (a.priority || 999) - (b.priority || 999));
+            console.error('[Wizard] Failed to load providers:', error);
         } finally {
             loading = false;
         }
-    }
+    });
 
     function selectProvider(providerId: ProviderId) {
         selectedProvider = providerId;
@@ -343,37 +242,37 @@
         background: var(--bg-secondary);
         border: 1px solid var(--border-color);
         border-radius: 16px;
-        padding: 2rem;
+        padding: 1.5rem;
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
     }
 
     .wizard-title {
-        font-size: 1.75rem;
+        font-size: 1.5rem;
         font-weight: 600;
         color: var(--text-primary);
-        margin: 0 0 0.5rem 0;
+        margin: 0 0 0.4rem 0;
         text-align: center;
     }
 
     .wizard-description {
-        font-size: 1rem;
+        font-size: 0.95rem;
         color: var(--text-secondary);
-        margin: 0 0 1.5rem 0;
+        margin: 0 0 1.2rem 0;
         text-align: center;
     }
 
     .providers-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1rem;
-        margin-bottom: 1.5rem;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
     }
 
     .provider-card {
         background: var(--bg-primary);
         border: 2px solid var(--border-color);
         border-radius: 12px;
-        padding: 1.25rem;
+        padding: 0.875rem;
         cursor: pointer;
         transition: all 0.2s;
         text-align: center;
@@ -404,16 +303,16 @@
     }
 
     .provider-name {
-        font-size: 1.1rem;
+        font-size: 1rem;
         font-weight: 600;
         color: var(--text-primary);
-        margin-bottom: 0.5rem;
     }
 
     .provider-description {
-        font-size: 0.85rem;
+        font-size: 0.8rem;
         color: var(--text-secondary);
         line-height: 1.3;
+        margin-top: 0.3rem;
     }
 
     .loading-state {
@@ -421,24 +320,24 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        padding: 3rem 1rem;
-        gap: 1rem;
+        padding: 2rem 1rem;
+        gap: 0.75rem;
     }
 
     .loading-state p {
         margin: 0;
         color: var(--text-secondary);
-        font-size: 0.95rem;
+        font-size: 0.9rem;
     }
 
     .info-message {
         background: rgba(255, 193, 7, 0.1);
         border: 1px solid rgba(255, 193, 7, 0.3);
         border-radius: 8px;
-        padding: 0.75rem;
-        margin-bottom: 1rem;
+        padding: 0.6rem;
+        margin-bottom: 0.8rem;
         color: var(--text-primary);
-        font-size: 0.9rem;
+        font-size: 0.85rem;
         text-align: center;
     }
 
@@ -449,12 +348,12 @@
 
     .refresh-btn {
         flex: 1;
-        padding: 0.75rem;
+        padding: 0.625rem;
         background: transparent;
         border: 1px solid var(--border-color);
         border-radius: 8px;
         color: var(--text-primary);
-        font-size: 0.95rem;
+        font-size: 0.9rem;
         cursor: pointer;
         transition: all 0.2s;
     }
@@ -465,25 +364,25 @@
     }
 
     .form-group {
-        margin-bottom: 1.5rem;
+        margin-bottom: 1rem;
     }
 
     .form-label {
         display: block;
-        font-size: 0.95rem;
+        font-size: 0.9rem;
         font-weight: 500;
         color: var(--text-primary);
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.4rem;
     }
 
     .form-input {
         width: 100%;
-        padding: 0.875rem;
+        padding: 0.625rem;
         background: var(--bg-primary);
         border: 2px solid var(--border-color);
         border-radius: 8px;
         color: var(--text-primary);
-        font-size: 1rem;
+        font-size: 0.95rem;
         outline: none;
         transition: border-color 0.2s;
         box-sizing: border-box;
@@ -500,48 +399,49 @@
 
     .help-link {
         display: inline-block;
-        margin-top: 0.5rem;
-        color: var(--accent-color);
+        margin-top: 0.4rem;
+        color: var(--text-primary);
+        opacity: 0.7;
         text-decoration: none;
-        font-size: 0.9rem;
+        font-size: 0.85rem;
         transition: opacity 0.2s;
     }
 
     .help-link:hover {
-        opacity: 0.8;
+        opacity: 1;
         text-decoration: underline;
     }
 
     .help-text {
-        margin-top: 0.5rem;
-        font-size: 0.85rem;
+        margin-top: 0.4rem;
+        font-size: 0.8rem;
         color: var(--text-secondary);
-        line-height: 1.4;
+        line-height: 1.3;
     }
 
     .error-message {
         background: rgba(220, 53, 69, 0.1);
         border: 1px solid #dc3545;
         border-radius: 8px;
-        padding: 0.75rem;
+        padding: 0.6rem;
         color: #dc3545;
-        margin-bottom: 1rem;
-        font-size: 0.9rem;
+        margin-bottom: 0.8rem;
+        font-size: 0.85rem;
     }
 
     .button-row {
         display: flex;
-        gap: 1rem;
-        margin-top: 2rem;
+        gap: 0.75rem;
+        margin-top: 1.5rem;
     }
 
     .primary-btn,
     .secondary-btn {
         flex: 1;
-        padding: 0.875rem;
+        padding: 0.625rem;
         border: none;
         border-radius: 8px;
-        font-size: 1rem;
+        font-size: 0.95rem;
         font-weight: 500;
         cursor: pointer;
         transition: all 0.2s;

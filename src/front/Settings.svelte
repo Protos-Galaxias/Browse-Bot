@@ -11,6 +11,10 @@ SPDX-License-Identifier: BSL-1.1
     import { setAppLocale } from './lib/i18n';
     import { ProviderMeta as ProviderConfigs } from '../services/ProviderMeta';
     import { extStorage } from '../services/ExtStorage';
+    import { loadProvidersConfig, type ProviderConfig } from '../services/ProviderLoader';
+    
+    type ProviderId = keyof typeof ProviderConfigs;
+    
     let apiKey = '';
     let openaiApiKey = '';
     let xaiApiKey = '';
@@ -23,7 +27,6 @@ SPDX-License-Identifier: BSL-1.1
     let theme: Theme = 'system';
     let saveStatus: 'idle' | 'saving' | 'saved' = 'idle';
     let activeTab: 'general' | 'behavior' | 'prompt' = 'general';
-    type ProviderId = keyof typeof ProviderConfigs;
     let provider: ProviderId = 'openrouter';
     let ollamaBaseURL = '';
     let mcps: Array<{ id?: string; label?: string; endpoint: string; enabled: boolean }> = [];
@@ -41,8 +44,12 @@ SPDX-License-Identifier: BSL-1.1
     let formExtDescription: string = '';
     let formExtCode: string = '';
     let formExtEnabled: boolean = true;
+    
+    // Провайдеры из JSON
+    let availableProviders: ProviderConfig[] = [];
 
     onMount(async () => {
+        availableProviders = await loadProvidersConfig();
         const providerIds = Object.keys(ProviderConfigs) as ProviderId[];
 
         const keysToLoad = new Set<string>([
@@ -315,8 +322,8 @@ SPDX-License-Identifier: BSL-1.1
             <label class="setting-label">
                 {$_('common.provider')}
                 <select class="setting-input" bind:value={provider} on:change={(e) => setProvider((e.target as HTMLSelectElement).value as ProviderId)}>
-                    {#each Object.keys(ProviderConfigs) as pid}
-                        <option value={pid}>{$_(`common.${pid}`) || pid}</option>
+                    {#each availableProviders as providerCfg}
+                        <option value={providerCfg.id}>{providerCfg.name}</option>
                     {/each}
                 </select>
             </label>
