@@ -33,7 +33,7 @@
 
     // URL для загрузки конфигурации провайдеров
     // Положи providers-config.json на любой статический хостинг (GitHub/GitLab Raw, Pages, Cloudflare R2, etc.)
-    const PROVIDERS_CONFIG_URL = 'https://raw.githubusercontent.com/твой-username/твой-repo/main/providers-config.json';
+    const PROVIDERS_CONFIG_URL = 'https://raw.githubusercontent.com/molchanovartem/web-walker-config/refs/heads/main/providers-config.json';
     
     // Fallback конфигурация (если загрузка не удалась)
     const FALLBACK_PROVIDERS: ProviderConfig[] = [
