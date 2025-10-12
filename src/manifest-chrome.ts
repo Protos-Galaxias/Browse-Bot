@@ -26,6 +26,13 @@ export default defineManifest({
     action: {
         default_title: 'Open Browse Bot'
     },
+    icons: {
+        '16': 'logos/16x16.png',
+        '32': 'logos/32x32.png',
+        '48': 'logos/48x48.png',
+        '96': 'logos/96x96.png',
+        '128': 'logos/128x128.png'
+    },
     omnibox: {
         keyword: '@ai'
     },

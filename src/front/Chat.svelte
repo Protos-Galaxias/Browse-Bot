@@ -377,7 +377,7 @@ SPDX-License-Identifier: BSL-1.1
     {#if log.length === 0}
         <div class="welcome-screen">
             <div class="logo">
-                <div class="logo-icon">✦</div>
+                <img class="logo-icon" src="/logos/128x128.png" alt="Browse Bot" />
             </div>
             <h1 class="greeting">{$_('chat.welcome')}</h1>
 
@@ -551,8 +551,8 @@ SPDX-License-Identifier: BSL-1.1
     }
 
     .logo-icon {
-        font-size: 3rem;
-        color: #cec993;
+        width: 80px;
+        height: 80px;
         animation: pulse 2s infinite;
     }
 
