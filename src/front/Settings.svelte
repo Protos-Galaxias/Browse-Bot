@@ -744,7 +744,7 @@ SPDX-License-Identifier: BSL-1.1
     .theme-btn.active {
         background: var(--accent-color);
         border-color: var(--accent-color);
-        color: white;
+        color: #000000;
     }
 
     .setting-textarea {
@@ -854,6 +854,7 @@ SPDX-License-Identifier: BSL-1.1
         align-items: center;
         justify-content: center;
         transition: all 0.2s;
+        color: #000000;
     }
 
     .add-btn:hover {

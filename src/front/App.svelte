@@ -125,9 +125,8 @@ SPDX-License-Identifier: BSL-1.1
         </header>
 
         <div class="view">
-            {#if currentView === 'chat'}
-                <Chat bind:this={chatRef} />
-            {:else if currentView === 'settings'}
+            <Chat bind:this={chatRef} visible={currentView === 'chat'} on:chatSelected={() => currentView = 'chat'} />
+            {#if currentView === 'settings'}
                 <Settings />
             {:else if currentView === 'capabilities'}
                 <Capabilities />
@@ -227,7 +226,7 @@ SPDX-License-Identifier: BSL-1.1
 
     nav button:active {
         background: var(--accent-color);
-        color: white;
+        color: #000000;
     }
 
     .nav-icon {

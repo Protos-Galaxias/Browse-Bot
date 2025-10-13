@@ -9,6 +9,7 @@ SPDX-License-Identifier: BSL-1.1
     export let models: string[] = [];
     export let activeModel = '';
     export let open = false;
+    export let openUpward = false;
     const dispatch = createEventDispatcher();
 
     function selectModel(m: string) {
@@ -31,7 +32,7 @@ SPDX-License-Identifier: BSL-1.1
     <p class="model-name">{activeModel}</p>
     <span class="chevron">▼</span>
     {#if open}
-        <div class="model-dropdown" on:click|stopPropagation>
+        <div class="model-dropdown {openUpward ? 'upward' : ''}" role="menu" tabindex="-1" on:click|stopPropagation on:keydown={(e) => { if (e.key === 'Escape') open = false; }}>
             {#each models as model}
                 <div class="model-option {activeModel === model ? 'active' : ''}" role="button" tabindex="0"
                     on:click={() => selectModel(model)}
@@ -93,6 +94,11 @@ SPDX-License-Identifier: BSL-1.1
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
     }
 
+    .model-dropdown.upward {
+        top: auto;
+        bottom: calc(100% + 4px);
+    }
+
     .model-option {
         padding: 0.5rem;
         cursor: pointer;
@@ -107,5 +113,6 @@ SPDX-License-Identifier: BSL-1.1
 
     .model-option.active {
         background: var(--accent-color);
+        color: #000000;
     }
 </style>

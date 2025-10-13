@@ -116,7 +116,7 @@ SPDX-License-Identifier: BSL-1.1
     .domain-textarea:focus { outline: none; box-shadow: none; border-color: var(--border-color); }
     .right :global(button) { background: transparent; border: none; color: var(--text-primary); padding: 0.5rem 0.75rem; cursor: pointer; border-radius: 6px; margin-right: 0.25rem; transition: background-color 0.2s, color 0.3s; font-size: 0.9rem; }
     .right :global(button:hover) { background: var(--border-color); }
-    .right :global(button:active) { background: var(--accent-color); color: white; }
+    .right :global(button:active) { background: var(--accent-color); color: #000000; }
     :global(.nav-icon) { width: 18px; height: 18px; display: block; }
 
     /* Modal styles (consistent with Settings.svelte) */

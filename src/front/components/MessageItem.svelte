@@ -109,7 +109,7 @@ SPDX-License-Identifier: BSL-1.1
         height: 32px;
         border-radius: 50%;
         background: var(--accent-color);
-        color: white;
+        color: #000000;
         display: flex;
         align-items: center;
         justify-content: center;

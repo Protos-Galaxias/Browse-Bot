@@ -337,7 +337,7 @@ SPDX-License-Identifier: BSL-1.1
     .tabs-dropdown-item:nth-child(even):not(.empty):hover,
     .tabs-dropdown-item:nth-child(even).active,
     .tabs-dropdown-item:hover:not(.empty),
-    .tabs-dropdown-item.active { background: var(--accent-color); color: white; }
+    .tabs-dropdown-item.active { background: var(--accent-color); color: #000000; }
     .tabs-dropdown-item.empty { color: var(--text-secondary); cursor: default; }
     .tab-favicon { width: 16px; height: 16px; border-radius: 2px; }
 </style>

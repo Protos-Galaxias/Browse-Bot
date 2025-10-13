@@ -4,7 +4,7 @@ SPDX-License-Identifier: BSL-1.1
 -->
 
 <script lang="ts">
-    import { onMount } from 'svelte';
+    import { onMount, createEventDispatcher } from 'svelte';
     import MessageList from './components/MessageList.svelte';
     import InputEditor from './components/InputEditor.svelte';
     import ModelSelector from './components/ModelSelector.svelte';
@@ -14,6 +14,10 @@ SPDX-License-Identifier: BSL-1.1
     import trashIcon from './icons/trash.svg';
     import { extStorage } from '../services/ExtStorage';
     import { ChatStorage, type ChatMeta } from '../services/ChatStorage';
+
+    const dispatch = createEventDispatcher();
+    
+    export let visible = true;
 
     let prompt = '';
     let log: Array<string | { type: 'i18n'; key: string; params?: Record<string, unknown>; prefix?: 'error'|'result'|'system'|'agent'|'user' } | { type: 'ui'; kind: 'click'; title?: string; text: string }> = [];
@@ -114,7 +118,7 @@ SPDX-License-Identifier: BSL-1.1
     }
 
     async function selectChat(id: string) {
-        if (activeChatId === id) { showChatList = false; return; }
+        if (activeChatId === id) { showChatList = false; dispatch('chatSelected'); return; }
         try {
             activeChatId = id;
             await ChatStorage.setActiveChatId(id);
@@ -126,6 +130,7 @@ SPDX-License-Identifier: BSL-1.1
         showChatList = false;
         // reset agent memory/history in background to isolate chats
         try { chrome.runtime.sendMessage({ type: 'RESET_CONTEXT' }); } catch { /* ignored */ }
+        dispatch('chatSelected');
     }
 
     async function newChat() {
@@ -425,7 +430,7 @@ SPDX-License-Identifier: BSL-1.1
     export function openChatSidebar() { showChatList = true; }
 </script>
 
-<div class="chat-container">
+<div class="chat-container" style="display: {visible ? 'flex' : 'none'};">
     {#if log.length === 0}
         <div class="welcome-screen">
             <div class="logo">
@@ -492,7 +497,7 @@ SPDX-License-Identifier: BSL-1.1
                 <InputEditor bind:value={prompt} bind:mentions={mentions} placeholder="" {sendOnEnter} on:submit={isTaskRunning ? stopTask : startTask} />
                 <div class="input-controls">
                     <div class="left-controls">
-                        <ModelSelector {models} {activeModel} bind:open={showModelDropdown} on:change={onModelChange} />
+                        <ModelSelector {models} {activeModel} bind:open={showModelDropdown} openUpward={true} on:change={onModelChange} />
                     </div>
                     <div class="right-controls">
                         <button class="send-btn {isTaskRunning ? 'stop-mode' : ''}" on:click={isTaskRunning ? stopTask : startTask} disabled={!isTaskRunning && !prompt.trim()}>
@@ -505,51 +510,42 @@ SPDX-License-Identifier: BSL-1.1
         </div>
     {/if}
 
-    {#if showChatList}
-        <div class="sidebar-overlay">
-            <div class="sidebar-backdrop" role="button" tabindex="0" on:click={() => showChatList = false} on:keydown={(e) => { if (e.key === 'Escape' || e.key === 'Enter') showChatList = false; }}></div>
-            <aside class="sidebar" aria-label="Chats" tabindex="-1" on:keydown={(e) => { if (e.key === 'Escape') showChatList = false; }}>
-                <div class="sidebar-header">
-                    <div class="sidebar-title">Chats</div>
-                    <button class="sidebar-close" on:click={() => showChatList = false} aria-label="Close">×</button>
-                </div>
-                <div class="sidebar-actions">
-                    <button class="action primary" on:click={newChat}>New chat</button>
-                </div>
-                <div class="chatlist">
-                    {#if chats.length === 0}
-                        <div class="chatlist-empty">No chats yet</div>
-                    {:else}
-                        {#each chats as c}
-                            <div class="chatlist-item {c.id === activeChatId ? 'active' : ''}">
-                                <button class="chatlist-select" on:click={() => selectChat(c.id)} title={new Date(c.updatedAt).toLocaleString()}>
-                                    {c.title}
-                                </button>
-                                <button class="chatlist-delete" on:click={() => removeChat(c.id)} title="Delete chat" aria-label="Delete chat">
-                                    <img class="clear-icon" src={trashIcon} alt="Delete" />
-                                </button>
-                            </div>
-                        {/each}
-                    {/if}
-                </div>
-            </aside>
-        </div>
-    {/if}
-
 </div>
+
+{#if showChatList}
+    <div class="sidebar-overlay">
+        <div class="sidebar-backdrop" role="button" tabindex="0" on:click={() => showChatList = false} on:keydown={(e) => { if (e.key === 'Escape' || e.key === 'Enter') showChatList = false; }}></div>
+        <aside class="sidebar" aria-label="Chats" tabindex="-1" on:keydown={(e) => { if (e.key === 'Escape') showChatList = false; }}>
+            <div class="sidebar-header">
+                <div class="sidebar-title">Chats</div>
+                <button class="sidebar-close" on:click={() => showChatList = false} aria-label="Close">×</button>
+            </div>
+            <div class="sidebar-actions">
+                <button class="action primary" on:click={newChat}>New chat</button>
+            </div>
+            <div class="chatlist">
+                {#if chats.length === 0}
+                    <div class="chatlist-empty">No chats yet</div>
+                {:else}
+                    {#each chats as c}
+                        <div class="chatlist-item {c.id === activeChatId ? 'active' : ''}">
+                            <button class="chatlist-select" on:click={() => selectChat(c.id)} title={new Date(c.updatedAt).toLocaleString()}>
+                                {c.title}
+                            </button>
+                            <button class="chatlist-delete" on:click={() => removeChat(c.id)} title="Delete chat" aria-label="Delete chat">
+                                <img class="clear-icon" src={trashIcon} alt="Delete" />
+                            </button>
+                        </div>
+                    {/each}
+                {/if}
+            </div>
+        </aside>
+    </div>
+{/if}
 
 <!-- tabs mention dropdown moved into InputEditor.svelte -->
 
 <style>
-    .model-name {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        width: 100%;
-        padding: .2rem;
-        margin: 0;
-    }
-
     .chat-container {
         display: flex;
         flex-direction: column;
@@ -818,66 +814,6 @@ SPDX-License-Identifier: BSL-1.1
         color: var(--text-primary);
     }
 
-    .model-selector {
-        display: flex;
-        align-items: center;
-        gap: 0.25rem;
-        color: var(--text-secondary);
-        font-size: 0.8rem;
-        cursor: pointer;
-        padding: 0.25rem;
-        border-radius: 6px;
-        transition: background-color 0.2s;
-        position: relative;
-        max-width: 140px;
-        overflow: visible;
-        user-select: none;
-        -webkit-user-select: none;
-    }
-
-    .model-selector:hover {
-        background: var(--border-color);
-    }
-
-    .chevron {
-        font-size: 0.8rem;
-    }
-
-    .model-dropdown {
-        position: absolute;
-        top: calc(100% + 4px);
-        left: 0;
-        right: auto;
-        min-width: 220px;
-        background: var(--bg-secondary);
-        border: 1px solid var(--border-color);
-        border-radius: 6px;
-        z-index: 9999;
-        max-height: 200px;
-        overflow-y: auto;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-    }
-
-    .input-container .model-dropdown {
-        top: auto;
-        bottom: calc(100% + 4px);
-    }
-
-    .model-option {
-        padding: 0.5rem;
-        cursor: pointer;
-        transition: background-color 0.2s;
-        font-size: 0.8rem;
-        color: var(--text-primary);
-    }
-
-    .model-option:hover {
-        background: var(--border-color);
-    }
-
-    .model-option.active {
-        background: var(--accent-color);
-    }
 
     .send-btn {
         background: var(--accent-color);
@@ -1001,7 +937,7 @@ SPDX-License-Identifier: BSL-1.1
         height: 32px;
         border-radius: 50%;
         background: var(--accent-color);
-        color: white;
+        color: #000000;
         display: flex;
         align-items: center;
         justify-content: center;
