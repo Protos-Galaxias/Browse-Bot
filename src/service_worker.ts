@@ -301,7 +301,41 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
         currentTaskTabs = [];
         return;
     }
+    if (message.type === 'GENERATE_CHAT_TITLE') {
+        const { userMessage, siteUrl } = message as { userMessage: string; siteUrl?: string };
+        console.log('[SW] Generating chat title for:', userMessage, siteUrl);
+        
+        // Return Promise directly - Chrome supports this!
+        return (async () => {
+            try {
+                const providerFromConfig = (await ConfigService.getInstance().get<string>('provider')) || 'openrouter';
+                const aiService = AiService.fromProviderName(providerFromConfig);
+                await aiService.initialize();
+                
+                const sitePart = siteUrl ? `Website: ${siteUrl}\n` : '';
+                const systemPrompt = 'Generate a short chat title (max 5 words) based on the user query and website. Return ONLY the title, nothing else.';
+                const prompt = `${sitePart}User query: ${userMessage}`;
+                
+                const title = await aiService.generateSimpleText(systemPrompt, prompt, { temperature: 0.7 });
+                console.log('[SW] Generated chat title:', title);
+                
+                if (title && title.length > 0 && title.length < 100) {
+                    console.log('[SW] Returning title:', title);
+                    return { title };
+                } else {
+                    console.log('[SW] Invalid title, returning null');
+                    return { title: null };
+                }
+            } catch (error) {
+                console.error('[SW] Failed to generate chat title:', error);
+                return { title: null, error: String(error) };
+            }
+        })();
+    }
     if (message.type === 'START_TASK') {
+        // Immediately respond to prevent "Receiving end does not exist" error
+        try { sendResponse({ ok: true }); } catch (e) { void e; }
+        
         const { prompt, tabs } = message as { prompt: string; tabs?: Array<{ id: number; title?: string; url?: string }> };
         if (Array.isArray(tabs)) console.log('tabs meta back', tabs);
 
@@ -382,6 +416,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
         }
         agentHistory = [];
         currentTaskTabs = [];
+        try { sendResponse({ ok: true }); } catch (e) { void e; }
     }
-    return;
+    return true; // Keep message channel open for async responses
 });

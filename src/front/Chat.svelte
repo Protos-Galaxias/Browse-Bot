@@ -81,7 +81,9 @@ SPDX-License-Identifier: BSL-1.1
     async function loadChats() {
         try {
             const list = await ChatStorage.getChatList();
+            console.log('[UI] loadChats - raw list:', list);
             chats = [...list].sort((a, b) => b.updatedAt - a.updatedAt);
+            console.log('[UI] loadChats - sorted chats:', chats);
             activeChatId = await ChatStorage.getActiveChatId();
         } catch {
         // ignored
@@ -228,7 +230,7 @@ SPDX-License-Identifier: BSL-1.1
             (async () => {
                 try {
                     if (!activeChatId) {
-                        const meta = await ChatStorage.createChat(prompt.trim() ? prompt.slice(0, 30) : undefined, log);
+                        const meta = await ChatStorage.createChat(undefined, log);
                         activeChatId = meta.id;
                     } else {
                         await ChatStorage.setChatLog(activeChatId, log);
@@ -244,17 +246,67 @@ SPDX-License-Identifier: BSL-1.1
         }
     }
 
+    async function generateChatTitle(userMessage: string, siteUrl?: string) {
+        try {
+            if (!activeChatId) return;
+            
+            const chatIdToUpdate = activeChatId;
+            console.log('[UI] Requesting chat title generation for:', chatIdToUpdate, userMessage);
+            
+            // Use Promise-based approach instead of callback
+            const response = await chrome.runtime.sendMessage({ 
+                type: 'GENERATE_CHAT_TITLE', 
+                userMessage,
+                siteUrl,
+                chatId: chatIdToUpdate
+            });
+            
+            console.log('[UI] Received response:', response);
+            
+            if (response?.title) {
+                try {
+                    console.log('[UI] Renaming chat', chatIdToUpdate, 'to:', response.title);
+                    await ChatStorage.renameChat(chatIdToUpdate, response.title);
+                    await loadChats();
+                    console.log('[UI] Chat title updated successfully');
+                } catch (e) {
+                    console.warn('[UI] Failed to update chat title:', e);
+                }
+            } else {
+                console.warn('[UI] No title in response:', response);
+            }
+        } catch (error) {
+            console.warn('[UI] Failed to generate chat title:', error);
+            // Silently fail - not critical
+        }
+    }
+
     function startTask() {
         if (!prompt.trim()) return;
 
         isTyping = true;
         isTaskRunning = true;
-        log = [...log, `[User]: ${prompt}`];
+        const userPrompt = prompt;
+        
+        // Check if this is the first message BEFORE adding to log
+        const isFirstMessage = log.length === 0;
+        console.log('[UI] startTask - log.length:', log.length, 'isFirstMessage:', isFirstMessage, 'activeChatId:', activeChatId);
+        
+        log = [...log, `[User]: ${userPrompt}`];
         saveChatState();
+
+        // Generate chat title for first message
+        if (isFirstMessage && activeChatId) {
+            const siteUrl = activeTabMeta?.url;
+            console.log('[UI] First message detected, generating title');
+            generateChatTitle(userPrompt, siteUrl);
+        } else {
+            console.log('[UI] NOT first message or no activeChatId - skipping title generation');
+        }
 
         const tabs = displayMentions.map(t => ({ id: t.id, title: t.title, url: t.url }));
         try {
-            chrome.runtime.sendMessage({ type: 'START_TASK', prompt, tabs }, (resp) => {
+            chrome.runtime.sendMessage({ type: 'START_TASK', prompt: userPrompt, tabs }, (resp) => {
                 const err = chrome.runtime.lastError;
                 if (err) {
                     console.warn('[UI] send START_TASK failed', err.message);

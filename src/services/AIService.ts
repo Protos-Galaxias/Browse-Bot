@@ -23,6 +23,7 @@ export type GenerateWithToolsParams = {
 
 export interface AIService {
   generate<T>(schema: unknown, systemPrompt: string, prompt: string, options?: AIGenerateOptions): Promise<T>;
+  generateSimpleText(systemPrompt: string, prompt: string, options?: AIGenerateOptions): Promise<string>;
   getChatModel(): Promise<LanguageModel>;
   generateWithTools(params: GenerateWithToolsParams): Promise<GenerateTextResult<any, any>>;
 }
@@ -81,6 +82,22 @@ export class AiService implements AIService {
         } catch (error) {
             reportErrorKey('errors.aiInvalidJson', error);
             throw new Error('Invalid JSON response from AI');
+        }
+    }
+
+    async generateSimpleText(systemPrompt: string, prompt: string, options: AIGenerateOptions = {}): Promise<string> {
+        try {
+            const modelName = await this.resolveModelName(options.model);
+            const result = await generateText({
+                model: this.provider.getModel(this.ensureClient(), modelName) as LanguageModel,
+                system: systemPrompt,
+                prompt,
+                temperature: options.temperature || 0.7
+            });
+            return result.text.trim();
+        } catch (error) {
+            reportErrorKey('errors.aiGenerateText', error);
+            throw new Error('Failed to generate text from AI');
         }
     }
 

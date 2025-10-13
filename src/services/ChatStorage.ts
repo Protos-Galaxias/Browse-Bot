@@ -90,11 +90,16 @@ export class ChatStorage {
     }
 
     static async renameChat(chatId: string, title: string): Promise<void> {
+        console.log('[ChatStorage] renameChat called:', chatId, title);
         const list = await this.getChatList();
+        console.log('[ChatStorage] Current chat list:', list);
         const idx = list.findIndex(c => c.id === chatId);
+        console.log('[ChatStorage] Found chat at index:', idx);
         if (idx > -1) {
             list[idx] = { ...list[idx], title: title.trim() || list[idx].title, updatedAt: Date.now() };
+            console.log('[ChatStorage] Updated chat:', list[idx]);
             await this.setChatList(list);
+            console.log('[ChatStorage] Chat list saved');
         }
     }
 
