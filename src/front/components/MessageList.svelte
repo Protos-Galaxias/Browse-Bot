@@ -29,7 +29,7 @@ SPDX-License-Identifier: BSL-1.1
     {#if isTyping}
         <div class="message assistant">
             <div class="typing-indicator">
-                <div class="logo-icon">✦</div>
+                <img class="logo-icon" src="/logos/48x48.png" alt="Browse Bot" />
                 <span>{$_('chat.typing')}</span>
             </div>
         </div>
@@ -40,4 +40,7 @@ SPDX-License-Identifier: BSL-1.1
 <style>
 	.chat-messages { flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 1rem; }
 	.typing-indicator { display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-style: italic; }
+    .chat-messages { flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 1rem; }
+    .typing-indicator { display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-style: italic; }
+    .typing-indicator .logo-icon { width: 24px; height: 24px; }
 </style>

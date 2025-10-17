@@ -28,7 +28,8 @@
   "tabs": {
     "general": "Общие",
     "behavior": "Поведение",
-    "prompt": "Глобальный промт"
+    "prompt": "Глобальный промт",
+    "about": "О программе"
   },
   "settings": {
     "apiKeyOpenRouter": "OpenRouter API ключ",
@@ -202,6 +203,12 @@
       "baseUrlRequired": "Введите базовый URL",
       "saveFailed": "Не удалось сохранить настройки. Попробуйте снова."
     }
+  },
+  "about": {
+    "description": "Расширение для браузера с поддержкой ИИ, которое помогает взаимодействовать с веб-страницами на естественном языке",
+    "github": "Посмотреть на GitHub",
+    "copyright": "© 2025 PROTOS GALAXIAS LIMITED",
+    "license": "Лицензировано под BSL 1.1"
   }
 }
 

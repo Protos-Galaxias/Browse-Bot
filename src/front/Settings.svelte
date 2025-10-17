@@ -12,9 +12,9 @@ SPDX-License-Identifier: BSL-1.1
     import { ProviderMeta as ProviderConfigs } from '../services/ProviderMeta';
     import { extStorage } from '../services/ExtStorage';
     import { loadProvidersConfig, type ProviderConfig } from '../services/ProviderLoader';
-    
+
     type ProviderId = keyof typeof ProviderConfigs;
-    
+
     let apiKey = '';
     let openaiApiKey = '';
     let xaiApiKey = '';
@@ -44,7 +44,7 @@ SPDX-License-Identifier: BSL-1.1
     let formExtDescription: string = '';
     let formExtCode: string = '';
     let formExtEnabled: boolean = true;
-    
+
     // Провайдеры из JSON
     let availableProviders: ProviderConfig[] = [];
 
@@ -306,6 +306,7 @@ SPDX-License-Identifier: BSL-1.1
         <button class="tab {activeTab === 'general' ? 'active' : ''}" on:click={() => activeTab = 'general'}>{$_('tabs.general')}</button>
         <button class="tab {activeTab === 'behavior' ? 'active' : ''}" on:click={() => activeTab = 'behavior'}>{$_('tabs.behavior')}</button>
         <button class="tab {activeTab === 'prompt' ? 'active' : ''}" on:click={() => activeTab = 'prompt'}>{$_('tabs.prompt')}</button>
+        <button class="tab {activeTab === 'about' ? 'active' : ''}" on:click={() => activeTab = 'about'}>{$_('tabs.about')}</button>
     </div>
 
     {#if activeTab === 'general'}
@@ -619,6 +620,33 @@ SPDX-License-Identifier: BSL-1.1
         </div>
     {/if}
 
+    {#if activeTab === 'about'}
+        <div class="setting-group">
+            <div class="about-container">
+                <div class="about-header">
+                    <h2 class="about-title">Browse Bot</h2>
+                    <div class="about-version">v{chrome.runtime.getManifest().version}</div>
+                </div>
+
+                <div class="about-description">
+                    <p>{$_('about.description')}</p>
+                </div>
+
+                <div class="about-links">
+                    <a href="https://github.com/Protos-Galaxias/Browse-Bot" target="_blank" rel="noopener noreferrer" class="about-link">
+                        <span class="link-icon">🔗</span>
+                        {$_('about.github')}
+                    </a>
+                </div>
+
+                <div class="about-footer">
+                    <div class="copyright">{$_('about.copyright')}</div>
+                    <div class="license">{$_('about.license')}</div>
+                </div>
+            </div>
+        </div>
+    {/if}
+
     {#if saveStatus === 'saved'}
         <div class="save-toast">{$_('common.saved')}</div>
     {/if}
@@ -927,4 +955,93 @@ SPDX-License-Identifier: BSL-1.1
     .modal-body { padding: 0.75rem; }
     .modal-footer { padding: 0.75rem; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; }
     .primary-btn { background: var(--accent-color); color: #000; border: none; border-radius: 8px; padding: 0.5rem 0.9rem; cursor: pointer; }
+
+    /* About page styles */
+    .about-container {
+        text-align: center;
+        padding: 1rem 0;
+    }
+
+    .about-header {
+        margin-bottom: 1.5rem;
+    }
+
+    .about-title {
+        color: var(--text-primary);
+        font-size: 2rem;
+        font-weight: 700;
+        margin: 0 0 0.5rem 0;
+        background: linear-gradient(135deg, var(--accent-color), #ff8a65);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .about-version {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        font-weight: 500;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 20px;
+        padding: 0.25rem 0.75rem;
+        display: inline-block;
+    }
+
+    .about-description {
+        margin-bottom: 2rem;
+    }
+
+    .about-description p {
+        color: var(--text-primary);
+        font-size: 1rem;
+        line-height: 1.6;
+        margin: 0;
+        max-width: 400px;
+        margin: 0 auto;
+    }
+
+    .about-links {
+        margin-bottom: 2rem;
+    }
+
+    .about-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        color: var(--text-primary);
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+
+    .about-link:hover {
+        border-color: var(--accent-color);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(255, 107, 53, 0.2);
+    }
+
+    .link-icon {
+        font-size: 1.2rem;
+    }
+
+    .about-footer {
+        border-top: 1px solid var(--border-color);
+        padding-top: 1.5rem;
+        margin-top: 1.5rem;
+    }
+
+    .copyright, .license {
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+        margin: 0.25rem 0;
+    }
+
+    .license {
+        font-weight: 500;
+    }
 </style>

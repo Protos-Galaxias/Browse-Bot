@@ -28,7 +28,8 @@
   "tabs": {
     "general": "General",
     "behavior": "Behavior",
-    "prompt": "Prompt"
+    "prompt": "Prompt",
+    "about": "About"
   },
   "settings": {
     "apiKeyOpenRouter": "OpenRouter API Key",
@@ -202,6 +203,12 @@
       "baseUrlRequired": "Please enter the base URL",
       "saveFailed": "Failed to save settings. Please try again."
     }
+  },
+  "about": {
+    "description": "AI-powered browser extension that helps you navigate and interact with web pages using natural language",
+    "github": "View on GitHub",
+    "copyright": "© 2025 PROTOS GALAXIAS LIMITED",
+    "license": "Licensed under BSL 1.1"
   }
 }
 

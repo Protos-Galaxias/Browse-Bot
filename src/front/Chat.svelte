@@ -16,7 +16,7 @@ SPDX-License-Identifier: BSL-1.1
     import { ChatStorage, type ChatMeta } from '../services/ChatStorage';
 
     const dispatch = createEventDispatcher();
-    
+
     export let visible = true;
 
     let prompt = '';
@@ -254,20 +254,20 @@ SPDX-License-Identifier: BSL-1.1
     async function generateChatTitle(userMessage: string, siteUrl?: string) {
         try {
             if (!activeChatId) return;
-            
+
             const chatIdToUpdate = activeChatId;
             console.log('[UI] Requesting chat title generation for:', chatIdToUpdate, userMessage);
-            
+
             // Use Promise-based approach instead of callback
-            const response = await chrome.runtime.sendMessage({ 
-                type: 'GENERATE_CHAT_TITLE', 
+            const response = await chrome.runtime.sendMessage({
+                type: 'GENERATE_CHAT_TITLE',
                 userMessage,
                 siteUrl,
                 chatId: chatIdToUpdate
             });
-            
+
             console.log('[UI] Received response:', response);
-            
+
             if (response?.title) {
                 try {
                     console.log('[UI] Renaming chat', chatIdToUpdate, 'to:', response.title);
@@ -292,11 +292,11 @@ SPDX-License-Identifier: BSL-1.1
         isTyping = true;
         isTaskRunning = true;
         const userPrompt = prompt;
-        
+
         // Check if this is the first message BEFORE adding to log
         const isFirstMessage = log.length === 0;
         console.log('[UI] startTask - log.length:', log.length, 'isFirstMessage:', isFirstMessage, 'activeChatId:', activeChatId);
-        
+
         log = [...log, `[User]: ${userPrompt}`];
         saveChatState();
 
