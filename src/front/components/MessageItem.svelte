@@ -219,6 +219,11 @@ SPDX-License-Identifier: BSL-1.1
         width: 14px;
         height: 14px;
         display: inline-block;
+        filter: invert(1) brightness(1.2);
+    }
+
+    :global(:root[data-theme="light"]) .ui-card .ui-icon {
+        filter: none;
     }
 
     .ui-card .ui-spacer {

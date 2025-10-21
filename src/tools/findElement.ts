@@ -102,6 +102,9 @@ export async function findElementIds(
     const aids = result.aids || [];
     try {
         updateLog({ type: 'ui', kind: 'find', title: 'Нашли элемент', text: `Запрос: ${query}. Найдено: ${aids.length}` });
-    } catch {}
+    } catch (logError) {
+        // Ignore logging errors
+        console.warn('Failed to log find result:', logError);
+    }
     return aids;
 }

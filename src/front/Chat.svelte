@@ -543,8 +543,6 @@ SPDX-License-Identifier: BSL-1.1
     </div>
 {/if}
 
-<!-- tabs mention dropdown moved into InputEditor.svelte -->
-
 <style>
     .chat-container {
         display: flex;
@@ -554,34 +552,6 @@ SPDX-License-Identifier: BSL-1.1
         background: var(--bg-primary);
         padding: 0;
         margin: 0;
-    }
-
-    .welcome-input {
-        width: 100%;
-        background: transparent;
-        border: none;
-        resize: none;
-        color: var(--text-primary);
-        font-size: 0.9rem;
-        outline: none;
-    }
-
-    /* Placeholder for contenteditable */
-    .welcome-editor:empty:before {
-        content: attr(data-placeholder);
-        color: var(--text-secondary);
-        pointer-events: none;
-    }
-
-    .welcome-editor, .inline-editor {
-        min-height: 20px;
-        white-space: pre-wrap;
-        word-break: break-word;
-        text-align: left;
-    }
-
-    .welcome-input::placeholder {
-        color: var(--text-secondary);
     }
 
     .welcome-screen {
@@ -668,34 +638,6 @@ SPDX-License-Identifier: BSL-1.1
         align-items: center;
     }
 
-    /* Modal styles */
-    .modal-backdrop {
-        position: fixed;
-        inset: 0;
-        background: rgba(0,0,0,0.5);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 99999;
-    }
-    .modal {
-        background: var(--bg-secondary);
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        padding: 1rem;
-        width: 90%;
-        max-width: 360px;
-        color: var(--text-primary);
-        box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-    }
-    .modal-title { font-weight: 600; margin-bottom: 0.4rem; }
-    .modal-text { color: var(--text-secondary); margin-bottom: 0.8rem; }
-    .modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
-    .modal-btn { padding: 0.35rem 0.7rem; border-radius: 6px; cursor: pointer; border: 1px solid var(--border-color); background: transparent; color: var(--text-primary); }
-    .modal-btn.secondary:hover { background: var(--bg-primary); }
-    .modal-btn.danger { background: #dc3545; color: #fff; border-color: #dc3545; }
-    .modal-btn.danger:hover { background: #c82333; }
-
     .chatlist {
         display: flex;
         flex-direction: column;
@@ -735,7 +677,6 @@ SPDX-License-Identifier: BSL-1.1
         padding: 0.25rem;
     }
 
-    /* Sidebar */
     .sidebar-overlay {
         position: fixed;
         inset: 0;
@@ -797,23 +738,6 @@ SPDX-License-Identifier: BSL-1.1
         align-items: center;
         gap: 0.25rem;
     }
-
-    .control-btn {
-        background: transparent;
-        border: none;
-        color: var(--text-secondary);
-        font-size: 1rem;
-        cursor: pointer;
-        padding: 0.25rem;
-        border-radius: 4px;
-        transition: all 0.2s;
-    }
-
-    .control-btn:hover {
-        background: var(--border-color);
-        color: var(--text-primary);
-    }
-
 
     .send-btn {
         background: var(--accent-color);
@@ -899,7 +823,6 @@ SPDX-License-Identifier: BSL-1.1
         border-color: var(--accent-hover);
     }
 
-    /* Ensure readable text on primary action in dark theme */
     :global(:root[data-theme="dark"]) .action-btn.primary {
         color: #000000;
     }
@@ -907,104 +830,6 @@ SPDX-License-Identifier: BSL-1.1
     .action-icon {
         font-size: 0.8rem;
     }
-
-    .chat-messages {
-        flex: 1;
-        min-height: 0;
-        overflow-y: auto;
-        padding: 1rem;
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-    }
-
-    .message {
-        display: flex;
-        gap: 1rem;
-        align-items: flex-start;
-    }
-
-    .message.user {
-        flex-direction: row;
-    }
-
-    .message.assistant {
-        flex-direction: column;
-    }
-
-    .message-avatar {
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        background: var(--accent-color);
-        color: #000000;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
-        font-size: 0.9rem;
-        flex-shrink: 0;
-    }
-
-    .message-bubble {
-        background: var(--bg-primary);
-        padding: 0.2rem 0.5rem;
-        border-radius: 12px;
-        max-width: 80%;
-        word-wrap: break-word;
-        text-align: left;
-    }
-
-    .user-bubble {
-        background: var(--accent-color);
-        color: #000000;
-    }
-
-    .message-content {
-        color: var(--text-primary);
-        line-height: 1.5;
-        white-space: normal;
-        text-align: left;
-    }
-    .message-content p { margin: 0.35rem 0; }
-
-    .message-content ul { margin: 0.35rem 0 0.35rem 1rem; padding-left: 1rem; }
-
-    .message-content ol { margin: 0.35rem 0 0.35rem 1rem; padding-left: 1rem; }
-
-    .message-content li { margin: 0.2rem 0; }
-
-    .message-content h1,
-
-    .message-content h2,
-
-    .message-content h3,
-
-    .message-content h4,
-
-    .message-content h5,
-
-    .message-content h6 { margin: 0.5rem 0 0.25rem 0; font-weight: 600; line-height: 1.25; }
-
-    .message-content h1 { font-size: 1.25rem; }
-
-    .message-content h2 { font-size: 1.15rem; }
-
-    .message-content h3 { font-size: 1.05rem; }
-
-    .message-content code { background: var(--bg-secondary); border: 1px solid var(--border-color); padding: 0.05rem 0.3rem; border-radius: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 0.85em; }
-
-    .message-content a { color: var(--accent-color); text-decoration: underline; }
-
-    .typing-indicator {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        color: var(--text-secondary);
-        font-style: italic;
-    }
-
-    /* mention and tabs dropdown styles are provided by InputEditor.svelte */
 
     .input-area {
         background: var(--bg-primary);
@@ -1022,22 +847,6 @@ SPDX-License-Identifier: BSL-1.1
         padding: 0.25rem;
     }
 
-    .message-input {
-        flex: 1;
-        background: transparent;
-        border: none;
-        color: var(--text-primary);
-        font-size: 0.9rem;
-        outline: none;
-        resize: none;
-        min-height: 20px;
-        /* max-height: 80px; */
-    }
-
-    .message-input::placeholder {
-        color: var(--text-secondary);
-    }
-
     .disclaimer {
         text-align: center;
         color: var(--text-secondary);
@@ -1046,53 +855,8 @@ SPDX-License-Identifier: BSL-1.1
         line-height: 1.3;
     }
 
-    .header-left {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .logo-icon-small {
-        font-size: 1.2rem;
-        color: var(--accent-color);
-    }
-
-    .header-title {
-        font-size: 0.9rem;
-        color: var(--text-primary);
-        font-weight: 500;
-    }
-
-    .clear-btn {
-        background: transparent;
-        border: 1px solid var(--border-color);
-        color: var(--text-secondary);
-        padding: 0.4rem;
-        border-radius: 6px;
-        cursor: pointer;
-        transition: all 0.2s;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .clear-btn:hover {
-        background: var(--bg-primary);
-        color: var(--text-primary);
-        border-color: var(--accent-color);
-    }
-
-    /* Dark theme: make clear button white */
-    :global(:root[data-theme="dark"]) .clear-btn {
-        background: #ffffff;
-        border-color: #ffffff;
-        color: #000000;
-    }
-
-    :global(:root[data-theme="dark"]) .clear-btn:hover {
-        background: #f0f0f0;
-        border-color: var(--accent-color);
-        color: #000000;
+    :global(:root[data-theme="dark"]) .clear-icon {
+        filter: invert(1) brightness(1.2);
     }
 
     .clear-icon {

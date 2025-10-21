@@ -168,6 +168,8 @@
     "noElementsContext": "Нет контекста элементов. Сначала вызовите parsePage/parsePageInteractiveElements",
     "elementNotFound": "Элемент не найден по описанию: {description}",
     "aiInvalidJson": "Неверный JSON ответ от модели",
+    "aiGenerateText": "Ошибка генерации текста от модели",
+    "aiGenerateWithTools": "Ошибка выполнения запроса с инструментами",
     "sendMessageGetLinkInfo": "Ошибка получения информации о ссылке",
     "sendMessageOpenLink": "Не удалось открыть ссылку",
     "sendMessageClick": "Не удалось кликнуть по элементу",
@@ -178,7 +180,8 @@
     "sendMessageRadio": "Не удалось выбрать радио-кнопку",
     "parseAll": "Не удалось распарсить страницу (все)",
     "parseInteractive": "Не удалось распарсить интерактивные элементы",
-    "parseText": "Не удалось распарсить текст страницы"
+    "parseText": "Не удалось распарсить текст страницы",
+    "generic": "Произошла ошибка"
   },
   "system": {
     "noActiveTabNoTools": "Нет активной вкладки — отвечаю без инструментов, но с историей",

@@ -81,7 +81,7 @@ export class AiService implements AIService {
             return result.object as T;
         } catch (error) {
             reportErrorKey('errors.aiInvalidJson', error);
-            throw new Error('Invalid JSON response from AI');
+            throw error;
         }
     }
 
@@ -97,21 +97,26 @@ export class AiService implements AIService {
             return result.text.trim();
         } catch (error) {
             reportErrorKey('errors.aiGenerateText', error);
-            throw new Error('Failed to generate text from AI');
+            throw error;
         }
     }
 
     async generateWithTools(params: GenerateWithToolsParams): Promise<GenerateTextResult<any, any>> {
-        const model = await this.getChatModel();
-        const maxRetries = typeof params.maxRetries === 'number' ? params.maxRetries : 5;
-        const maxToolRoundtrips = typeof params.maxToolRoundtrips === 'number' ? params.maxToolRoundtrips : 10;
-        return generateText({
-            model,
-            messages: params.messages,
-            tools: params.tools,
-            maxRetries,
-            stopWhen: stepCountIs(maxToolRoundtrips),
-            abortSignal: params.abortSignal
-        }) as unknown as GenerateTextResult<any, any>;
+        try {
+            const model = await this.getChatModel();
+            const maxRetries = typeof params.maxRetries === 'number' ? params.maxRetries : 5;
+            const maxToolRoundtrips = typeof params.maxToolRoundtrips === 'number' ? params.maxToolRoundtrips : 10;
+            return generateText({
+                model,
+                messages: params.messages,
+                tools: params.tools,
+                maxRetries,
+                stopWhen: stepCountIs(maxToolRoundtrips),
+                abortSignal: params.abortSignal
+            }) as unknown as GenerateTextResult<any, any>;
+        } catch (error) {
+            reportErrorKey('errors.aiGenerateWithTools', error);
+            throw error;
+        }
     }
 }

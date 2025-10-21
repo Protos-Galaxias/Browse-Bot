@@ -168,6 +168,8 @@
     "noElementsContext": "No elements context. Call parsePage/parsePageInteractiveElements first",
     "elementNotFound": "Element not found by description: {description}",
     "aiInvalidJson": "Invalid JSON response from the model",
+    "aiGenerateText": "Failed to generate text from the model",
+    "aiGenerateWithTools": "Failed to execute request with tools",
     "sendMessageGetLinkInfo": "Failed to get link info",
     "sendMessageOpenLink": "Failed to open link",
     "sendMessageClick": "Failed to click element",
@@ -178,7 +180,8 @@
     "sendMessageRadio": "Failed to select radio",
     "parseAll": "Failed to parse page (all)",
     "parseInteractive": "Failed to parse interactive elements",
-    "parseText": "Failed to parse page text"
+    "parseText": "Failed to parse page text",
+    "generic": "An error occurred"
   },
   "system": {
     "noActiveTabNoTools": "No active tab — answering without tools, but with history",

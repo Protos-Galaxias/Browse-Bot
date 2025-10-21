@@ -173,7 +173,6 @@ async function runAgentTask(
         return text || 'Task completed without a final text answer.';
     } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') {
-            updateLogI18n('errors.agentAborted', undefined, 'agent');
             return 'Задача была остановлена пользователем';
         }
         reportError(error, 'Агент завершился с ошибкой');
@@ -304,21 +303,21 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     if (message.type === 'GENERATE_CHAT_TITLE') {
         const { userMessage, siteUrl } = message as { userMessage: string; siteUrl?: string };
         console.log('[SW] Generating chat title for:', userMessage, siteUrl);
-        
+
         // Return Promise directly - Chrome supports this!
         return (async () => {
             try {
                 const providerFromConfig = (await ConfigService.getInstance().get<string>('provider')) || 'openrouter';
                 const aiService = AiService.fromProviderName(providerFromConfig);
                 await aiService.initialize();
-                
+
                 const sitePart = siteUrl ? `Website: ${siteUrl}\n` : '';
                 const systemPrompt = 'Generate a short chat title (max 5 words) based on the user query and website. Return ONLY the title, nothing else.';
                 const prompt = `${sitePart}User query: ${userMessage}`;
-                
+
                 const title = await aiService.generateSimpleText(systemPrompt, prompt, { temperature: 0.7 });
                 console.log('[SW] Generated chat title:', title);
-                
+
                 if (title && title.length > 0 && title.length < 100) {
                     console.log('[SW] Returning title:', title);
                     return { title };
@@ -335,7 +334,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     if (message.type === 'START_TASK') {
         // Immediately respond to prevent "Receiving end does not exist" error
         try { sendResponse({ ok: true }); } catch (e) { void e; }
-        
+
         const { prompt, tabs } = message as { prompt: string; tabs?: Array<{ id: number; title?: string; url?: string }> };
         if (Array.isArray(tabs)) console.log('tabs meta back', tabs);
 
@@ -411,7 +410,6 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
         if (currentController) {
             currentController.abort();
             currentController = null;
-            updateLogI18n('system.taskStoppedByUser', undefined, 'system');
             chrome.runtime.sendMessage({ type: 'TASK_COMPLETE' }).catch(console.error);
         }
         agentHistory = [];

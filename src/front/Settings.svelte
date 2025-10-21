@@ -26,7 +26,7 @@ SPDX-License-Identifier: BSL-1.1
     let hideAgentMessages: boolean = false;
     let theme: Theme = 'system';
     let saveStatus: 'idle' | 'saving' | 'saved' = 'idle';
-    let activeTab: 'general' | 'behavior' | 'prompt' = 'general';
+    let activeTab: 'general' | 'behavior' | 'prompt' | 'about' = 'general';
     let provider: ProviderId = 'openrouter';
     let ollamaBaseURL = '';
     let mcps: Array<{ id?: string; label?: string; endpoint: string; enabled: boolean }> = [];

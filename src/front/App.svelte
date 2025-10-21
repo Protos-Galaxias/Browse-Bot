@@ -185,6 +185,38 @@ SPDX-License-Identifier: BSL-1.1
         align-items: center;
     }
 
+    .header > button {
+        border: none;
+        color: var(--text-primary);
+        padding: 0.5rem 0.75rem;
+        cursor: pointer;
+        border-radius: 6px;
+        margin-left: 0.25rem;
+        transition: background-color 0.2s, color 0.3s;
+        background-color: #1a1a1a;
+    }
+
+    .header > button:hover {
+        background: var(--border-color);
+    }
+
+    .header > button:active {
+        background: var(--accent-color);
+        color: #000000;
+    }
+
+    :global(:root[data-theme="light"]) .header > button {
+        background-color: #f5f5f5;
+    }
+
+    nav button {
+        background-color: #1a1a1a;
+    }
+
+    :global(:root[data-theme="light"]) nav button {
+        background-color: #f5f5f5;
+    }
+
     main {
         margin: 0 !important;
         padding: 0 !important;
@@ -209,7 +241,6 @@ SPDX-License-Identifier: BSL-1.1
     }
 
     nav button {
-        background: transparent;
         border: none;
         color: var(--text-primary);
         padding: 0.5rem 0.75rem;
