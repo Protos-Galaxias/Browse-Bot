@@ -17,7 +17,6 @@ const commonManifest = {
         'storage',
         'activeTab',
         'scripting',
-        'notifications',
         'tabs'
     ],
     web_accessible_resources: [

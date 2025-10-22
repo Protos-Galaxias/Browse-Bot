@@ -8,7 +8,7 @@ export default defineManifest({
     manifest_version: 3,
     name: 'Browse Bot',
     version: packageJson.version,
-    permissions: ['storage', 'activeTab', 'scripting', 'notifications', 'webNavigation', 'tabs', 'sidePanel'],
+    permissions: ['storage', 'activeTab', 'scripting', 'tabs', 'sidePanel'],
     host_permissions: ['<all_urls>'],
     // web_accessible_resources: [
     //     {
