@@ -10,7 +10,7 @@ export const parsePageTextTool = (context: ToolContext) => tool({
     description: 'Gets meaningful text from the page for analysis (summaries, comparisons, Q&A). Does not collect interactive elements.',
     inputSchema: z.object({}),
     async execute(): Promise<ToolOutput> {
-        updateLog({ type: 'ui', kind: 'parse', title: 'Прочитал страницу', text: 'Получаю смысловой текст со страницы' });
+        updateLog({ type: 'ui', kind: 'parse', titleKey: 'ui.titles.parsed', textKey: 'ui.texts.parse.text', text: '' });
         const all = Array.isArray(context.tabs) ? context.tabs : [];
         if (all.length === 0) return { success: false, error: 'No tabs available in context.' };
 

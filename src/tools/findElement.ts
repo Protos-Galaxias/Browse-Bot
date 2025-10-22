@@ -101,7 +101,7 @@ export async function findElementIds(
 
     const aids = result.aids || [];
     try {
-        updateLog({ type: 'ui', kind: 'find', title: 'Нашли элемент', text: `Запрос: ${query}. Найдено: ${aids.length}` });
+        updateLog({ type: 'ui', kind: 'find', titleKey: 'ui.titles.found', textKey: 'ui.texts.find', text: '', params: { query, count: aids.length } });
     } catch (logError) {
         // Ignore logging errors
         console.warn('Failed to log find result:', logError);

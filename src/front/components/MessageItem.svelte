@@ -14,7 +14,15 @@ SPDX-License-Identifier: BSL-1.1
     import keyboardIcon from '../icons/keyboard.png';
     import expandArrow from '../icons/expand-arrow.png';
 
-    type UiLog = { type: 'ui'; kind: 'click' | 'form' | 'parse' | 'find'; title?: string; text: string };
+    type UiLog = {
+        type: 'ui';
+        kind: 'click' | 'form' | 'parse' | 'find';
+        title?: string;
+        titleKey?: string;
+        text: string;
+        textKey?: string;
+        params?: Record<string, unknown>;
+    };
     export let entry: string | {
         type: 'i18n';
         key: string;
@@ -56,6 +64,23 @@ SPDX-License-Identifier: BSL-1.1
         const val = String(entry);
         return isUser ? renderUserMessage(val.replace('[User]: ', '')) : renderMarkdownSafe(val);
     })();
+
+    $: uiTitle = (() => {
+        if (!isUi) return '';
+        const e = entry as UiLog;
+        const fmt = get(format) as (key: string, values?: Record<string, unknown>) => string;
+        if (e.titleKey) return fmt(e.titleKey, e.params ?? {});
+        if (e.title) return e.title;
+        return fmt('ui.titles.clicked');
+    })();
+
+    $: uiText = (() => {
+        if (!isUi) return '';
+        const e = entry as UiLog;
+        const fmt = get(format) as (key: string, values?: Record<string, unknown>) => string;
+        if (e.textKey) return fmt(e.textKey, e.params ?? {});
+        return e.text;
+    })();
 </script>
 
 <div class="message {isUser ? 'user' : 'assistant'}">
@@ -71,12 +96,12 @@ SPDX-License-Identifier: BSL-1.1
                         {#if uiIcon}
                             <img class="ui-icon" src={uiIcon} alt=""/>
                         {/if}
-                        {(entry as UiLog).title || 'Нажали'}
+                        {uiTitle}
                         <span class="ui-spacer"></span>
                         <img class="expand-icon" src={expandArrow} alt=""/>
                     </summary>
                     <div class="ui-content">
-                        {@html renderMarkdownSafe((entry as UiLog).text)}
+                        {@html renderMarkdownSafe(uiText)}
                     </div>
                 </details>
             </div>

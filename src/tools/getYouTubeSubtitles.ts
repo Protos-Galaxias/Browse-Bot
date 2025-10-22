@@ -14,7 +14,7 @@ export const getYouTubeSubtitlesTool = (context: ToolContext) => tool({
     }),
     async execute({ tabId }): Promise<ToolOutput> {
         const targetTabId = resolveTabId(context, tabId);
-        updateLog({ type: 'ui', kind: 'parse', title: 'Получаю субтитры YouTube', text: 'Читаю панель транскрипта' });
+        updateLog({ type: 'ui', kind: 'parse', titleKey: 'ui.titles.youtube', textKey: 'ui.texts.youtube', text: '' });
         try {
             const timeoutMs = 20000;
             const response: unknown = await Promise.race([

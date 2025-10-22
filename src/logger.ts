@@ -2,7 +2,15 @@
 // SPDX-License-Identifier: BSL-1.1
 
 export type I18nLog = { type: 'i18n'; key: string; params?: Record<string, unknown>; prefix?: 'error' | 'result' | 'system' | 'agent' | 'user' };
-export type UiLog = { type: 'ui'; kind: 'click' | 'form' | 'parse' | 'find'; title?: string; text: string };
+export type UiLog = {
+    type: 'ui';
+    kind: 'click' | 'form' | 'parse' | 'find';
+    title?: string;
+    titleKey?: string;
+    text: string;
+    textKey?: string;
+    params?: Record<string, unknown>;
+};
 
 export function updateLog(data: string | I18nLog | UiLog) {
     console.log(data);

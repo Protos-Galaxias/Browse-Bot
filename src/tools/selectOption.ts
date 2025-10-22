@@ -17,7 +17,7 @@ export const selectOptionTool = (context: ToolContext) => tool({
         matchBy: z.enum(['label', 'value']).optional().describe('Match by label (default) or value.')
     }),
     async execute({ reasoning, element_description, option, matchBy }): Promise<ToolOutput> {
-        updateLog({ type: 'ui', kind: 'form', title: 'выбрали в выпадающем списке', text: `${reasoning}. Выбор опции "${option}". ${element_description}` });
+        updateLog({ type: 'ui', kind: 'form', titleKey: 'ui.titles.select', textKey: 'ui.texts.select', text: '', params: { reasoning, element: element_description, option } });
         const elements = context.getInteractiveElements();
         if (elements.length === 0) return { success: false, error: 'Context is empty. Call `parsePage` or `parsePageInteractiveElements` first.' };
         const elementIds = await findElementIds(elements, element_description, context.aiService).catch((e) => { reportError(e, 'errors.sendMessageSelect'); return []; });

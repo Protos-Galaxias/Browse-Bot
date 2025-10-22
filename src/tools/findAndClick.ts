@@ -16,7 +16,7 @@ export const findAndClickTool = (context: ToolContext) => tool({
     }),
     async execute({ reasoning, element_description }): Promise<ToolOutput> {
         console.log(`findAndClick with reasoning: ${reasoning}`, element_description);
-        updateLog({ type: 'ui', kind: 'click', title: 'Нажали', text: `${reasoning}. ${element_description}` });
+        updateLog({ type: 'ui', kind: 'click', titleKey: 'ui.titles.clicked', textKey: 'ui.texts.click', text: '', params: { reasoning, element: element_description } });
         const elements = context.getInteractiveElements();
         if (elements.length === 0) {
             updateLogI18n('errors.noElementsContext', undefined, 'error');

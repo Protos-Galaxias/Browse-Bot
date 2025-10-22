@@ -342,7 +342,7 @@ SPDX-License-Identifier: BSL-1.1
                 try {
                     if (payload && typeof payload === 'object' && payload.type === 'i18n' && typeof payload.key === 'string') {
                         const fmt = get(format) as (key: string, values?: Record<string, unknown>) => string;
-                        const prefix = payload.prefix === 'error' ? '[Ошибка]' : payload.prefix === 'result' ? '[Результат]' : payload.prefix === 'system' ? '[Система]' : payload.prefix === 'agent' ? '[Агент]' : '';
+                        const prefix = payload.prefix === 'error' ? '[Error]' : payload.prefix === 'result' ? '[Результат]' : payload.prefix === 'system' ? '[Система]' : payload.prefix === 'agent' ? '[Агент]' : '';
                         const localized = fmt(payload.key, payload.params || {});
                         return `${prefix ? prefix + ': ' : ''}${localized}`;
                     }

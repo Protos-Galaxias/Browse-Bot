@@ -212,6 +212,31 @@
     "github": "Посмотреть на GitHub",
     "copyright": "© 2025 PROTOS GALAXIAS LIMITED",
     "license": "Лицензировано под BSL 1.1"
+  },
+  "ui": {
+    "titles": {
+      "clicked": "Нажали",
+      "typed": "Ввели текст",
+      "parsed": "Прочитал страницу",
+      "found": "Нашли элемент",
+      "checkbox": "Чекбокс",
+      "radio": "Радио-кнопка",
+      "select": "Выбор в списке",
+      "youtube": "Получаю субтитры YouTube"
+    },
+    "texts": {
+      "parse.all": "Собираю интерактивные элементы и текст со всех вкладок2",
+      "parse.interactive": "Сканирую интерактивные элементы на всех вкладках2",
+      "parse.text": "Получаю смысловой текст со страницы",
+      "click": "{reasoning}. {element}",
+      "insert": "{reasoning}. {element}. Текст: \"{text}\"",
+      "select": "{reasoning}. Выбор опции \"{option}\". {element}",
+      "checkboxOn": "{reasoning}. Чекбокс: включен. {element}",
+      "checkboxOff": "{reasoning}. Чекбокс: выключен. {element}",
+      "radio": "{reasoning}. Выбор радио-кнопки. {element}",
+      "find": "Запрос: {query}. Найдено: {count}",
+      "youtube": "Читаю панель транскрипта"
+    }
   }
 }
 

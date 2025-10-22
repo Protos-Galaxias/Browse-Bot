@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { findElementIds } from './findElement';
 import type { ToolContext, ToolOutput } from './types';
 import { resolveTabId, sendToTabOrThrow } from './utils';
-import { reportError, updateLog } from '../logger';
+import { reportError, reportErrorKey, updateLog } from '../logger';
 
 export const findAndInsertTextTool = (context: ToolContext) => tool({
     description: 'Types text into an input. Use `parsePage` (preferred) or `parsePageInteractiveElements` beforehand to build elements context. For read-only content questions, prefer `parsePageText`.',
@@ -17,7 +17,7 @@ export const findAndInsertTextTool = (context: ToolContext) => tool({
     }),
     async execute({ reasoning, element_description, text }): Promise<ToolOutput> {
         console.log(`findAndInsertText with reasoning: ${reasoning}`);
-        updateLog({ type: 'ui', kind: 'form', title: 'Ввели текст', text: `${reasoning}. ${element_description}. Текст: "${text}"` });
+        updateLog({ type: 'ui', kind: 'form', titleKey: 'ui.titles.typed', textKey: 'ui.texts.insert', text: '', params: { reasoning, element: element_description, text } });
         const elements = context.getInteractiveElements();
         if (elements.length === 0) {
             return { success: false, error: 'Context is empty. Call `parsePage` or `parsePageInteractiveElements` first.' };
@@ -27,12 +27,12 @@ export const findAndInsertTextTool = (context: ToolContext) => tool({
         const targetId = elementIds[0];
         const tid = elements.find(e => e.id === targetId)?.tid;
         const targetTabId = resolveTabId(context, tid);
-        await sendToTabOrThrow(context, { type: 'INSERT_TEXT', aid: targetId, text, tid }, targetTabId).catch((e) => reportError(e, 'Не удалось ввести текст'));
+        await sendToTabOrThrow(context, { type: 'INSERT_TEXT', aid: targetId, text, tid }, targetTabId).catch((e) => reportErrorKey('errors.sendMessageInsert', e));
         // Heuristic: If user is searching (common cases), press Enter to submit search when no explicit search button is guaranteed
         const lower = (element_description + ' ' + reasoning).toLowerCase();
         const likelySearch = /search|поиск|найти|query|поисков/gi.test(lower);
         if (likelySearch) {
-            await sendToTabOrThrow(context, { type: 'PRESS_ENTER', aid: targetId, tid }, targetTabId).catch((e) => reportError(e, 'Не удалось нажать Enter'));
+            await sendToTabOrThrow(context, { type: 'PRESS_ENTER', aid: targetId, tid }, targetTabId).catch((e) => reportErrorKey('errors.sendMessageEnter', e));
         }
         return { success: true, elementId: targetId };
     }

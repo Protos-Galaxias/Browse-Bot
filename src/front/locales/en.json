@@ -212,6 +212,31 @@
     "github": "View on GitHub",
     "copyright": "© 2025 PROTOS GALAXIAS LIMITED",
     "license": "Licensed under BSL 1.1"
+  },
+  "ui": {
+    "titles": {
+      "clicked": "Clicked",
+      "typed": "Typed text",
+      "parsed": "Parsed page",
+      "found": "Found element",
+      "checkbox": "Checkbox",
+      "radio": "Radio button",
+      "select": "Selected in dropdown",
+      "youtube": "Fetching YouTube subtitles"
+    },
+    "texts": {
+      "parse.all": "Collecting interactive elements and text from all tabs",
+      "parse.interactive": "Scanning interactive elements across all tabs",
+      "parse.text": "Retrieving meaningful text from the page",
+      "click": "{reasoning}. {element}",
+      "insert": "{reasoning}. {element}. Text: \"{text}\"",
+      "select": "{reasoning}. Selecting option \"{option}\". {element}",
+      "checkboxOn": "{reasoning}. Checkbox set to: on. {element}",
+      "checkboxOff": "{reasoning}. Checkbox set to: off. {element}",
+      "radio": "{reasoning}. Radio selected. {element}",
+      "find": "Query: {query}. Found: {count}",
+      "youtube": "Reading transcript panel"
+    }
   }
 }
 

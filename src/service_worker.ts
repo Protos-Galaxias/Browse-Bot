@@ -362,7 +362,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
                     agentHistory = [...messages];
 
                     const finalAnswer = await runAgentTask(messages, {} as ToolSet, selectedServiceGeneric);
-                    updateLog(`[Результат]: ${finalAnswer}`);
+                    updateLog(`${finalAnswer}`);
                     return;
                 } else {
                     seedTabs = [{ id: activeTab.id, title: activeTab.title, url: activeTab.url }];
@@ -399,7 +399,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
 
             const finalAnswer = await runAgentTask(messages, tools, selectedServiceGeneric);
 
-            updateLog(`[Результат]: ${finalAnswer}`);
+            updateLog(`${finalAnswer}`);
         } catch (err) {
             reportError(err, 'Во время выполнения задачи произошла ошибка');
         } finally {
