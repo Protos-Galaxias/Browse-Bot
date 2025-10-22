@@ -127,7 +127,8 @@
           "autoDetect": "Automatically detect request type",
           "directQuestions": "Direct questions to AI",
           "analysis": "Work analysis",
-          "context": "Context understanding"
+          "context": "Context understanding",
+          "tabSelection": "Type @ in the chat to open a list of all active tabs. Select a tab to interact with it directly."
         }
       },
       "tools": {

@@ -464,15 +464,6 @@ SPDX-License-Identifier: BSL-1.1
                     </div>
                 </div>
             </div>
-
-            <div class="quick-actions">
-                <div class="action-row">
-                    <button class="action-btn primary" on:click={() => window.location.hash = '#capabilities'}>
-                        <span class="action-icon">💡</span>
-                        <span>{$_('chat.capabilities')}</span>
-                    </button>
-                </div>
-            </div>
         </div>
     {:else}
         <MessageList {log} {isTyping} />

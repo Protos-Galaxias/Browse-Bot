@@ -27,6 +27,7 @@ SPDX-License-Identifier: BSL-1.1
             <li>{$_('cap.sections.chat.items.directQuestions')}</li>
             <li>{$_('cap.sections.chat.items.analysis')}</li>
             <li>{$_('cap.sections.chat.items.context')}</li>
+            <li>{$_('cap.sections.chat.items.tabSelection')}</li>
         </ul>
     </div>
 
