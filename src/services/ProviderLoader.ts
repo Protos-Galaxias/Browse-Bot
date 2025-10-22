@@ -15,15 +15,15 @@ export interface ProviderConfig {
     priority?: number;
 }
 
-// URL для загрузки конфигурации провайдеров
-const PROVIDERS_CONFIG_URL = 'https://raw.githubusercontent.com/molchanovartem/web-walker-config/refs/heads/main/providers-config.json';
+// URL for loading provider configuration
+// const PROVIDERS_CONFIG_URL = 'https://raw.githubusercontent.com/molchanovartem/web-walker-config/refs/heads/main/providers-config.json';
 
-// Fallback конфигурация (если загрузка не удалась)
+// Fallback configuration (if loading fails)
 const FALLBACK_PROVIDERS: ProviderConfig[] = [
     {
         id: 'openrouter',
         name: 'OpenRouter',
-        description: 'Доступ к 200+ моделям',
+        description: 'Access to 200+ models',
         needsApiKey: true,
         apiKeyUrl: 'https://openrouter.ai/keys',
         apiKeyPlaceholder: 'sk-or-...',
@@ -47,7 +47,7 @@ const FALLBACK_PROVIDERS: ProviderConfig[] = [
     {
         id: 'xai',
         name: 'xAI (Grok)',
-        description: 'Модели Grok',
+        description: 'Grok models',
         needsApiKey: true,
         apiKeyUrl: 'https://console.x.ai/',
         apiKeyPlaceholder: 'xai-...',
@@ -58,8 +58,8 @@ const FALLBACK_PROVIDERS: ProviderConfig[] = [
     },
     {
         id: 'ollama',
-        name: 'Ollama (Локально)',
-        description: 'Запуск моделей локально',
+        name: 'Ollama (Local)',
+        description: 'Run models locally',
         needsApiKey: false,
         apiKeyUrl: '',
         apiKeyPlaceholder: '',
@@ -71,27 +71,28 @@ const FALLBACK_PROVIDERS: ProviderConfig[] = [
 ];
 
 export async function loadProvidersConfig(): Promise<ProviderConfig[]> {
+    /*
     try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 секунд таймаут
-        
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 seconds timeout
+
         const response = await fetch(PROVIDERS_CONFIG_URL, {
             signal: controller.signal
         });
         clearTimeout(timeoutId);
-        
+
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
         }
-        
+
         const data = await response.json();
-        
-        // Валидация и фильтрация
+
+        // Validation and filtering
         if (data.providers && Array.isArray(data.providers)) {
             const providers = data.providers
                 .filter((p: any) => p.enabled !== false && Object.keys(ProviderMeta).includes(p.id))
                 .sort((a: any, b: any) => (a.priority || 999) - (b.priority || 999));
-            
+
             console.log(`[ProviderLoader] Loaded ${providers.length} providers from ${PROVIDERS_CONFIG_URL}`);
             return providers;
         } else {
@@ -99,11 +100,14 @@ export async function loadProvidersConfig(): Promise<ProviderConfig[]> {
         }
     } catch (error) {
         console.warn('[ProviderLoader] Failed to load providers config, using fallback:', error);
-        
-        // Используем fallback конфигурацию
+
+        // Use fallback configuration
         return FALLBACK_PROVIDERS
             .filter(p => p.enabled)
             .sort((a, b) => (a.priority || 999) - (b.priority || 999));
     }
+    */
+    return FALLBACK_PROVIDERS
+        .filter(p => p.enabled)
+        .sort((a, b) => (a.priority || 999) - (b.priority || 999));
 }
-
