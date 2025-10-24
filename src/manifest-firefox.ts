@@ -35,7 +35,14 @@ export default defineManifest({
     ...({
         sidebar_action: {
             default_panel: 'index.html',
-            default_title: 'Browse Bot'
+            default_title: 'Browse Bot',
+            default_icon: {
+                '16': 'logos/16x16.png',
+                '32': 'logos/32x32.png',
+                '48': 'logos/48x48.png',
+                '96': 'logos/96x96.png',
+                '128': 'logos/128x128.png'
+            }
         },
         browser_specific_settings: {
             gecko: {
@@ -44,6 +51,13 @@ export default defineManifest({
         }
     } as any),
     action: {
+        default_icon: {
+            '16': 'logos/16x16.png',
+            '32': 'logos/32x32.png',
+            '48': 'logos/48x48.png',
+            '96': 'logos/96x96.png',
+            '128': 'logos/128x128.png'
+        },
         default_title: 'Open Browse Bot'
     },
     icons: {
