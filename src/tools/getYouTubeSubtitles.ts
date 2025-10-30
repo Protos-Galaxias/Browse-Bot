@@ -8,7 +8,7 @@ import { resolveTabId, sendToTabOrThrow } from './utils';
 import { updateLogI18n, updateLog } from '../logger';
 
 export const getYouTubeSubtitlesTool = (context: ToolContext) => tool({
-    description: 'Retrieves subtitles from a YouTube video. Returns clean subtitle text.',
+    description: 'Retrieves subtitles from a YouTube video. Use this tool when the user asks for subtitles, video text, or what is being said in the video (e.g., "give me subtitles from the video", "text from the video", "what are they talking about in the video") AND you are certain we are on the YouTube website. Returns clean subtitle text.',
     inputSchema: z.object({
         tabId: z.number().optional().describe('Optional specific tab id to target')
     }),
