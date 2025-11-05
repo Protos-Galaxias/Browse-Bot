@@ -2,6 +2,11 @@
 
 An intelligent browser extension that uses AI to help users navigate and interact with web pages. Built with Svelte, TypeScript, and Vite for both Chrome and Firefox.
 
+## Install
+
+🔹 Chrome: https://chromewebstore.google.com/detail/browse-bot/hkcbjmdeheceggmlbhbiljejkkpjljjp
+🔹 Firefox: https://addons.mozilla.org/en-US/firefox/addon/browse-bot/
+
 ## Features
 
 - **AI-Powered Web Actions**: Perform complex web tasks using natural language
