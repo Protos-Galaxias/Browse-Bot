@@ -20,7 +20,7 @@ SPDX-License-Identifier: BSL-1.1
     export let visible = true;
 
     let prompt = '';
-    let log: Array<string | { type: 'i18n'; key: string; params?: Record<string, unknown>; prefix?: 'error'|'result'|'system'|'agent'|'user' } | { type: 'ui'; kind: 'click'; title?: string; text: string }> = [];
+    let log: Array<string | { type: 'i18n'; key: string; params?: Record<string, unknown>; prefix?: 'error'|'result'|'system'|'agent'|'user' } | { type: 'ui'; kind: 'click'; title?: string; text: string } | { type: 'error'; message: string; details?: Record<string, unknown> }> = [];
     let isTyping = false;
     let isTaskRunning = false;
     let models: string[] = [];
@@ -310,8 +310,10 @@ SPDX-License-Identifier: BSL-1.1
         }
 
         const tabs = displayMentions.map(t => ({ id: t.id, title: t.title, url: t.url }));
+        // Pass chat history for context continuity
+        const chatHistory = log.slice(0, -1); // exclude current message we just added
         try {
-            chrome.runtime.sendMessage({ type: 'START_TASK', prompt: userPrompt, tabs }, (resp) => {
+            chrome.runtime.sendMessage({ type: 'START_TASK', prompt: userPrompt, tabs, chatHistory }, (resp) => {
                 const err = chrome.runtime.lastError;
                 if (err) {
                     console.warn('[UI] send START_TASK failed', err.message);
@@ -340,6 +342,10 @@ SPDX-License-Identifier: BSL-1.1
             const payload = message.data;
             const computed = (() => {
                 try {
+                    // Pass through ErrorLog objects for expandable error display
+                    if (payload && typeof payload === 'object' && payload.type === 'error' && typeof payload.message === 'string') {
+                        return payload; // pass through for error rendering with details
+                    }
                     if (payload && typeof payload === 'object' && payload.type === 'i18n' && typeof payload.key === 'string') {
                         const fmt = get(format) as (key: string, values?: Record<string, unknown>) => string;
                         const prefix = payload.prefix === 'error' ? '[Error]' : payload.prefix === 'result' ? '[Результат]' : payload.prefix === 'system' ? '[Система]' : payload.prefix === 'agent' ? '[Агент]' : '';
@@ -356,7 +362,8 @@ SPDX-License-Identifier: BSL-1.1
             })();
             if (hideAgentMessages) {
                 // В режиме скрытия показываем только итог/ошибку/анализ
-                const isFinalOrError = (typeof computed === 'string') && (computed.startsWith('[Результат]') || computed.startsWith('[Ошибка]') || computed.startsWith('[Анализ]'));
+                const isError = typeof computed === 'object' && (computed as any).type === 'error';
+                const isFinalOrError = isError || ((typeof computed === 'string') && (computed.startsWith('[Результат]') || computed.startsWith('[Ошибка]') || computed.startsWith('[Анализ]')));
                 if (!isFinalOrError) return true;
             }
             log = [...log, computed];

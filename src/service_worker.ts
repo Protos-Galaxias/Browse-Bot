@@ -210,6 +210,23 @@ function formatWorkHistoryForContext(): string | null {
     }
 }
 
+function convertChatHistoryToMessages(chatHistory: Array<string | { type: string; [key: string]: unknown }>): ModelMessage[] {
+    const messages: ModelMessage[] = [];
+    for (const entry of chatHistory) {
+        if (typeof entry === 'string') {
+            // Parse string format: "[User]: message" or "[Результат]: message" etc.
+            if (entry.startsWith('[User]:')) {
+                messages.push({ role: 'user', content: entry.replace(/^\[User\]:\s*/, '') });
+            } else {
+                // Assistant messages (results, agent responses, etc.)
+                messages.push({ role: 'assistant', content: entry });
+            }
+        }
+        // Skip UI objects (clicks, etc.) - they're not relevant for AI context
+    }
+    return messages;
+}
+
 type TabMeta = { id: number; title?: string; url?: string };
 
 async function buildSystemPrompt(tabs?: Array<TabMeta>): Promise<string> {
@@ -335,7 +352,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
         // Immediately respond to prevent "Receiving end does not exist" error
         try { sendResponse({ ok: true }); } catch (e) { void e; }
 
-        const { prompt, tabs } = message as { prompt: string; tabs?: Array<{ id: number; title?: string; url?: string }> };
+        const { prompt, tabs, chatHistory } = message as { prompt: string; tabs?: Array<{ id: number; title?: string; url?: string }>; chatHistory?: Array<string | { type: string; [key: string]: unknown }> };
         if (Array.isArray(tabs)) console.log('tabs meta back', tabs);
 
         let seedTabs = Array.isArray(tabs) && tabs.length > 0 ? tabs : [];
@@ -349,6 +366,9 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
 
 
             const historyText = formatWorkHistoryForContext();
+            // Convert persisted chat history to messages for context continuity
+            const persistedHistory = Array.isArray(chatHistory) ? convertChatHistoryToMessages(chatHistory) : [];
+            
             if (seedTabs.length === 0) {
                 const [activeTab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
                 if (!activeTab?.id) {
@@ -356,6 +376,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
                     const messages: ModelMessage[] = [
                         { role: 'system', content: systemPrompt },
                         ...(historyText ? [{ role: 'system', content: historyText } as ModelMessage] : []),
+                        ...persistedHistory,
                         { role: 'user', content: prompt }
                     ];
 
@@ -392,6 +413,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
             const messages: ModelMessage[] = [
                 { role: 'system', content: systemPrompt },
                 ...(historyText ? [{ role: 'system', content: historyText } as ModelMessage] : []),
+                ...persistedHistory,
                 { role: 'user', content: prompt }
             ];
 

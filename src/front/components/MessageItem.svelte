@@ -23,12 +23,29 @@ SPDX-License-Identifier: BSL-1.1
         textKey?: string;
         params?: Record<string, unknown>;
     };
+    
+    type ErrorLog = {
+        type: 'error';
+        message: string;
+        details?: {
+            requestUrl?: string;
+            requestMethod?: string;
+            requestHeaders?: Record<string, string>;
+            requestBody?: string;
+            responseStatus?: number;
+            responseStatusText?: string;
+            responseHeaders?: Record<string, string>;
+            responseBody?: string;
+            stack?: string;
+        };
+    };
+    
     export let entry: string | {
         type: 'i18n';
         key: string;
         params?: Record<string, unknown>;
         prefix?: 'error' | 'result' | 'system' | 'agent' | 'user'
-    } | UiLog;
+    } | UiLog | ErrorLog;
 
     function isI18nLog(x: unknown): x is {
         type: 'i18n';
@@ -42,9 +59,16 @@ SPDX-License-Identifier: BSL-1.1
     function isUiLog(x: unknown): x is UiLog {
         return Boolean(x && typeof x === 'object' && (x as any).type === 'ui' && typeof (x as any).text === 'string');
     }
+    
+    function isErrorLog(x: unknown): x is ErrorLog {
+        return Boolean(x && typeof x === 'object' && (x as any).type === 'error' && typeof (x as any).message === 'string');
+    }
 
     $: isI18n = isI18nLog(entry);
     $: isUi = isUiLog(entry);
+    $: isError = isErrorLog(entry);
+    $: errorDetails = isError ? (entry as ErrorLog).details : null;
+    $: hasErrorDetails = errorDetails && Object.keys(errorDetails).length > 0;
     $: isUser = !isI18n && typeof entry === 'string' ? entry.startsWith('[User]') : (isI18n && (entry as any).prefix === 'user');
     $: uiIcon = (() => {
         if (!isUi) return null;
@@ -55,6 +79,9 @@ SPDX-License-Identifier: BSL-1.1
         return keyboardIcon; // form
     })();
     $: html = (() => {
+        if (isError && isErrorLog(entry)) {
+            return renderMarkdownSafe(`[Error]: ${entry.message}`);
+        }
         if (isI18n && isI18nLog(entry)) {
             const prefix = entry.prefix === 'error' ? '[Ошибка]' : entry.prefix === 'result' ? '[Результат]' : entry.prefix === 'system' ? '[Система]' : entry.prefix === 'agent' ? '[Агент]' : '';
             const fmt = get(format) as (key: string, values?: Record<string, unknown>) => string;
@@ -64,6 +91,11 @@ SPDX-License-Identifier: BSL-1.1
         const val = String(entry);
         return isUser ? renderUserMessage(val.replace('[User]: ', '')) : renderMarkdownSafe(val);
     })();
+    
+    function formatHeaders(headers: Record<string, string> | undefined): string {
+        if (!headers) return '';
+        return Object.entries(headers).map(([k, v]) => `${k}: ${v}`).join('\n');
+    }
 
     $: uiTitle = (() => {
         if (!isUi) return '';
@@ -89,7 +121,65 @@ SPDX-License-Identifier: BSL-1.1
             {@html html}
         </div>
     {:else}
-        {#if isUi}
+        {#if isError}
+            <div class="error-card">
+                <div class="error-header">
+                    <span class="error-icon">⚠️</span>
+                    <span class="error-message">{@html html}</span>
+                    {#if hasErrorDetails}
+                        <details class="error-details-toggle">
+                            <summary class="error-expand-btn">
+                                <span class="plus-icon">+</span>
+                            </summary>
+                            <div class="error-details">
+                                {#if errorDetails?.requestUrl}
+                                    <div class="detail-section">
+                                        <div class="detail-label">Request URL</div>
+                                        <pre class="detail-value">{errorDetails.requestUrl}</pre>
+                                    </div>
+                                {/if}
+                                {#if errorDetails?.requestHeaders && Object.keys(errorDetails.requestHeaders).length > 0}
+                                    <div class="detail-section">
+                                        <div class="detail-label">Request Headers</div>
+                                        <pre class="detail-value">{formatHeaders(errorDetails.requestHeaders)}</pre>
+                                    </div>
+                                {/if}
+                                {#if errorDetails?.requestBody}
+                                    <div class="detail-section">
+                                        <div class="detail-label">Request Body</div>
+                                        <pre class="detail-value">{errorDetails.requestBody}</pre>
+                                    </div>
+                                {/if}
+                                {#if errorDetails?.responseStatus}
+                                    <div class="detail-section">
+                                        <div class="detail-label">Response Status</div>
+                                        <pre class="detail-value">{errorDetails.responseStatus} {errorDetails.responseStatusText || ''}</pre>
+                                    </div>
+                                {/if}
+                                {#if errorDetails?.responseHeaders && Object.keys(errorDetails.responseHeaders).length > 0}
+                                    <div class="detail-section">
+                                        <div class="detail-label">Response Headers</div>
+                                        <pre class="detail-value">{formatHeaders(errorDetails.responseHeaders)}</pre>
+                                    </div>
+                                {/if}
+                                {#if errorDetails?.responseBody}
+                                    <div class="detail-section">
+                                        <div class="detail-label">Response Body</div>
+                                        <pre class="detail-value">{errorDetails.responseBody}</pre>
+                                    </div>
+                                {/if}
+                                {#if errorDetails?.stack}
+                                    <div class="detail-section">
+                                        <div class="detail-label">Stack Trace</div>
+                                        <pre class="detail-value stack">{errorDetails.stack}</pre>
+                                    </div>
+                                {/if}
+                            </div>
+                        </details>
+                    {/if}
+                </div>
+            </div>
+        {:else if isUi}
             <div class="ui-card {'kind-' + (entry as UiLog).kind}">
                 <details>
                     <summary>
@@ -265,5 +355,127 @@ SPDX-License-Identifier: BSL-1.1
 
     .ui-card details[open] .expand-icon {
         transform: rotate(180deg);
+    }
+
+    /* Error card styles */
+    .error-card {
+        background: rgba(220, 53, 69, 0.1);
+        border: 1px solid rgba(220, 53, 69, 0.3);
+        border-radius: 8px;
+        padding: 0.5rem 0.75rem;
+        text-align: left;
+    }
+
+    .error-header {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .error-icon {
+        flex-shrink: 0;
+    }
+
+    .error-message {
+        color: #dc3545;
+        flex: 1;
+        min-width: 0;
+        word-break: break-word;
+    }
+
+    .error-details-toggle {
+        width: 100%;
+        margin-top: 0.5rem;
+    }
+
+    .error-expand-btn {
+        cursor: pointer;
+        list-style: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        background: rgba(220, 53, 69, 0.2);
+        border-radius: 4px;
+        transition: background 0.2s;
+    }
+
+    .error-expand-btn:hover {
+        background: rgba(220, 53, 69, 0.3);
+    }
+
+    .error-expand-btn::-webkit-details-marker {
+        display: none;
+    }
+
+    .plus-icon {
+        font-size: 1rem;
+        font-weight: bold;
+        color: #dc3545;
+        line-height: 1;
+    }
+
+    .error-details-toggle[open] .plus-icon {
+        content: '−';
+    }
+
+    .error-details-toggle[open] .plus-icon::after {
+        content: '−';
+    }
+
+    .error-details-toggle:not([open]) .plus-icon::after {
+        content: '+';
+    }
+
+    .plus-icon::after {
+        content: '+';
+    }
+
+    .plus-icon {
+        font-size: 0;
+    }
+
+    .error-details {
+        margin-top: 0.75rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .detail-section {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        overflow: hidden;
+    }
+
+    .detail-label {
+        background: var(--bg-primary);
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .detail-value {
+        padding: 0.5rem;
+        margin: 0;
+        font-size: 0.8rem;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        white-space: pre-wrap;
+        word-break: break-all;
+        max-height: 200px;
+        overflow-y: auto;
+        color: var(--text-primary);
+        background: transparent;
+    }
+
+    .detail-value.stack {
+        font-size: 0.7rem;
+        color: var(--text-secondary);
+        max-height: 150px;
     }
 </style>
