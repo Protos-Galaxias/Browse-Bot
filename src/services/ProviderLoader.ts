@@ -59,7 +59,7 @@ const FALLBACK_PROVIDERS: ProviderConfig[] = [
     {
         id: 'ollama',
         name: 'Ollama (Local)',
-        description: 'Run models locally',
+        description: 'Run: OLLAMA_ORIGINS="*" ollama serve',
         needsApiKey: false,
         apiKeyUrl: '',
         apiKeyPlaceholder: '',

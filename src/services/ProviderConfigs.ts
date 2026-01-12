@@ -4,7 +4,6 @@
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createXai } from '@ai-sdk/xai';
-import { createOllama, ollama as defaultOllama } from 'ollama-ai-provider-v2';
 import { ConfigService } from './ConfigService';
 import type { LanguageModel } from 'ai';
 
@@ -82,12 +81,14 @@ export const ProviderConfigs: Record<string, ProviderDescriptor> = {
         name: 'ollama',
         async getClient(configService: ConfigService) {
             const baseURL = await configService.get<string>('ollamaBaseURL');
-            return baseURL && typeof baseURL === 'string' && baseURL.trim().length > 0
-                ? createOllama({ baseURL })
-                : defaultOllama;
+            const url = baseURL && typeof baseURL === 'string' && baseURL.trim().length > 0
+                ? baseURL.replace(/\/api\/?$/, '') + '/v1'
+                : 'http://localhost:11434/v1';
+            // Use OpenAI-compatible endpoint - same approach as LM Studio which works with CORS
+            return createOpenAI({ baseURL: url, apiKey: 'ollama' });
         },
         getModel(client: unknown, modelName: string): LanguageModel {
-            return (client as (id: string) => LanguageModel)(modelName);
+            return (client as { chat: (m: string) => LanguageModel }).chat(modelName);
         },
         storageActiveModel: 'activeModel_ollama',
         storageModels: 'models_ollama',

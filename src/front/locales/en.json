@@ -49,7 +49,7 @@
       "needKey": "An API key is required to use models via {provider}.",
       "openrouterHint": "Get a key at openrouter.ai",
       "openaiHint": "Get a key at platform.openai.com",
-      "ollamaHint": "Specify base URL, default http://localhost:11434/api",
+      "ollamaHint": "Specify base URL, default http://localhost:11434",
       "openrouterCta": "Get a key at {url}",
       "steps": {
         "signInGoToApiKeys": "Sign in and go to API Keys.",
@@ -62,9 +62,9 @@
         "pasteAutoSave": "Paste the key above — it will auto-save."
       },
       "ollama": {
-        "install": "Install Ollama locally and start the service.",
-        "ensurePort": "Ensure port 11434 is accessible.",
-        "changeBaseUrl": "Change Base URL below if needed."
+        "install": "Install Ollama locally.",
+        "ensurePort": "Run with CORS: OLLAMA_ORIGINS=\"*\" ollama serve",
+        "changeBaseUrl": "Default URL: http://localhost:11434"
       },
       "lmstudio": {
         "install": "Install LM Studio and start the local server.",
@@ -77,7 +77,7 @@
       "openrouterKey": "Enter your OpenRouter API key",
       "openaiKey": "Enter your OpenAI API key",
       "xaiKey": "Enter your xAI API key",
-      "ollamaBaseUrl": "Example: http://localhost:11434/api",
+      "ollamaBaseUrl": "http://localhost:11434",
       "lmstudioBaseUrl": "Example: http://localhost:1234/v1",
       "modelName": "Model name",
       "globalPrompt": "This text will be added to all LLM requests as a system prompt."
@@ -206,7 +206,7 @@
     "apiKey": "API Key",
     "baseUrl": "Base URL",
     "getApiKey": "Get API Key",
-    "ollamaHelp": "Make sure Ollama is running locally. Default URL: http://localhost:11434",
+    "ollamaHelp": "Run Ollama with CORS: OLLAMA_ORIGINS=\"*\" ollama serve",
     "lmstudioHelp": "Make sure LM Studio local server is running. Default URL: http://localhost:1234/v1",
     "back": "Back",
     "continue": "Continue",

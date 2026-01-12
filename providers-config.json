@@ -39,7 +39,7 @@
     {
       "id": "ollama",
       "name": "Ollama (Локально)",
-      "description": "Запуск моделей локально на вашем компьютере",
+      "description": "Запустите: OLLAMA_ORIGINS=\"*\" ollama serve",
       "needsApiKey": false,
       "apiKeyUrl": "",
       "apiKeyPlaceholder": "",

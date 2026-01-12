@@ -49,7 +49,7 @@
       "needKey": "API ключ необходим для обращения к моделям через {provider}.",
       "openrouterHint": "Получить ключ можно на openrouter.ai",
       "openaiHint": "Получить ключ можно на platform.openai.com",
-      "ollamaHint": "Укажите базовый URL, по умолчанию http://localhost:11434/api",
+      "ollamaHint": "Укажите базовый URL, по умолчанию http://localhost:11434",
       "openrouterCta": "Получить ключ можно на сайте: {url}",
       "steps": {
         "signInGoToApiKeys": "Авторизуйтесь и перейдите в раздел API Keys.",
@@ -62,9 +62,9 @@
         "pasteAutoSave": "Вставьте ключ в поле выше — сохранится автоматически."
       },
       "ollama": {
-        "install": "Установите Ollama локально и запустите службу.",
-        "ensurePort": "Убедитесь, что порт доступен: 11434.",
-        "changeBaseUrl": "При необходимости измените Base URL ниже."
+        "install": "Установите Ollama локально.",
+        "ensurePort": "Запустите с CORS: OLLAMA_ORIGINS=\"*\" ollama serve",
+        "changeBaseUrl": "URL по умолчанию: http://localhost:11434"
       },
       "lmstudio": {
         "install": "Установите LM Studio и запустите локальный сервер.",
@@ -77,7 +77,7 @@
       "openrouterKey": "Введите ваш OpenRouter API ключ",
       "openaiKey": "Введите ваш OpenAI API ключ",
       "xaiKey": "Введите ваш xAI API ключ",
-      "ollamaBaseUrl": "Например: http://localhost:11434/api",
+      "ollamaBaseUrl": "http://localhost:11434",
       "lmstudioBaseUrl": "Например: http://localhost:1234/v1",
       "modelName": "Название модели",
       "globalPrompt": "Этот текст будет добавляться ко всем запросам в LLM как системная подсказка."
@@ -206,7 +206,7 @@
     "apiKey": "API ключ",
     "baseUrl": "Base URL",
     "getApiKey": "Получить API ключ",
-    "ollamaHelp": "Убедитесь, что Ollama запущена локально. URL по умолчанию: http://localhost:11434",
+    "ollamaHelp": "Запустите Ollama с CORS: OLLAMA_ORIGINS=\"*\" ollama serve",
     "lmstudioHelp": "Убедитесь, что локальный сервер LM Studio запущен. URL по умолчанию: http://localhost:1234/v1",
     "back": "Назад",
     "continue": "Продолжить",
