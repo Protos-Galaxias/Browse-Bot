@@ -52,6 +52,15 @@ export const ProviderMeta: Record<string, ProviderMetaDescriptor> = {
         activeModelFallback: 'activeModel',
         defaultModelName: 'phi3',
         defaultModels: ['phi3']
+    },
+    lmstudio: {
+        name: 'lmstudio',
+        storageActiveModel: 'activeModel_lmstudio',
+        storageModels: 'models_lmstudio',
+        storageBaseURL: 'lmstudioBaseURL',
+        activeModelFallback: 'activeModel',
+        defaultModelName: 'qwen3-4b',
+        defaultModels: ['qwen3-4b']
     }
 };
 

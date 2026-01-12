@@ -19,6 +19,7 @@ export type ProviderDescriptor = {
     activeModelFallback?: string;
     defaultModelName: string;
     defaultModels: string[];
+    defaultMaxContextTokens?: number;
 };
 
 export const ProviderConfigs: Record<string, ProviderDescriptor> = {
@@ -93,7 +94,28 @@ export const ProviderConfigs: Record<string, ProviderDescriptor> = {
         storageBaseURL: 'ollamaBaseURL',
         activeModelFallback: 'activeModel',
         defaultModelName: 'phi3',
-        defaultModels: ['phi3']
+        defaultModels: ['phi3'],
+        defaultMaxContextTokens: 4096
+    },
+    lmstudio: {
+        name: 'lmstudio',
+        async getClient(configService: ConfigService) {
+            const baseURL = await configService.get<string>('lmstudioBaseURL');
+            const url = baseURL && typeof baseURL === 'string' && baseURL.trim().length > 0
+                ? baseURL
+                : 'http://localhost:1234/v1';
+            return createOpenAI({ baseURL: url, apiKey: 'lm-studio' });
+        },
+        getModel(client: unknown, modelName: string): LanguageModel {
+            return (client as { chat: (m: string) => LanguageModel }).chat(modelName);
+        },
+        storageActiveModel: 'activeModel_lmstudio',
+        storageModels: 'models_lmstudio',
+        storageBaseURL: 'lmstudioBaseURL',
+        activeModelFallback: 'activeModel',
+        defaultModelName: 'qwen3-4b',
+        defaultModels: ['qwen3-4b'],
+        defaultMaxContextTokens: 4096
     }
 };
 

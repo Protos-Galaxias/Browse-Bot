@@ -11,6 +11,8 @@ import type { AIService } from './services/AIService';
 import systemPromptRaw from './prompts/system.md?raw';
 import { isChrome } from './browser';
 import { StateService } from './services/StateService';
+import { truncateContext, getTotalTokenEstimate } from './services/ContextManager';
+import { ProviderConfigs } from './services/ProviderConfigs';
 
 console.log('[SW] booting service worker');
 
@@ -99,9 +101,19 @@ function injectIntoAllOpenTabs(): void {
 async function runAgentTask(
     messages: ModelMessage[],
     tools: ToolSet,
-    aiService: AIService
+    aiService: AIService,
+    maxContextTokens?: number
 ) {
-    const history: ModelMessage[] = messages;
+    // Truncate context if needed to prevent overflow errors
+    const truncatedMessages = truncateContext(messages, { maxContextTokens });
+    const originalTokens = getTotalTokenEstimate(messages);
+    const truncatedTokens = getTotalTokenEstimate(truncatedMessages);
+    
+    if (originalTokens !== truncatedTokens) {
+        console.log(`[SW] Context truncated: ${originalTokens} -> ${truncatedTokens} tokens (est.)`);
+    }
+    
+    const history: ModelMessage[] = truncatedMessages;
 
     agentHistory = [...history];
 
@@ -382,7 +394,8 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
 
                     agentHistory = [...messages];
 
-                    const finalAnswer = await runAgentTask(messages, {} as ToolSet, selectedServiceGeneric);
+                    const providerConfig = ProviderConfigs[providerFromConfig] || ProviderConfigs['openrouter'];
+            const finalAnswer = await runAgentTask(messages, {} as ToolSet, selectedServiceGeneric, providerConfig.defaultMaxContextTokens);
                     updateLog(`${finalAnswer}`);
                     return;
                 } else {
@@ -419,7 +432,8 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
 
             agentHistory = [...messages];
 
-            const finalAnswer = await runAgentTask(messages, tools, selectedServiceGeneric);
+            const providerConfig = ProviderConfigs[providerFromConfig] || ProviderConfigs['openrouter'];
+            const finalAnswer = await runAgentTask(messages, tools, selectedServiceGeneric, providerConfig.defaultMaxContextTokens);
 
             updateLog(`${finalAnswer}`);
         } catch (err) {

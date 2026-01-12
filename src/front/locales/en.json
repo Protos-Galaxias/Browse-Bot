@@ -14,6 +14,7 @@
     "openai": "OpenAI",
     "ollama": "Ollama",
     "xai": "xAI (Grok)",
+    "lmstudio": "LM Studio",
     "models": "AI Models",
     "choose": "Choose",
     "selected": "Selected",
@@ -36,6 +37,7 @@
     "apiKeyOpenAI": "OpenAI API Key",
     "apiKeyXAI": "xAI API Key",
     "ollamaBaseURL": "Ollama Base URL",
+    "lmstudioBaseURL": "LM Studio Base URL",
     "sendOnEnter": "Enter — send, Ctrl/Cmd+Enter — new line",
     "hideAgentMessages": "Show final answer only",
     "theme": {
@@ -63,6 +65,11 @@
         "install": "Install Ollama locally and start the service.",
         "ensurePort": "Ensure port 11434 is accessible.",
         "changeBaseUrl": "Change Base URL below if needed."
+      },
+      "lmstudio": {
+        "install": "Install LM Studio and start the local server.",
+        "ensurePort": "Ensure port 1234 is accessible.",
+        "changeBaseUrl": "Change Base URL below if needed."
       }
     }
     ,
@@ -71,6 +78,7 @@
       "openaiKey": "Enter your OpenAI API key",
       "xaiKey": "Enter your xAI API key",
       "ollamaBaseUrl": "Example: http://localhost:11434/api",
+      "lmstudioBaseUrl": "Example: http://localhost:1234/v1",
       "modelName": "Model name",
       "globalPrompt": "This text will be added to all LLM requests as a system prompt."
     },
@@ -199,6 +207,7 @@
     "baseUrl": "Base URL",
     "getApiKey": "Get API Key",
     "ollamaHelp": "Make sure Ollama is running locally. Default URL: http://localhost:11434",
+    "lmstudioHelp": "Make sure LM Studio local server is running. Default URL: http://localhost:1234/v1",
     "back": "Back",
     "continue": "Continue",
     "saving": "Saving...",

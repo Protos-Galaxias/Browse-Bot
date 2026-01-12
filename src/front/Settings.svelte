@@ -29,6 +29,7 @@ SPDX-License-Identifier: BSL-1.1
     let activeTab: 'general' | 'behavior' | 'prompt' | 'about' = 'general';
     let provider: ProviderId = 'openrouter';
     let ollamaBaseURL = '';
+    let lmstudioBaseURL = '';
     let mcps: Array<{ id?: string; label?: string; endpoint: string; enabled: boolean }> = [];
     let isMcpModalOpen: boolean = false;
     let editingMcpIndex: number | null = null;
@@ -89,6 +90,7 @@ SPDX-License-Identifier: BSL-1.1
         openaiApiKey = settings.openaiApiKey || '';
         xaiApiKey = settings.xaiApiKey || '';
         ollamaBaseURL = settings.ollamaBaseURL || '';
+        lmstudioBaseURL = settings.lmstudioBaseURL || '';
 
         const legacyModels: string[] | undefined = Array.isArray(settings.models) ? settings.models : undefined;
         const legacyActive: string | undefined = typeof settings.activeModel === 'string' ? settings.activeModel : undefined;
@@ -188,6 +190,7 @@ SPDX-License-Identifier: BSL-1.1
             openaiApiKey,
             xaiApiKey,
             ollamaBaseURL,
+            lmstudioBaseURL,
             globalPrompt,
             theme,
             sendOnEnter,
@@ -332,7 +335,7 @@ SPDX-License-Identifier: BSL-1.1
 
         <div class="setting-group">
             <label class="setting-label">
-                {provider === 'openrouter' ? $_('settings.apiKeyOpenRouter') : provider === 'openai' ? $_('settings.apiKeyOpenAI') : provider === 'xai' ? $_('settings.apiKeyXAI') : $_('settings.ollamaBaseURL')}
+                {provider === 'openrouter' ? $_('settings.apiKeyOpenRouter') : provider === 'openai' ? $_('settings.apiKeyOpenAI') : provider === 'xai' ? $_('settings.apiKeyXAI') : provider === 'lmstudio' ? $_('settings.lmstudioBaseURL') : $_('settings.ollamaBaseURL')}
                 {#if provider === 'openrouter'}
                     <input
                         type="password"
@@ -357,6 +360,14 @@ SPDX-License-Identifier: BSL-1.1
                         placeholder={$_('settings.placeholders.xaiKey')}
                         class="setting-input"
                     />
+                {:else if provider === 'lmstudio'}
+                    <input
+                        type="text"
+                        bind:value={lmstudioBaseURL}
+                        on:input={saveSettings}
+                        placeholder={$_('settings.placeholders.lmstudioBaseUrl')}
+                        class="setting-input"
+                    />
                 {:else}
                     <input
                         type="text"
@@ -369,7 +380,7 @@ SPDX-License-Identifier: BSL-1.1
             </label>
         </div>
 
-        {#if (provider === 'openrouter' && !apiKey) || (provider === 'openai' && !openaiApiKey) || (provider === 'xai' && !xaiApiKey) || (provider === 'ollama' && !ollamaBaseURL)}
+        {#if (provider === 'openrouter' && !apiKey) || (provider === 'openai' && !openaiApiKey) || (provider === 'xai' && !xaiApiKey) || (provider === 'ollama' && !ollamaBaseURL) || (provider === 'lmstudio' && !lmstudioBaseURL)}
             <div class="info-card">
                 {#if provider === 'openrouter'}
                     <p>{$_('settings.help.needKey', { values: { provider: 'OpenRouter' } })}</p>
@@ -393,6 +404,12 @@ SPDX-License-Identifier: BSL-1.1
                         <li>{$_('settings.help.xai.link')}</li>
                         <li>{$_('settings.help.xai.signInGetKey')}</li>
                         <li>{$_('settings.help.xai.pasteAutoSave')}</li>
+                    </ol>
+                {:else if provider === 'lmstudio'}
+                    <ol>
+                        <li>{$_('settings.help.lmstudio.install')}</li>
+                        <li>{$_('settings.help.lmstudio.ensurePort')}</li>
+                        <li>{$_('settings.help.lmstudio.changeBaseUrl')}</li>
                     </ol>
                 {:else}
                     <p>{$_('settings.help.ollamaHint')}</p>

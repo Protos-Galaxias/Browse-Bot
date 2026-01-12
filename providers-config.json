@@ -47,6 +47,18 @@
       "baseUrlPlaceholder": "http://localhost:11434",
       "enabled": true,
       "priority": 4
+    },
+    {
+      "id": "lmstudio",
+      "name": "LM Studio (Локально)",
+      "description": "Запуск моделей локально через LM Studio",
+      "needsApiKey": false,
+      "apiKeyUrl": "",
+      "apiKeyPlaceholder": "",
+      "needsBaseUrl": true,
+      "baseUrlPlaceholder": "http://localhost:1234/v1",
+      "enabled": true,
+      "priority": 5
     }
   ],
   "version": "1.0.0",

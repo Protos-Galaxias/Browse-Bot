@@ -123,61 +123,59 @@ SPDX-License-Identifier: BSL-1.1
     {:else}
         {#if isError}
             <div class="error-card">
-                <div class="error-header">
-                    <span class="error-icon">⚠️</span>
-                    <span class="error-message">{@html html}</span>
-                    {#if hasErrorDetails}
-                        <details class="error-details-toggle">
-                            <summary class="error-expand-btn">
-                                <span class="plus-icon">+</span>
-                            </summary>
-                            <div class="error-details">
-                                {#if errorDetails?.requestUrl}
-                                    <div class="detail-section">
-                                        <div class="detail-label">Request URL</div>
-                                        <pre class="detail-value">{errorDetails.requestUrl}</pre>
-                                    </div>
-                                {/if}
-                                {#if errorDetails?.requestHeaders && Object.keys(errorDetails.requestHeaders).length > 0}
-                                    <div class="detail-section">
-                                        <div class="detail-label">Request Headers</div>
-                                        <pre class="detail-value">{formatHeaders(errorDetails.requestHeaders)}</pre>
-                                    </div>
-                                {/if}
-                                {#if errorDetails?.requestBody}
-                                    <div class="detail-section">
-                                        <div class="detail-label">Request Body</div>
-                                        <pre class="detail-value">{errorDetails.requestBody}</pre>
-                                    </div>
-                                {/if}
-                                {#if errorDetails?.responseStatus}
-                                    <div class="detail-section">
-                                        <div class="detail-label">Response Status</div>
-                                        <pre class="detail-value">{errorDetails.responseStatus} {errorDetails.responseStatusText || ''}</pre>
-                                    </div>
-                                {/if}
-                                {#if errorDetails?.responseHeaders && Object.keys(errorDetails.responseHeaders).length > 0}
-                                    <div class="detail-section">
-                                        <div class="detail-label">Response Headers</div>
-                                        <pre class="detail-value">{formatHeaders(errorDetails.responseHeaders)}</pre>
-                                    </div>
-                                {/if}
-                                {#if errorDetails?.responseBody}
-                                    <div class="detail-section">
-                                        <div class="detail-label">Response Body</div>
-                                        <pre class="detail-value">{errorDetails.responseBody}</pre>
-                                    </div>
-                                {/if}
-                                {#if errorDetails?.stack}
-                                    <div class="detail-section">
-                                        <div class="detail-label">Stack Trace</div>
-                                        <pre class="detail-value stack">{errorDetails.stack}</pre>
-                                    </div>
-                                {/if}
-                            </div>
-                        </details>
-                    {/if}
-                </div>
+                <span class="error-message"><span class="error-icon">⚠️</span> {@html html}</span>
+                {#if hasErrorDetails}
+                    <details class="error-details-toggle">
+                        <summary class="error-expand-btn">
+                            <span class="expand-text">Stack Trace</span>
+                            <span class="expand-chevron">›</span>
+                        </summary>
+                        <div class="error-details">
+                            {#if errorDetails?.requestUrl}
+                                <div class="detail-section">
+                                    <div class="detail-label">Request URL</div>
+                                    <pre class="detail-value">{errorDetails.requestUrl}</pre>
+                                </div>
+                            {/if}
+                            {#if errorDetails?.requestHeaders && Object.keys(errorDetails.requestHeaders).length > 0}
+                                <div class="detail-section">
+                                    <div class="detail-label">Request Headers</div>
+                                    <pre class="detail-value">{formatHeaders(errorDetails.requestHeaders)}</pre>
+                                </div>
+                            {/if}
+                            {#if errorDetails?.requestBody}
+                                <div class="detail-section">
+                                    <div class="detail-label">Request Body</div>
+                                    <pre class="detail-value">{errorDetails.requestBody}</pre>
+                                </div>
+                            {/if}
+                            {#if errorDetails?.responseStatus}
+                                <div class="detail-section">
+                                    <div class="detail-label">Response Status</div>
+                                    <pre class="detail-value">{errorDetails.responseStatus} {errorDetails.responseStatusText || ''}</pre>
+                                </div>
+                            {/if}
+                            {#if errorDetails?.responseHeaders && Object.keys(errorDetails.responseHeaders).length > 0}
+                                <div class="detail-section">
+                                    <div class="detail-label">Response Headers</div>
+                                    <pre class="detail-value">{formatHeaders(errorDetails.responseHeaders)}</pre>
+                                </div>
+                            {/if}
+                            {#if errorDetails?.responseBody}
+                                <div class="detail-section">
+                                    <div class="detail-label">Response Body</div>
+                                    <pre class="detail-value">{errorDetails.responseBody}</pre>
+                                </div>
+                            {/if}
+                            {#if errorDetails?.stack}
+                                <div class="detail-section">
+                                    <div class="detail-label">Stack Trace</div>
+                                    <pre class="detail-value stack">{errorDetails.stack}</pre>
+                                </div>
+                            {/if}
+                        </div>
+                    </details>
+                {/if}
             </div>
         {:else if isUi}
             <div class="ui-card {'kind-' + (entry as UiLog).kind}">
@@ -359,22 +357,15 @@ SPDX-License-Identifier: BSL-1.1
 
     /* Error card styles */
     .error-card {
-        background: rgba(220, 53, 69, 0.1);
-        border: 1px solid rgba(220, 53, 69, 0.3);
-        border-radius: 8px;
-        padding: 0.5rem 0.75rem;
+        background: rgba(220, 53, 69, 0.08);
+        border-radius: 6px;
+        padding: 0.4rem 0.6rem;
         text-align: left;
-    }
-
-    .error-header {
-        display: flex;
-        align-items: flex-start;
-        gap: 0.5rem;
-        flex-wrap: wrap;
+        font-size: 0.85rem;
     }
 
     .error-icon {
-        flex-shrink: 0;
+        margin-right: 0.25rem;
     }
 
     .error-message {
@@ -382,11 +373,11 @@ SPDX-License-Identifier: BSL-1.1
         flex: 1;
         min-width: 0;
         word-break: break-word;
+        line-height: 1.4;
     }
 
     .error-details-toggle {
-        width: 100%;
-        margin-top: 0.5rem;
+        margin-top: 0.35rem;
     }
 
     .error-expand-btn {
@@ -394,54 +385,41 @@ SPDX-License-Identifier: BSL-1.1
         list-style: none;
         display: inline-flex;
         align-items: center;
-        justify-content: center;
-        width: 24px;
-        height: 24px;
-        background: rgba(220, 53, 69, 0.2);
+        gap: 0.25rem;
+        padding: 0.15rem 0.4rem;
+        background: rgba(220, 53, 69, 0.12);
         border-radius: 4px;
-        transition: background 0.2s;
+        transition: background 0.15s;
+        font-size: 0.75rem;
+        color: #dc3545;
     }
 
     .error-expand-btn:hover {
-        background: rgba(220, 53, 69, 0.3);
+        background: rgba(220, 53, 69, 0.2);
     }
 
     .error-expand-btn::-webkit-details-marker {
         display: none;
     }
 
-    .plus-icon {
-        font-size: 1rem;
-        font-weight: bold;
-        color: #dc3545;
-        line-height: 1;
+    .expand-text {
+        font-weight: 500;
     }
 
-    .error-details-toggle[open] .plus-icon {
-        content: '−';
+    .expand-chevron {
+        font-size: 0.85rem;
+        transition: transform 0.15s;
     }
 
-    .error-details-toggle[open] .plus-icon::after {
-        content: '−';
-    }
-
-    .error-details-toggle:not([open]) .plus-icon::after {
-        content: '+';
-    }
-
-    .plus-icon::after {
-        content: '+';
-    }
-
-    .plus-icon {
-        font-size: 0;
+    .error-details-toggle[open] .expand-chevron {
+        transform: rotate(90deg);
     }
 
     .error-details {
-        margin-top: 0.75rem;
+        margin-top: 0.5rem;
         display: flex;
         flex-direction: column;
-        gap: 0.5rem;
+        gap: 0.4rem;
     }
 
     .detail-section {

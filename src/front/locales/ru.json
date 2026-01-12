@@ -14,6 +14,7 @@
     "openai": "OpenAI",
     "ollama": "Ollama",
     "xai": "xAI (Grok)",
+    "lmstudio": "LM Studio",
     "models": "Модели AI",
     "choose": "Выбрать",
     "selected": "✓",
@@ -36,6 +37,7 @@
     "apiKeyOpenAI": "OpenAI API ключ",
     "apiKeyXAI": "xAI API ключ",
     "ollamaBaseURL": "Ollama Base URL",
+    "lmstudioBaseURL": "LM Studio Base URL",
     "sendOnEnter": "Enter — отправка, Ctrl/Cmd+Enter — новая строка",
     "hideAgentMessages": "Показывать только итоговый ответ",
     "theme": {
@@ -63,6 +65,11 @@
         "install": "Установите Ollama локально и запустите службу.",
         "ensurePort": "Убедитесь, что порт доступен: 11434.",
         "changeBaseUrl": "При необходимости измените Base URL ниже."
+      },
+      "lmstudio": {
+        "install": "Установите LM Studio и запустите локальный сервер.",
+        "ensurePort": "Убедитесь, что порт доступен: 1234.",
+        "changeBaseUrl": "При необходимости измените Base URL ниже."
       }
     }
     ,
@@ -71,6 +78,7 @@
       "openaiKey": "Введите ваш OpenAI API ключ",
       "xaiKey": "Введите ваш xAI API ключ",
       "ollamaBaseUrl": "Например: http://localhost:11434/api",
+      "lmstudioBaseUrl": "Например: http://localhost:1234/v1",
       "modelName": "Название модели",
       "globalPrompt": "Этот текст будет добавляться ко всем запросам в LLM как системная подсказка."
     },
@@ -199,6 +207,7 @@
     "baseUrl": "Base URL",
     "getApiKey": "Получить API ключ",
     "ollamaHelp": "Убедитесь, что Ollama запущена локально. URL по умолчанию: http://localhost:11434",
+    "lmstudioHelp": "Убедитесь, что локальный сервер LM Studio запущен. URL по умолчанию: http://localhost:1234/v1",
     "back": "Назад",
     "continue": "Продолжить",
     "saving": "Сохранение...",

@@ -11,7 +11,6 @@ SPDX-License-Identifier: BSL-1.1
     import { _, format } from 'svelte-i18n';
     import { get } from 'svelte/store';
     import { getHost } from './lib/url';
-    import trashIcon from './icons/trash.svg';
     import { extStorage } from '../services/ExtStorage';
     import { ChatStorage, type ChatMeta } from '../services/ChatStorage';
 
@@ -37,14 +36,18 @@ SPDX-License-Identifier: BSL-1.1
     let showChatList = false;
     let chats: ChatMeta[] = [];
     let activeChatId: string | null = null;
-    const DEFAULT_MODELS: Record<'openrouter' | 'openai' | 'ollama' | 'xai', string[]> = {
+    let openMenuId: string | null = null;
+    let editingChatId: string | null = null;
+    let editingTitle = '';
+    const DEFAULT_MODELS: Record<'openrouter' | 'openai' | 'ollama' | 'xai' | 'lmstudio', string[]> = {
         openrouter: ['openai/gpt-4.1-mini'],
         openai: ['gpt-4.1-mini'],
         ollama: ['phi3'],
-        xai: ['grok-3']
+        xai: ['grok-3'],
+        lmstudio: ['qwen3-4b']
     };
 
-    let provider: 'openrouter' | 'openai' | 'ollama' | 'xai' = 'openrouter';
+    let provider: 'openrouter' | 'openai' | 'ollama' | 'xai' | 'lmstudio' = 'openrouter';
 
     async function loadModelsFromStorage() {
         const store = await extStorage.local.get([
@@ -56,17 +59,21 @@ SPDX-License-Identifier: BSL-1.1
             'models_ollama',
             'activeModel_ollama',
             'models_xai',
-            'activeModel_xai'
+            'activeModel_xai',
+            'models_lmstudio',
+            'activeModel_lmstudio'
         ]);
-        provider = (store.provider === 'openai' || store.provider === 'openrouter' || store.provider === 'ollama' || store.provider === 'xai') ? store.provider : 'openrouter';
+        provider = (store.provider === 'openai' || store.provider === 'openrouter' || store.provider === 'ollama' || store.provider === 'xai' || store.provider === 'lmstudio') ? store.provider : 'openrouter';
         const modelsOpenrouter: string[] = Array.isArray(store.models_openrouter) && store.models_openrouter.length > 0 ? store.models_openrouter : DEFAULT_MODELS.openrouter;
         const modelsOpenai: string[] = Array.isArray(store.models_openai) && store.models_openai.length > 0 ? store.models_openai : DEFAULT_MODELS.openai;
         const modelsOllama: string[] = Array.isArray(store.models_ollama) && store.models_ollama.length > 0 ? store.models_ollama : DEFAULT_MODELS.ollama;
         const modelsXai: string[] = Array.isArray(store.models_xai) && store.models_xai.length > 0 ? store.models_xai : DEFAULT_MODELS.xai;
+        const modelsLmstudio: string[] = Array.isArray(store.models_lmstudio) && store.models_lmstudio.length > 0 ? store.models_lmstudio : DEFAULT_MODELS.lmstudio;
         const activeModelOpenrouter: string = typeof store.activeModel_openrouter === 'string' && store.activeModel_openrouter ? store.activeModel_openrouter : modelsOpenrouter[0];
         const activeModelOpenai: string = typeof store.activeModel_openai === 'string' && store.activeModel_openai ? store.activeModel_openai : modelsOpenai[0];
         const activeModelOllama: string = typeof store.activeModel_ollama === 'string' && store.activeModel_ollama ? store.activeModel_ollama : modelsOllama[0];
         const activeModelXai: string = typeof store.activeModel_xai === 'string' && store.activeModel_xai ? store.activeModel_xai : modelsXai[0];
+        const activeModelLmstudio: string = typeof store.activeModel_lmstudio === 'string' && store.activeModel_lmstudio ? store.activeModel_lmstudio : modelsLmstudio[0];
         if (provider === 'openai') {
             models = modelsOpenai;
             activeModel = activeModelOpenai;
@@ -76,6 +83,9 @@ SPDX-License-Identifier: BSL-1.1
         } else if (provider === 'xai') {
             models = modelsXai;
             activeModel = activeModelXai;
+        } else if (provider === 'lmstudio') {
+            models = modelsLmstudio;
+            activeModel = activeModelLmstudio;
         } else {
             models = modelsOpenrouter;
             activeModel = activeModelOpenrouter;
@@ -167,6 +177,48 @@ SPDX-License-Identifier: BSL-1.1
         showChatList = false;
         // Also reset agent memory/history when chat context changes due to deletion
         try { chrome.runtime.sendMessage({ type: 'RESET_CONTEXT' }); } catch { /* ignored */ }
+    }
+
+    function toggleMenu(chatId: string) {
+        openMenuId = openMenuId === chatId ? null : chatId;
+    }
+
+    function closeMenu() {
+        openMenuId = null;
+    }
+
+    function startEditing(chat: ChatMeta) {
+        editingChatId = chat.id;
+        editingTitle = chat.title;
+        openMenuId = null;
+    }
+
+    function cancelEditing() {
+        editingChatId = null;
+        editingTitle = '';
+    }
+
+    async function saveRename() {
+        if (!editingChatId || !editingTitle.trim()) {
+            cancelEditing();
+            return;
+        }
+        try {
+            await ChatStorage.renameChat(editingChatId, editingTitle.trim());
+            await loadChats();
+        } catch {
+            // ignored
+        }
+        cancelEditing();
+    }
+
+    function handleRenameKeydown(e: KeyboardEvent) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            saveRename();
+        } else if (e.key === 'Escape') {
+            cancelEditing();
+        }
     }
 
     async function fetchActiveTab(): Promise<{ id: number; title: string; url?: string; favIconUrl?: string } | null> {
@@ -393,6 +445,8 @@ SPDX-License-Identifier: BSL-1.1
             payload['activeModel_ollama'] = activeModel;
         } else if (provider === 'xai') {
             payload['activeModel_xai'] = activeModel;
+        } else if (provider === 'lmstudio') {
+            payload['activeModel_lmstudio'] = activeModel;
         } else {
             payload['activeModel_openrouter'] = activeModel;
         }
@@ -410,7 +464,9 @@ SPDX-License-Identifier: BSL-1.1
                     Boolean(changes.models_ollama) ||
                     Boolean(changes.activeModel_ollama) ||
                     Boolean(changes.models_xai) ||
-                    Boolean(changes.activeModel_xai);
+                    Boolean(changes.activeModel_xai) ||
+                    Boolean(changes.models_lmstudio) ||
+                    Boolean(changes.activeModel_lmstudio);
             if (providerChanged || modelKeysChanged) {
                 await loadModelsFromStorage();
             }
@@ -527,12 +583,35 @@ SPDX-License-Identifier: BSL-1.1
                 {:else}
                     {#each chats as c}
                         <div class="chatlist-item {c.id === activeChatId ? 'active' : ''}">
-                            <button class="chatlist-select" on:click={() => selectChat(c.id)} title={new Date(c.updatedAt).toLocaleString()}>
-                                {c.title}
-                            </button>
-                            <button class="chatlist-delete" on:click={() => removeChat(c.id)} title="Delete chat" aria-label="Delete chat">
-                                <img class="clear-icon" src={trashIcon} alt="Delete" />
-                            </button>
+                            {#if editingChatId === c.id}
+                                <input
+                                    class="chatlist-rename-input"
+                                    type="text"
+                                    bind:value={editingTitle}
+                                    on:keydown={handleRenameKeydown}
+                                    on:blur={saveRename}
+                                    autofocus
+                                />
+                            {:else}
+                                <button class="chatlist-select" on:click={() => selectChat(c.id)} title={new Date(c.updatedAt).toLocaleString()}>
+                                    {c.title}
+                                </button>
+                            {/if}
+                            <div class="chatlist-menu-wrapper">
+                                <button class="chatlist-menu-btn" on:click|stopPropagation={() => toggleMenu(c.id)} title="Options" aria-label="Chat options">
+                                    ⋮
+                                </button>
+                                {#if openMenuId === c.id}
+                                    <div class="chatlist-dropdown" on:mouseleave={closeMenu}>
+                                        <button class="dropdown-item" on:click|stopPropagation={() => startEditing(c)}>
+                                            ✏️ Rename
+                                        </button>
+                                        <button class="dropdown-item danger" on:click|stopPropagation={() => { removeChat(c.id); closeMenu(); }}>
+                                            🗑️ Delete
+                                        </button>
+                                    </div>
+                                {/if}
+                            </div>
                         </div>
                     {/each}
                 {/if}
@@ -667,12 +746,68 @@ SPDX-License-Identifier: BSL-1.1
         border-radius: 4px;
     }
     .chatlist-select:hover { background: var(--bg-secondary); }
-    .chatlist-delete {
+
+    .chatlist-rename-input {
+        flex: 1;
+        background: var(--bg-secondary);
+        border: 1px solid var(--accent-color);
+        border-radius: 4px;
+        color: var(--text-primary);
+        padding: 0.3rem;
+        font-size: inherit;
+        outline: none;
+    }
+
+    .chatlist-menu-wrapper {
+        position: relative;
+    }
+
+    .chatlist-menu-btn {
         background: transparent;
         border: 1px solid var(--border-color);
         border-radius: 6px;
         cursor: pointer;
-        padding: 0.25rem;
+        padding: 0.25rem 0.5rem;
+        color: var(--text-secondary);
+        font-size: 1rem;
+        line-height: 1;
+    }
+    .chatlist-menu-btn:hover {
+        background: var(--bg-secondary);
+        color: var(--text-primary);
+    }
+
+    .chatlist-dropdown {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        margin-top: 4px;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        z-index: 10;
+        min-width: 120px;
+        overflow: hidden;
+    }
+
+    .dropdown-item {
+        display: block;
+        width: 100%;
+        background: transparent;
+        border: none;
+        color: var(--text-primary);
+        padding: 0.5rem 0.75rem;
+        text-align: left;
+        cursor: pointer;
+        font-size: 0.85rem;
+    }
+    .dropdown-item:hover {
+        background: var(--bg-primary);
+    }
+    .dropdown-item.danger:hover {
+        background: rgba(220, 53, 69, 0.15);
+        color: #dc3545;
     }
 
     .sidebar-overlay {

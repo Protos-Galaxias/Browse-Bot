@@ -67,6 +67,18 @@ const FALLBACK_PROVIDERS: ProviderConfig[] = [
         baseUrlPlaceholder: 'http://localhost:11434',
         enabled: true,
         priority: 4
+    },
+    {
+        id: 'lmstudio',
+        name: 'LM Studio (Local)',
+        description: 'Run models locally with LM Studio',
+        needsApiKey: false,
+        apiKeyUrl: '',
+        apiKeyPlaceholder: '',
+        needsBaseUrl: true,
+        baseUrlPlaceholder: 'http://localhost:1234/v1',
+        enabled: true,
+        priority: 5
     }
 ];
 
