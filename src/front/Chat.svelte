@@ -719,8 +719,8 @@ SPDX-License-Identifier: BSL-1.1
         display: flex;
         flex-direction: column;
         gap: 0.4rem;
-        margin-bottom: 0.6rem;
-        max-height: 240px;
+        flex: 1;
+        min-height: 0;
         overflow-y: auto;
     }
     .chatlist-empty { color: var(--text-secondary); font-size: 0.85rem; }
