@@ -23,7 +23,7 @@ SPDX-License-Identifier: BSL-1.1
     let activeModel = '';
     let globalPrompt = '';
     let sendOnEnter: boolean = true;
-    let hideAgentMessages: boolean = false;
+    let hideAgentMessages: boolean = true;
     let theme: Theme = 'system';
     let saveStatus: 'idle' | 'saving' | 'saved' = 'idle';
     let activeTab: 'general' | 'behavior' | 'prompt' | 'about' = 'general';
@@ -117,7 +117,7 @@ SPDX-License-Identifier: BSL-1.1
         globalPrompt = typeof settings.globalPrompt === 'string' ? settings.globalPrompt : '';
         theme = settings.theme || 'system';
         sendOnEnter = typeof settings.sendOnEnter === 'boolean' ? settings.sendOnEnter : true;
-        hideAgentMessages = typeof settings.hideAgentMessages === 'boolean' ? settings.hideAgentMessages : false;
+        hideAgentMessages = typeof settings.hideAgentMessages === 'boolean' ? settings.hideAgentMessages : true;
         externalTools = Array.isArray(settings.externalTools)
             ? (settings.externalTools as any[])
                 .filter((t) => t && typeof t.name === 'string' && typeof t.code === 'string')

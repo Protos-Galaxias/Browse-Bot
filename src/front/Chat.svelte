@@ -32,7 +32,7 @@ SPDX-License-Identifier: BSL-1.1
     let domainPrompts: Record<string, string> = {};
     let activeDomain = '';
     let domainPromptText = '';
-    let hideAgentMessages: boolean = false;
+    let hideAgentMessages: boolean = true;
     let showChatList = false;
     let chats: ChatMeta[] = [];
     let activeChatId: string | null = null;
@@ -251,7 +251,7 @@ SPDX-License-Identifier: BSL-1.1
         const settings = await extStorage.local.get(['chatPrompt', 'sendOnEnter', 'hideAgentMessages']);
         prompt = typeof settings.chatPrompt === 'string' ? settings.chatPrompt : '';
         sendOnEnter = typeof settings.sendOnEnter === 'boolean' ? settings.sendOnEnter : true;
-        hideAgentMessages = typeof settings.hideAgentMessages === 'boolean' ? settings.hideAgentMessages : false;
+        hideAgentMessages = typeof settings.hideAgentMessages === 'boolean' ? settings.hideAgentMessages : true;
 
         await ensureActiveChatInitialized();
         await loadChats();
