@@ -684,7 +684,7 @@ SPDX-License-Identifier: BSL-1.1
         --bg-primary: #f5f5f5;
         --bg-secondary: #ffffff;
         --border-color: #e0e0e0;
-        --text-primary: #333333;
+        --text-primary: #000000;
         --text-secondary: #666666;
         --accent-color: #ff6b35;
         --accent-hover: #ff5722;

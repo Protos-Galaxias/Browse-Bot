@@ -361,7 +361,7 @@ SPDX-License-Identifier: BSL-1.1
         border-radius: 6px;
         padding: 0.4rem 0.6rem;
         text-align: left;
-        font-size: 0.85rem;
+        font-size: 1rem;
     }
 
     .error-icon {

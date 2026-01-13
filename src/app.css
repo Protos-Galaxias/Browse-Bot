@@ -4,6 +4,7 @@ SPDX-License-Identifier: BSL-1.1
  */
 :root {
     font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+    font-size: 14px;
     line-height: 1.5;
     font-weight: 400;
 
@@ -70,7 +71,7 @@ button:focus-visible {
 
 @media (prefers-color-scheme: light) {
     :root {
-        color: #213547;
+        color: #000000;
         background-color: #ffffff;
     }
 

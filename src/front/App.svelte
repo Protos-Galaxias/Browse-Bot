@@ -141,7 +141,7 @@ SPDX-License-Identifier: BSL-1.1
         --bg-primary: #f5f5f5;
         --bg-secondary: #ffffff;
         --border-color: #e0e0e0;
-        --text-primary: #333333;
+        --text-primary: #000000;
         --text-secondary: #666666;
         --accent-color: #e7e6db;
         --accent-hover: #c6c4ae;
@@ -161,6 +161,7 @@ SPDX-License-Identifier: BSL-1.1
         margin: 0 !important;
         padding: 0 !important;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-size: 14px;
         background: var(--bg-primary);
         color: var(--text-primary);
         height: 100vh;
