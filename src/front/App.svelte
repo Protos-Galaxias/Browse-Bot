@@ -7,19 +7,17 @@ SPDX-License-Identifier: BSL-1.1
     import { onMount } from 'svelte';
     import Chat from './Chat.svelte';
     import Settings from './Settings.svelte';
-    import Capabilities from './Capabilities.svelte';
     import Wizard from './Wizard.svelte';
     import type { Theme } from '../services/ConfigService';
     import { } from 'svelte-i18n';
     import settingsIcon from './icons/settings.svg';
     import chatIcon from './icons/chat.svg';
-    import ideaIcon from './icons/idea.svg';
     import menuIcon from './icons/menu.svg';
     import DomainPromptBar from './components/DomainPromptBar.svelte';
     import { extStorage } from '../services/ExtStorage';
 
 
-    let currentView: 'chat' | 'settings' | 'capabilities' = 'chat';
+    let currentView: 'chat' | 'settings' = 'chat';
     let chatRef: InstanceType<typeof Chat> | null = null;
     let showWizard = false;
     let checkingSetup = true;
@@ -28,8 +26,6 @@ SPDX-License-Identifier: BSL-1.1
         const hash = window.location.hash;
         if (hash === '#settings') {
             currentView = 'settings';
-        } else if (hash === '#capabilities') {
-            currentView = 'capabilities';
         } else {
             currentView = 'chat';
         }
@@ -118,9 +114,6 @@ SPDX-License-Identifier: BSL-1.1
                 <button on:click={() => currentView = 'settings'}>
                     <img class="nav-icon" src={settingsIcon} alt="Settings" />
                 </button>
-                <button on:click={() => currentView = 'capabilities'}>
-                    <img class="nav-icon" src={ideaIcon} alt="Capabilities" />
-                </button>
             </nav>
         </header>
 
@@ -128,8 +121,6 @@ SPDX-License-Identifier: BSL-1.1
             <Chat bind:this={chatRef} visible={currentView === 'chat'} on:chatSelected={() => currentView = 'chat'} />
             {#if currentView === 'settings'}
                 <Settings />
-            {:else if currentView === 'capabilities'}
-                <Capabilities />
             {/if}
         </div>
     {/if}
