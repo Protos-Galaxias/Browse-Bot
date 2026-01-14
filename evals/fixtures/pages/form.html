@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contact Form - Browse-Bot Eval</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f0f9ff; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .form-container { background: white; padding: 40px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 100%; max-width: 500px; }
+    h1 { margin-bottom: 8px; color: #1e293b; }
+    .subtitle { color: #64748b; margin-bottom: 24px; }
+    .form-group { margin-bottom: 20px; }
+    label { display: block; margin-bottom: 6px; font-weight: 500; color: #334155; }
+    input, textarea, select { width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 1rem; transition: border-color 0.2s; }
+    input:focus, textarea:focus, select:focus { outline: none; border-color: #3b82f6; }
+    textarea { min-height: 120px; resize: vertical; }
+    .checkbox-group { display: flex; align-items: center; gap: 10px; }
+    .checkbox-group input { width: auto; }
+    .radio-group { display: flex; gap: 20px; }
+    .radio-option { display: flex; align-items: center; gap: 6px; }
+    .radio-option input { width: auto; }
+    button[type="submit"] { width: 100%; padding: 14px; background: #3b82f6; color: white; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+    button[type="submit"]:hover { background: #2563eb; }
+    .success { background: #dcfce7; color: #166534; padding: 16px; border-radius: 8px; margin-top: 20px; display: none; text-align: center; }
+    .error { color: #dc2626; font-size: 0.875rem; margin-top: 4px; display: none; }
+    .required { color: #dc2626; }
+  </style>
+</head>
+<body>
+  <div class="form-container">
+    <h1>📧 Contact Us</h1>
+    <p class="subtitle">Fill out the form below and we'll get back to you</p>
+    
+    <form id="contactForm">
+      <div class="form-group">
+        <label for="name">Full Name <span class="required">*</span></label>
+        <input type="text" id="name" name="name" placeholder="John Doe" required>
+        <div class="error" id="nameError">Please enter your name</div>
+      </div>
+      
+      <div class="form-group">
+        <label for="email">Email Address <span class="required">*</span></label>
+        <input type="email" id="email" name="email" placeholder="john@example.com" required>
+        <div class="error" id="emailError">Please enter a valid email</div>
+      </div>
+      
+      <div class="form-group">
+        <label for="phone">Phone Number</label>
+        <input type="tel" id="phone" name="phone" placeholder="+1 (555) 123-4567">
+      </div>
+      
+      <div class="form-group">
+        <label for="subject">Subject <span class="required">*</span></label>
+        <select id="subject" name="subject" required>
+          <option value="">Select a subject...</option>
+          <option value="general">General Inquiry</option>
+          <option value="support">Technical Support</option>
+          <option value="billing">Billing Question</option>
+          <option value="feedback">Feedback</option>
+        </select>
+      </div>
+      
+      <div class="form-group">
+        <label>Priority</label>
+        <div class="radio-group">
+          <label class="radio-option">
+            <input type="radio" name="priority" value="low"> Low
+          </label>
+          <label class="radio-option">
+            <input type="radio" name="priority" value="normal" checked> Normal
+          </label>
+          <label class="radio-option">
+            <input type="radio" name="priority" value="high"> High
+          </label>
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label for="message">Message <span class="required">*</span></label>
+        <textarea id="message" name="message" placeholder="How can we help you?" required></textarea>
+      </div>
+      
+      <div class="form-group">
+        <label class="checkbox-group">
+          <input type="checkbox" id="newsletter" name="newsletter">
+          Subscribe to our newsletter
+        </label>
+      </div>
+      
+      <div class="form-group">
+        <label class="checkbox-group">
+          <input type="checkbox" id="terms" name="terms" required>
+          I agree to the <a href="#">Terms of Service</a> <span class="required">*</span>
+        </label>
+      </div>
+      
+      <button type="submit">Send Message</button>
+    </form>
+    
+    <div class="success" id="successMessage">
+      ✅ Thank you! Your message has been sent successfully.
+    </div>
+  </div>
+  
+  <script>
+    const form = document.getElementById('contactForm');
+    
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      
+      // Collect form data
+      const formData = new FormData(form);
+      const data = Object.fromEntries(formData.entries());
+      
+      // Validate
+      let valid = true;
+      
+      if (!data.name) {
+        document.getElementById('nameError').style.display = 'block';
+        valid = false;
+      } else {
+        document.getElementById('nameError').style.display = 'none';
+      }
+      
+      if (!data.email || !data.email.includes('@')) {
+        document.getElementById('emailError').style.display = 'block';
+        valid = false;
+      } else {
+        document.getElementById('emailError').style.display = 'none';
+      }
+      
+      if (valid) {
+        // Store submitted data
+        localStorage.setItem('formSubmitted', 'true');
+        localStorage.setItem('formData', JSON.stringify(data));
+        
+        // Show success
+        document.getElementById('successMessage').style.display = 'block';
+        form.style.display = 'none';
+        
+        // Dispatch event
+        window.dispatchEvent(new CustomEvent('browse-bot-task-complete'));
+      }
+    });
+    
+    // Auto-fill detection for testing
+    document.querySelectorAll('input, textarea, select').forEach(el => {
+      el.addEventListener('change', () => {
+        window.dispatchEvent(new CustomEvent('browse-bot-tool-call', {
+          detail: { 
+            name: 'findAndInsertText', 
+            args: { selector: `#${el.id}`, value: el.value },
+            timestamp: Date.now()
+          }
+        }));
+      });
+    });
+  </script>
+</body>
+</html>
+

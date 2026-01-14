@@ -1,0 +1,24 @@
+name: "Search for content"
+description: "Test if the agent can perform a search and verify results"
+url: "/search.html"
+task: "Search for JavaScript tutorials"
+timeout: 45000
+
+assertions:
+  - type: selector_exists
+    selector: "#resultsInfo[style*='block']"
+  
+  - type: text_contains
+    expected: "JavaScript"
+  
+  - type: localStorage
+    key: "lastSearch"
+    contains: "javascript"
+  
+  - type: tool_called
+    tool: "findAndInsertText"
+    contains: "search"
+  
+  - type: tool_called
+    tool: "findAndClick"
+

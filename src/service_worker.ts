@@ -395,8 +395,8 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
                     agentHistory = [...messages];
 
                     const providerConfig = ProviderConfigs[providerFromConfig] || ProviderConfigs['openrouter'];
-            const finalAnswer = await runAgentTask(messages, {} as ToolSet, selectedServiceGeneric, providerConfig.defaultMaxContextTokens);
-                    updateLog(`${finalAnswer}`);
+                    const finalAnswer = await runAgentTask(messages, {} as ToolSet, selectedServiceGeneric, providerConfig.defaultMaxContextTokens);
+                    updateLog(`[Результат]: ${finalAnswer}`);
                     return;
                 } else {
                     seedTabs = [{ id: activeTab.id, title: activeTab.title, url: activeTab.url }];
@@ -435,13 +435,97 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
             const providerConfig = ProviderConfigs[providerFromConfig] || ProviderConfigs['openrouter'];
             const finalAnswer = await runAgentTask(messages, tools, selectedServiceGeneric, providerConfig.defaultMaxContextTokens);
 
-            updateLog(`${finalAnswer}`);
+            updateLog(`[Результат]: ${finalAnswer}`);
         } catch (err) {
             reportError(err, 'Во время выполнения задачи произошла ошибка');
         } finally {
             chrome.runtime.sendMessage({ type: 'TASK_COMPLETE' }).catch(console.error);
             currentTaskTabs = [];
         }
+    } else if (message.type === 'EVAL_TASK') {
+        // Handle eval task from testing system
+        const { task } = message as { task: string };
+        console.log('[SW] Received EVAL_TASK:', task);
+        
+        try { sendResponse({ ok: true, started: true }); } catch (e) { void e; }
+        
+        (async () => {
+            try {
+                const [activeTab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+                if (!activeTab?.id) {
+                    console.warn('[SW] EVAL_TASK: No active tab');
+                    return;
+                }
+                
+                const tabs = [{ id: activeTab.id, title: activeTab.title, url: activeTab.url }];
+                currentTaskTabs = tabs;
+                
+                const providerFromConfig = (await ConfigService.getInstance().get<string>('provider')) || 'openrouter';
+                const selectedServiceGeneric = AiService.fromProviderName(providerFromConfig);
+                await selectedServiceGeneric.initialize();
+                
+                const systemPrompt = await buildSystemPrompt(tabs);
+                
+                // Inject content script
+                if (isChrome()) {
+                    await injectContentIntoTab(activeTab.id);
+                }
+                
+                let elements: any[] = [];
+                const toolContext: ToolContext = {
+                    aiService: selectedServiceGeneric,
+                    tabs: currentTaskTabs,
+                    getInteractiveElements: () => elements,
+                    setInteractiveElements: (e) => { elements = e; },
+                    sendMessageToTab: (msg, targetTabId?: number) => chrome.tabs.sendMessage(targetTabId ?? activeTab.id!, msg)
+                };
+                
+                const tools = await agentTools(toolContext);
+                
+                // Wrap tools to emit events for eval tracking
+                const wrappedTools: ToolSet = {};
+                for (const [name, tool] of Object.entries(tools)) {
+                    wrappedTools[name] = {
+                        ...tool,
+                        execute: async (args: unknown, options: unknown) => {
+                            // Notify content script about tool call
+                            try {
+                                chrome.tabs.sendMessage(activeTab.id!, {
+                                    type: 'EVAL_TOOL_CALLED',
+                                    toolName: name,
+                                    args
+                                });
+                            } catch { /* ignore */ }
+                            
+                            // Execute original tool
+                            return (tool as any).execute(args, options);
+                        }
+                    };
+                }
+                
+                const messages: ModelMessage[] = [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: task }
+                ];
+                
+                agentHistory = [...messages];
+                
+                const providerConfig = ProviderConfigs[providerFromConfig] || ProviderConfigs['openrouter'];
+                await runAgentTask(messages, wrappedTools, selectedServiceGeneric, providerConfig.defaultMaxContextTokens);
+                
+                // Notify completion
+                try {
+                    chrome.tabs.sendMessage(activeTab.id!, { type: 'EVAL_TASK_COMPLETE' });
+                } catch { /* ignore */ }
+                
+            } catch (err) {
+                console.error('[SW] EVAL_TASK error:', err);
+            } finally {
+                currentTaskTabs = [];
+            }
+        })();
+        
+        return true;
     } else if (message.type === 'STOP_TASK') {
         if (currentController) {
             currentController.abort();

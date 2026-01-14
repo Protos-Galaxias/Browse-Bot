@@ -638,4 +638,37 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
 });
 
-console.log('Browse Bot: Content script setup complete.');
+// ============ EVAL INTEGRATION ============
+// Listen for eval tasks from the testing system
+window.addEventListener('browse-bot-eval-task', ((e: CustomEvent<{ task: string }>) => {
+    const { task } = e.detail;
+    console.log('Browse Bot: Received eval task:', task);
+    
+    // Forward to service worker
+    chrome.runtime.sendMessage({ type: 'EVAL_TASK', task }, (response) => {
+        console.log('Browse Bot: EVAL_TASK response:', response);
+    });
+}) as EventListener);
+
+// Expose function to dispatch tool call events (called from service worker via message)
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.type === 'EVAL_TOOL_CALLED') {
+        window.dispatchEvent(new CustomEvent('browse-bot-tool-call', {
+            detail: {
+                name: message.toolName,
+                args: message.args,
+                timestamp: Date.now()
+            }
+        }));
+        sendResponse({ status: 'ok' });
+        return true;
+    }
+    if (message.type === 'EVAL_TASK_COMPLETE') {
+        window.dispatchEvent(new CustomEvent('browse-bot-task-complete'));
+        sendResponse({ status: 'ok' });
+        return true;
+    }
+    return false;
+});
+
+console.log('Browse Bot: Content script setup complete (with eval support).');

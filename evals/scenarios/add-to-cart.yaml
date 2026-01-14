@@ -1,0 +1,19 @@
+name: "Add item to cart"
+description: "Test if the agent can successfully add a product to the shopping cart"
+url: "/shop.html"
+task: "Add the Wireless Headphones to the cart"
+timeout: 45000
+
+assertions:
+  - type: selector
+    selector: "#cartCount"
+    expected: "1"
+  
+  - type: tool_called
+    tool: "findAndClick"
+    contains: "add to cart"
+  
+  - type: localStorage
+    key: "cartCount"
+    expected: "1"
+

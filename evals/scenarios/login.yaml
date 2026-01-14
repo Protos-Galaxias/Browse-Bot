@@ -1,0 +1,23 @@
+name: "Login with credentials"
+description: "Test if the agent can log in using provided credentials"
+url: "/login.html"
+task: "Log in with email test@example.com and password password123"
+timeout: 45000
+
+assertions:
+  - type: localStorage
+    key: "loggedIn"
+    expected: "true"
+  
+  - type: localStorage
+    key: "userEmail"
+    expected: "test@example.com"
+  
+  - type: tool_called
+    tool: "findAndInsertText"
+    contains: "email"
+  
+  - type: tool_called
+    tool: "findAndClick"
+    contains: "sign in"
+

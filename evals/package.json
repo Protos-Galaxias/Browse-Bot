@@ -1,0 +1,26 @@
+{
+  "name": "browse-bot-evals",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "eval": "tsx src/cli.ts",
+    "eval:all": "tsx src/cli.ts --all",
+    "serve": "npx serve fixtures/pages -p 3001",
+    "report": "tsx src/reporter.ts"
+  },
+  "dependencies": {
+    "selenium-webdriver": "^4.27.0",
+    "geckodriver": "^4.5.1",
+    "yaml": "^2.7.0",
+    "chalk": "^5.4.1",
+    "cli-table3": "^0.6.5",
+    "commander": "^13.1.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.4",
+    "typescript": "~5.8.3",
+    "@types/node": "^24.0.13"
+  }
+}
+

@@ -1,0 +1,20 @@
+name: "Fill contact form"
+description: "Test if the agent can fill out a multi-field contact form"
+url: "/form.html"
+task: "Fill out the contact form with name John Smith, email john@test.com, subject Technical Support, and message I need help with my account. Then submit the form."
+timeout: 60000
+
+assertions:
+  - type: selector_exists
+    selector: "#successMessage[style*='block']"
+  
+  - type: localStorage
+    key: "formSubmitted"
+    expected: "true"
+  
+  - type: tool_called
+    tool: "findAndInsertText"
+  
+  - type: tool_called
+    tool: "selectOption"
+

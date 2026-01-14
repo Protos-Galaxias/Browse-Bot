@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Shop - Browse-Bot Eval</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f5f5f5; padding: 20px; }
+    .header { background: #2563eb; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-radius: 8px; margin-bottom: 20px; }
+    .header h1 { font-size: 1.5rem; }
+    .cart { background: white; padding: 8px 16px; border-radius: 20px; display: flex; align-items: center; gap: 8px; }
+    .cart-count { background: #ef4444; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.875rem; font-weight: bold; }
+    .products { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
+    .product { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .product img { width: 100%; height: 180px; object-fit: cover; background: #e5e7eb; }
+    .product-info { padding: 16px; }
+    .product-name { font-weight: 600; margin-bottom: 4px; }
+    .product-price { color: #2563eb; font-size: 1.25rem; font-weight: bold; margin-bottom: 12px; }
+    .add-to-cart { width: 100%; padding: 10px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; transition: background 0.2s; }
+    .add-to-cart:hover { background: #1d4ed8; }
+    .add-to-cart.added { background: #16a34a; }
+    .search-box { display: flex; gap: 10px; margin-bottom: 20px; }
+    .search-box input { flex: 1; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 1rem; }
+    .search-box button { padding: 12px 24px; background: #2563eb; color: white; border: none; border-radius: 8px; cursor: pointer; }
+    .toast { position: fixed; bottom: 20px; right: 20px; background: #16a34a; color: white; padding: 12px 24px; border-radius: 8px; display: none; animation: slideIn 0.3s ease; }
+    @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🛒 Test Shop</h1>
+    <div class="cart">
+      <span>Cart</span>
+      <span class="cart-count" id="cartCount">0</span>
+    </div>
+  </div>
+  
+  <div class="search-box">
+    <input type="text" id="searchInput" placeholder="Search products...">
+    <button id="searchBtn">Search</button>
+  </div>
+  
+  <div class="products" id="products">
+    <div class="product" data-id="1">
+      <div style="height: 180px; background: linear-gradient(135deg, #667eea, #764ba2);"></div>
+      <div class="product-info">
+        <div class="product-name">Wireless Headphones</div>
+        <div class="product-price">$99.99</div>
+        <button class="add-to-cart" data-product="Wireless Headphones">Add to Cart</button>
+      </div>
+    </div>
+    
+    <div class="product" data-id="2">
+      <div style="height: 180px; background: linear-gradient(135deg, #f093fb, #f5576c);"></div>
+      <div class="product-info">
+        <div class="product-name">Smart Watch</div>
+        <div class="product-price">$249.99</div>
+        <button class="add-to-cart" data-product="Smart Watch">Add to Cart</button>
+      </div>
+    </div>
+    
+    <div class="product" data-id="3">
+      <div style="height: 180px; background: linear-gradient(135deg, #4facfe, #00f2fe);"></div>
+      <div class="product-info">
+        <div class="product-name">Bluetooth Speaker</div>
+        <div class="product-price">$79.99</div>
+        <button class="add-to-cart" data-product="Bluetooth Speaker">Add to Cart</button>
+      </div>
+    </div>
+    
+    <div class="product" data-id="4">
+      <div style="height: 180px; background: linear-gradient(135deg, #43e97b, #38f9d7);"></div>
+      <div class="product-info">
+        <div class="product-name">USB-C Hub</div>
+        <div class="product-price">$49.99</div>
+        <button class="add-to-cart" data-product="USB-C Hub">Add to Cart</button>
+      </div>
+    </div>
+  </div>
+  
+  <div class="toast" id="toast">Item added to cart!</div>
+  
+  <script>
+    let cartCount = 0;
+    const cartItems = [];
+    
+    // Add to cart functionality
+    document.querySelectorAll('.add-to-cart').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const productName = btn.dataset.product;
+        cartCount++;
+        cartItems.push(productName);
+        
+        document.getElementById('cartCount').textContent = cartCount;
+        
+        btn.textContent = 'Added!';
+        btn.classList.add('added');
+        
+        // Show toast
+        const toast = document.getElementById('toast');
+        toast.style.display = 'block';
+        setTimeout(() => { toast.style.display = 'none'; }, 2000);
+        
+        // Reset button after delay
+        setTimeout(() => {
+          btn.textContent = 'Add to Cart';
+          btn.classList.remove('added');
+        }, 1500);
+        
+        // Store in localStorage for assertions
+        localStorage.setItem('cart', JSON.stringify(cartItems));
+        localStorage.setItem('cartCount', cartCount.toString());
+        
+        // Dispatch event for eval system
+        window.dispatchEvent(new CustomEvent('browse-bot-tool-call', {
+          detail: { name: 'addToCart', args: { product: productName }, timestamp: Date.now() }
+        }));
+      });
+    });
+    
+    // Search functionality
+    document.getElementById('searchBtn').addEventListener('click', () => {
+      const query = document.getElementById('searchInput').value.toLowerCase();
+      document.querySelectorAll('.product').forEach(product => {
+        const name = product.querySelector('.product-name').textContent.toLowerCase();
+        product.style.display = name.includes(query) ? 'block' : 'none';
+      });
+    });
+    
+    // Listen for eval tasks
+    window.addEventListener('browse-bot-eval-task', (e) => {
+      console.log('Received eval task:', e.detail);
+      // Extension should handle this
+    });
+  </script>
+</body>
+</html>
+

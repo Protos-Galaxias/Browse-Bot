@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Search - Browse-Bot Eval</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #fafafa; min-height: 100vh; }
+    .header { 
+      background: white; 
+      padding: 20px; 
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .search-container { max-width: 800px; margin: 0 auto; }
+    .search-box { display: flex; gap: 10px; }
+    .search-input { 
+      flex: 1; 
+      padding: 16px 20px; 
+      border: 2px solid #e5e7eb; 
+      border-radius: 12px; 
+      font-size: 1.1rem;
+      transition: border-color 0.2s;
+    }
+    .search-input:focus { outline: none; border-color: #3b82f6; }
+    .search-btn { 
+      padding: 16px 32px; 
+      background: #3b82f6; 
+      color: white; 
+      border: none; 
+      border-radius: 12px; 
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .search-btn:hover { background: #2563eb; }
+    .filters { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+    .filter-btn {
+      padding: 8px 16px;
+      background: #f3f4f6;
+      border: 1px solid #e5e7eb;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .filter-btn:hover, .filter-btn.active { background: #3b82f6; color: white; border-color: #3b82f6; }
+    .main { max-width: 800px; margin: 0 auto; padding: 20px; }
+    .results-info { color: #6b7280; margin-bottom: 20px; }
+    .results-info strong { color: #1f2937; }
+    .result-item {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      transition: box-shadow 0.2s;
+    }
+    .result-item:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+    .result-title { color: #2563eb; font-size: 1.25rem; font-weight: 600; margin-bottom: 4px; cursor: pointer; }
+    .result-title:hover { text-decoration: underline; }
+    .result-url { color: #16a34a; font-size: 0.875rem; margin-bottom: 8px; }
+    .result-snippet { color: #4b5563; line-height: 1.6; }
+    .result-snippet mark { background: #fef08a; padding: 0 2px; }
+    .no-results { text-align: center; padding: 60px 20px; color: #6b7280; }
+    .no-results .icon { font-size: 4rem; margin-bottom: 16px; }
+    .pagination { display: flex; justify-content: center; gap: 8px; margin-top: 30px; }
+    .page-btn {
+      padding: 10px 16px;
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .page-btn:hover, .page-btn.active { background: #3b82f6; color: white; border-color: #3b82f6; }
+    .loading { text-align: center; padding: 40px; display: none; }
+    .spinner { 
+      width: 40px; 
+      height: 40px; 
+      border: 3px solid #e5e7eb; 
+      border-top-color: #3b82f6; 
+      border-radius: 50%; 
+      animation: spin 1s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="search-container">
+      <div class="search-box">
+        <input type="text" class="search-input" id="searchInput" placeholder="Search anything...">
+        <button class="search-btn" id="searchBtn">Search</button>
+      </div>
+      <div class="filters">
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="articles">Articles</button>
+        <button class="filter-btn" data-filter="docs">Documentation</button>
+        <button class="filter-btn" data-filter="videos">Videos</button>
+        <button class="filter-btn" data-filter="images">Images</button>
+      </div>
+    </div>
+  </div>
+  
+  <div class="main">
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <p>Searching...</p>
+    </div>
+    
+    <div id="resultsContainer">
+      <p class="results-info" id="resultsInfo" style="display: none;">
+        About <strong id="resultsCount">0</strong> results for "<strong id="searchQuery"></strong>"
+      </p>
+      
+      <div id="results"></div>
+      
+      <div class="no-results" id="noResults" style="display: none;">
+        <div class="icon">🔍</div>
+        <p>No results found. Try a different search term.</p>
+      </div>
+      
+      <div class="pagination" id="pagination" style="display: none;">
+        <button class="page-btn">← Previous</button>
+        <button class="page-btn active">1</button>
+        <button class="page-btn">2</button>
+        <button class="page-btn">3</button>
+        <button class="page-btn">Next →</button>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    // Mock search database
+    const MOCK_DATA = [
+      { title: 'Getting Started with JavaScript', url: 'https://docs.example.com/js/intro', snippet: 'Learn the basics of JavaScript programming. This guide covers variables, functions, and control flow.', category: 'docs' },
+      { title: 'React Tutorial for Beginners', url: 'https://blog.example.com/react-tutorial', snippet: 'A comprehensive React tutorial covering components, hooks, and state management.', category: 'articles' },
+      { title: 'CSS Grid Complete Guide', url: 'https://docs.example.com/css/grid', snippet: 'Master CSS Grid layout with this complete guide. Learn grid containers, items, and alignment.', category: 'docs' },
+      { title: 'Node.js Best Practices', url: 'https://blog.example.com/nodejs-best-practices', snippet: 'Follow these Node.js best practices for building scalable and maintainable applications.', category: 'articles' },
+      { title: 'TypeScript vs JavaScript', url: 'https://blog.example.com/ts-vs-js', snippet: 'Compare TypeScript and JavaScript. Learn when to use each and their key differences.', category: 'articles' },
+      { title: 'Python for Data Science', url: 'https://docs.example.com/python/data-science', snippet: 'Use Python for data analysis, machine learning, and visualization with pandas and numpy.', category: 'docs' },
+      { title: 'Docker Containerization', url: 'https://docs.example.com/docker/intro', snippet: 'Learn Docker containerization basics. Create, manage, and deploy containers efficiently.', category: 'docs' },
+      { title: 'API Design Guidelines', url: 'https://blog.example.com/api-design', snippet: 'Design RESTful APIs with these proven guidelines. Covers endpoints, versioning, and authentication.', category: 'articles' },
+    ];
+    
+    const searchInput = document.getElementById('searchInput');
+    const searchBtn = document.getElementById('searchBtn');
+    const resultsContainer = document.getElementById('results');
+    const resultsInfo = document.getElementById('resultsInfo');
+    const resultsCount = document.getElementById('resultsCount');
+    const searchQueryEl = document.getElementById('searchQuery');
+    const noResults = document.getElementById('noResults');
+    const pagination = document.getElementById('pagination');
+    const loading = document.getElementById('loading');
+    
+    let currentFilter = 'all';
+    
+    function search(query) {
+      if (!query.trim()) return;
+      
+      // Show loading
+      loading.style.display = 'block';
+      resultsContainer.innerHTML = '';
+      resultsInfo.style.display = 'none';
+      noResults.style.display = 'none';
+      pagination.style.display = 'none';
+      
+      // Store search
+      localStorage.setItem('lastSearch', query);
+      
+      // Simulate search delay
+      setTimeout(() => {
+        loading.style.display = 'none';
+        
+        const lowerQuery = query.toLowerCase();
+        let results = MOCK_DATA.filter(item => {
+          const matchesQuery = item.title.toLowerCase().includes(lowerQuery) || 
+                              item.snippet.toLowerCase().includes(lowerQuery);
+          const matchesFilter = currentFilter === 'all' || item.category === currentFilter;
+          return matchesQuery && matchesFilter;
+        });
+        
+        if (results.length === 0) {
+          noResults.style.display = 'block';
+          localStorage.setItem('searchResultsCount', '0');
+          return;
+        }
+        
+        resultsInfo.style.display = 'block';
+        resultsCount.textContent = results.length;
+        searchQueryEl.textContent = query;
+        pagination.style.display = 'flex';
+        
+        localStorage.setItem('searchResultsCount', results.length.toString());
+        
+        for (const item of results) {
+          const highlightedSnippet = item.snippet.replace(
+            new RegExp(`(${query})`, 'gi'),
+            '<mark>$1</mark>'
+          );
+          
+          const resultEl = document.createElement('div');
+          resultEl.className = 'result-item';
+          resultEl.innerHTML = `
+            <div class="result-title">${item.title}</div>
+            <div class="result-url">${item.url}</div>
+            <div class="result-snippet">${highlightedSnippet}</div>
+          `;
+          resultsContainer.appendChild(resultEl);
+        }
+        
+        // Dispatch completion
+        window.dispatchEvent(new CustomEvent('browse-bot-task-complete'));
+        
+      }, 800);
+    }
+    
+    searchBtn.addEventListener('click', () => search(searchInput.value));
+    searchInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') search(searchInput.value);
+    });
+    
+    // Filter buttons
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentFilter = btn.dataset.filter;
+        if (searchInput.value) search(searchInput.value);
+      });
+    });
+    
+    // Track for eval
+    searchInput.addEventListener('input', () => {
+      window.dispatchEvent(new CustomEvent('browse-bot-tool-call', {
+        detail: {
+          name: 'findAndInsertText',
+          args: { selector: '#searchInput', value: searchInput.value },
+          timestamp: Date.now()
+        }
+      }));
+    });
+  </script>
+</body>
+</html>
+
