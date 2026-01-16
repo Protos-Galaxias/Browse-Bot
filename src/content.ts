@@ -3,6 +3,9 @@
 
 console.log('Browse Bot: Content script injected and running.');
 
+// DOM marker for eval system to detect content script is loaded
+document.documentElement.setAttribute('data-browse-bot-loaded', 'true');
+
 const elementCache = new Map<string, HTMLElement>();
 
 async function runExternalCode(code: string, args: unknown): Promise<unknown> {
@@ -639,32 +642,107 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 // ============ EVAL INTEGRATION ============
-// Listen for eval tasks from the testing system
-window.addEventListener('browse-bot-eval-task', ((e: CustomEvent<{ task: string }>) => {
-    const { task } = e.detail;
-    console.log('Browse Bot: Received eval task:', task);
+// Listen for config updates from eval system via polling (more reliable than MutationObserver)
+function checkForEvalConfig() {
+    const configJson = document.documentElement.getAttribute('data-browse-bot-config');
+    if (!configJson) {
+        return;
+    }
+    
+    // Clear the attribute immediately
+    document.documentElement.removeAttribute('data-browse-bot-config');
+    
+    try {
+        const config = JSON.parse(configJson);
+        console.log('Browse Bot: Found eval config via polling:', Object.keys(config));
+        
+        // Forward to service worker to store in extension's IndexedDB
+        chrome.runtime.sendMessage({ type: 'SET_CONFIG', config }, (response) => {
+            const lastError = chrome.runtime.lastError;
+            if (lastError) {
+                console.error('Browse Bot: SET_CONFIG runtime error:', lastError.message);
+                document.documentElement.setAttribute('data-browse-bot-config-result', 'error');
+                return;
+            }
+            console.log('Browse Bot: SET_CONFIG response:', response);
+            // Signal completion via DOM attribute
+            document.documentElement.setAttribute(
+                'data-browse-bot-config-result', 
+                response?.ok ? 'ok' : 'error'
+            );
+        });
+    } catch (err) {
+        console.error('Browse Bot: Failed to parse config:', err);
+        document.documentElement.setAttribute('data-browse-bot-config-result', 'error');
+    }
+}
+
+// Poll every 200ms for eval config
+setInterval(checkForEvalConfig, 200);
+
+// Also check immediately
+checkForEvalConfig();
+
+// Listen for eval tasks from the testing system via polling (more reliable than MutationObserver)
+function checkForEvalTask() {
+    const task = document.documentElement.getAttribute('data-browse-bot-task');
+    if (!task) {
+        return;
+    }
+    
+    console.log('Browse Bot: Found eval task via polling:', task);
+    
+    // Clear the attribute immediately
+    document.documentElement.removeAttribute('data-browse-bot-task');
     
     // Forward to service worker
     chrome.runtime.sendMessage({ type: 'EVAL_TASK', task }, (response) => {
+        const lastError = chrome.runtime.lastError;
+        if (lastError) {
+            console.error('Browse Bot: EVAL_TASK runtime error:', lastError.message);
+            return;
+        }
         console.log('Browse Bot: EVAL_TASK response:', response);
     });
-}) as EventListener);
+}
 
-// Expose function to dispatch tool call events (called from service worker via message)
+// Poll every 200ms for eval task
+setInterval(checkForEvalTask, 200);
+
+// Also check immediately
+checkForEvalTask();
+
+// Expose function to track tool calls, task completion, and debug info (for eval system)
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.type === 'EVAL_DEBUG') {
+        // Append debug message to DOM for selenium to read
+        const existing = document.documentElement.getAttribute('data-browse-bot-debug') || '';
+        const newMsg = existing ? existing + '\n' + message.message : message.message;
+        document.documentElement.setAttribute('data-browse-bot-debug', newMsg);
+        console.log('Browse Bot Debug:', message.message);
+        sendResponse({ status: 'ok' });
+        return true;
+    }
     if (message.type === 'EVAL_TOOL_CALLED') {
-        window.dispatchEvent(new CustomEvent('browse-bot-tool-call', {
-            detail: {
-                name: message.toolName,
-                args: message.args,
-                timestamp: Date.now()
-            }
-        }));
+        // Store tool call in DOM for selenium to read
+        const toolCall = {
+            name: message.toolName,
+            args: message.args,
+            timestamp: Date.now()
+        };
+        try {
+            const existing = document.documentElement.getAttribute('data-browse-bot-tools') || '[]';
+            const tools = JSON.parse(existing);
+            tools.push(toolCall);
+            document.documentElement.setAttribute('data-browse-bot-tools', JSON.stringify(tools));
+        } catch {
+            document.documentElement.setAttribute('data-browse-bot-tools', JSON.stringify([toolCall]));
+        }
         sendResponse({ status: 'ok' });
         return true;
     }
     if (message.type === 'EVAL_TASK_COMPLETE') {
-        window.dispatchEvent(new CustomEvent('browse-bot-task-complete'));
+        document.documentElement.setAttribute('data-browse-bot-complete', 'true');
         sendResponse({ status: 'ok' });
         return true;
     }

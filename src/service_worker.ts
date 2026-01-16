@@ -329,6 +329,26 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
         currentTaskTabs = [];
         return;
     }
+    if (message.type === 'SET_CONFIG') {
+        // Used by eval system to configure extension via content script
+        const { config } = message as { config: Record<string, unknown> };
+        console.log('[SW] SET_CONFIG received:', Object.keys(config));
+        
+        (async () => {
+            try {
+                const configService = ConfigService.getInstance();
+                for (const [key, value] of Object.entries(config)) {
+                    await configService.set(key, value);
+                }
+                sendResponse({ ok: true });
+            } catch (e) {
+                console.error('[SW] SET_CONFIG error:', e);
+                sendResponse({ ok: false, error: String(e) });
+            }
+        })();
+        
+        return true; // Keep message channel open for async response
+    }
     if (message.type === 'GENERATE_CHAT_TITLE') {
         const { userMessage, siteUrl } = message as { userMessage: string; siteUrl?: string };
         console.log('[SW] Generating chat title for:', userMessage, siteUrl);
@@ -449,20 +469,40 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
         
         try { sendResponse({ ok: true, started: true }); } catch (e) { void e; }
         
+        // Helper to send debug info to content script for selenium to read
+        const sendDebug = async (tabId: number, msg: string) => {
+            console.log('[SW] EVAL:', msg);
+            try {
+                chrome.tabs.sendMessage(tabId, { type: 'EVAL_DEBUG', message: msg });
+            } catch { /* ignore */ }
+        };
+        
         (async () => {
+            let tabId: number | undefined;
             try {
                 const [activeTab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
                 if (!activeTab?.id) {
                     console.warn('[SW] EVAL_TASK: No active tab');
                     return;
                 }
+                tabId = activeTab.id;
+                await sendDebug(tabId, `Active tab: ${activeTab.id} ${activeTab.url}`);
                 
                 const tabs = [{ id: activeTab.id, title: activeTab.title, url: activeTab.url }];
                 currentTaskTabs = tabs;
                 
                 const providerFromConfig = (await ConfigService.getInstance().get<string>('provider')) || 'openrouter';
+                await sendDebug(tabId, `Provider: ${providerFromConfig}`);
+                
+                const apiKey = await ConfigService.getInstance().get<string>('apiKey');
+                await sendDebug(tabId, `API key present: ${!!apiKey} ${apiKey ? apiKey.substring(0, 10) + '...' : 'none'}`);
+                
+                await sendDebug(tabId, 'Creating AI service...');
                 const selectedServiceGeneric = AiService.fromProviderName(providerFromConfig);
+                
+                await sendDebug(tabId, 'Initializing AI service...');
                 await selectedServiceGeneric.initialize();
+                await sendDebug(tabId, 'AI service initialized');
                 
                 const systemPrompt = await buildSystemPrompt(tabs);
                 
@@ -510,8 +550,16 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
                 
                 agentHistory = [...messages];
                 
+                await sendDebug(tabId, `Starting agent task with ${Object.keys(wrappedTools).length} tools`);
                 const providerConfig = ProviderConfigs[providerFromConfig] || ProviderConfigs['openrouter'];
-                await runAgentTask(messages, wrappedTools, selectedServiceGeneric, providerConfig.defaultMaxContextTokens);
+                
+                try {
+                    await runAgentTask(messages, wrappedTools, selectedServiceGeneric, providerConfig.defaultMaxContextTokens);
+                    await sendDebug(tabId, 'Agent task completed');
+                } catch (agentError) {
+                    await sendDebug(tabId, `Agent task failed: ${agentError}`);
+                    throw agentError;
+                }
                 
                 // Notify completion
                 try {
@@ -519,7 +567,11 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
                 } catch { /* ignore */ }
                 
             } catch (err) {
+                const errMsg = err instanceof Error ? err.message : String(err);
                 console.error('[SW] EVAL_TASK error:', err);
+                if (tabId) {
+                    await sendDebug(tabId, `ERROR: ${errMsg}`);
+                }
             } finally {
                 currentTaskTabs = [];
             }
