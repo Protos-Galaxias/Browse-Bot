@@ -40,12 +40,23 @@ SPDX-License-Identifier: BSL-1.1
         };
     };
     
+    type ResultLog = {
+        type: 'result';
+        text: string;
+    };
+    
+    type I18nProcessed = {
+        type: 'i18n';
+        prefix?: 'error' | 'result' | 'system' | 'agent' | 'user';
+        text: string;
+    };
+    
     export let entry: string | {
         type: 'i18n';
         key: string;
         params?: Record<string, unknown>;
         prefix?: 'error' | 'result' | 'system' | 'agent' | 'user'
-    } | UiLog | ErrorLog;
+    } | UiLog | ErrorLog | ResultLog | I18nProcessed;
 
     function isI18nLog(x: unknown): x is {
         type: 'i18n';
@@ -63,10 +74,31 @@ SPDX-License-Identifier: BSL-1.1
     function isErrorLog(x: unknown): x is ErrorLog {
         return Boolean(x && typeof x === 'object' && (x as any).type === 'error' && typeof (x as any).message === 'string');
     }
+    
+    function isResultLog(x: unknown): x is ResultLog {
+        return Boolean(x && typeof x === 'object' && (x as any).type === 'result' && typeof (x as any).text === 'string');
+    }
+    
+    function isI18nProcessed(x: unknown): x is I18nProcessed {
+        return Boolean(x && typeof x === 'object' && (x as any).type === 'i18n' && typeof (x as any).text === 'string' && !('key' in (x as any)));
+    }
+    
+    function getLocalizedPrefix(prefix: string | undefined): string {
+        const fmt = get(format) as (key: string) => string;
+        switch (prefix) {
+            case 'error': return fmt('prefix.error');
+            case 'result': return fmt('prefix.result');
+            case 'system': return fmt('prefix.system');
+            case 'agent': return fmt('prefix.agent');
+            default: return '';
+        }
+    }
 
     $: isI18n = isI18nLog(entry);
+    $: isI18nProc = isI18nProcessed(entry);
     $: isUi = isUiLog(entry);
     $: isError = isErrorLog(entry);
+    $: isResult = isResultLog(entry);
     $: errorDetails = isError ? (entry as ErrorLog).details : null;
     $: hasErrorDetails = errorDetails && Object.keys(errorDetails).length > 0;
     $: isUser = !isI18n && typeof entry === 'string' ? entry.startsWith('[User]') : (isI18n && (entry as any).prefix === 'user');
@@ -80,10 +112,19 @@ SPDX-License-Identifier: BSL-1.1
     })();
     $: html = (() => {
         if (isError && isErrorLog(entry)) {
-            return renderMarkdownSafe(`[Error]: ${entry.message}`);
+            const prefix = getLocalizedPrefix('error');
+            return renderMarkdownSafe(`${prefix ? prefix + ': ' : ''}${entry.message}`);
+        }
+        if (isResult && isResultLog(entry)) {
+            const prefix = getLocalizedPrefix('result');
+            return renderMarkdownSafe(`${prefix ? prefix + ': ' : ''}${entry.text}`);
+        }
+        if (isI18nProc && isI18nProcessed(entry)) {
+            const prefix = getLocalizedPrefix(entry.prefix);
+            return renderMarkdownSafe(`${prefix ? prefix + ': ' : ''}${entry.text}`);
         }
         if (isI18n && isI18nLog(entry)) {
-            const prefix = entry.prefix === 'error' ? '[Ошибка]' : entry.prefix === 'result' ? '[Результат]' : entry.prefix === 'system' ? '[Система]' : entry.prefix === 'agent' ? '[Агент]' : '';
+            const prefix = getLocalizedPrefix(entry.prefix);
             const fmt = get(format) as (key: string, values?: Record<string, unknown>) => string;
             const text = fmt(entry.key, entry.params ?? {});
             return renderMarkdownSafe(`${prefix ? prefix + ': ' : ''}${text}`);

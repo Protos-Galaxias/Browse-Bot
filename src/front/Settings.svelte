@@ -319,6 +319,9 @@ SPDX-License-Identifier: BSL-1.1
                 <select class="setting-input" bind:value={$locale} on:change={(e) => setAppLocale((e.target as HTMLSelectElement).value)}>
                     <option value="en">{$_('common.en')}</option>
                     <option value="ru">{$_('common.ru')}</option>
+                    <option value="de">{$_('common.de')}</option>
+                    <option value="es">{$_('common.es')}</option>
+                    <option value="fr">{$_('common.fr')}</option>
                 </select>
             </label>
         </div>

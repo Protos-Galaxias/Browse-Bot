@@ -398,11 +398,15 @@ SPDX-License-Identifier: BSL-1.1
                     if (payload && typeof payload === 'object' && payload.type === 'error' && typeof payload.message === 'string') {
                         return payload; // pass through for error rendering with details
                     }
+                    // Pass through ResultLog objects
+                    if (payload && typeof payload === 'object' && payload.type === 'result' && typeof payload.text === 'string') {
+                        return payload; // pass through for result rendering
+                    }
                     if (payload && typeof payload === 'object' && payload.type === 'i18n' && typeof payload.key === 'string') {
                         const fmt = get(format) as (key: string, values?: Record<string, unknown>) => string;
-                        const prefix = payload.prefix === 'error' ? '[Error]' : payload.prefix === 'result' ? '[Результат]' : payload.prefix === 'system' ? '[Система]' : payload.prefix === 'agent' ? '[Агент]' : '';
                         const localized = fmt(payload.key, payload.params || {});
-                        return `${prefix ? prefix + ': ' : ''}${localized}`;
+                        // Return as typed object for filtering
+                        return { type: 'i18n', prefix: payload.prefix, text: localized };
                     }
                     if (payload && typeof payload === 'object' && payload.type === 'ui' && typeof (payload as any).text === 'string') {
                         return payload; // pass through for UI rendering
@@ -413,9 +417,12 @@ SPDX-License-Identifier: BSL-1.1
                 return String(payload || '');
             })();
             if (hideAgentMessages) {
-                // В режиме скрытия показываем только итог/ошибку/анализ
+                // Filter by object type, not by string prefix (language-independent)
                 const isError = typeof computed === 'object' && (computed as any).type === 'error';
-                const isFinalOrError = isError || ((typeof computed === 'string') && (computed.startsWith('[Результат]') || computed.startsWith('[Ошибка]') || computed.startsWith('[Анализ]')));
+                const isResult = typeof computed === 'object' && (computed as any).type === 'result';
+                const isI18nResult = typeof computed === 'object' && (computed as any).type === 'i18n' && 
+                    ((computed as any).prefix === 'result' || (computed as any).prefix === 'error');
+                const isFinalOrError = isError || isResult || isI18nResult;
                 if (!isFinalOrError) return true;
             }
             log = [...log, computed];

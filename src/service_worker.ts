@@ -1,7 +1,7 @@
 // Copyright (c) 2025 PROTOS GALAXIAS LIMITED
 // SPDX-License-Identifier: BSL-1.1
 
-import { updateLog, reportError, updateLogI18n } from './logger';
+import { updateLog, reportError, updateLogI18n, logResult } from './logger';
 import { AiService } from './services/AIService';
 import { agentTools } from './tools/agent-tools';
 import type { ToolContext } from './tools/types';
@@ -416,7 +416,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
 
                     const providerConfig = ProviderConfigs[providerFromConfig] || ProviderConfigs['openrouter'];
                     const finalAnswer = await runAgentTask(messages, {} as ToolSet, selectedServiceGeneric, providerConfig.defaultMaxContextTokens);
-                    updateLog(`[Результат]: ${finalAnswer}`);
+                    logResult(finalAnswer);
                     return;
                 } else {
                     seedTabs = [{ id: activeTab.id, title: activeTab.title, url: activeTab.url }];
@@ -455,7 +455,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
             const providerConfig = ProviderConfigs[providerFromConfig] || ProviderConfigs['openrouter'];
             const finalAnswer = await runAgentTask(messages, tools, selectedServiceGeneric, providerConfig.defaultMaxContextTokens);
 
-            updateLog(`[Результат]: ${finalAnswer}`);
+            logResult(finalAnswer);
         } catch (err) {
             reportError(err, 'Во время выполнения задачи произошла ошибка');
         } finally {

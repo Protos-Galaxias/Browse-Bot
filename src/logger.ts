@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: BSL-1.1
 
 export type I18nLog = { type: 'i18n'; key: string; params?: Record<string, unknown>; prefix?: 'error' | 'result' | 'system' | 'agent' | 'user' };
+export type ResultLog = { type: 'result'; text: string };
 export type UiLog = {
     type: 'ui';
     kind: 'click' | 'form' | 'parse' | 'find';
@@ -123,16 +124,21 @@ function extractErrorDetails(error: unknown): ErrorLog['details'] | undefined {
     return Object.keys(details).length > 0 ? details : undefined;
 }
 
-export function updateLog(data: string | I18nLog | UiLog | ErrorLog) {
+export function updateLog(data: string | I18nLog | UiLog | ErrorLog | ResultLog) {
     console.log(data);
     chrome.runtime.sendMessage({ type: 'UPDATE_LOG', data }).catch(e => console.error('Failed to send log to UI:', e));
+}
+
+export function logResult(text: string): void {
+    const payload: ResultLog = { type: 'result', text };
+    updateLog(payload);
 }
 
 export function formatError(error: unknown, context?: string): string {
     try {
         const base = (() => {
             if (error instanceof Error) {
-                return error.message || 'Неизвестная ошибка';
+                return error.message || 'Unknown error';
             }
             if (typeof error === 'string') {
                 return error;
@@ -147,7 +153,7 @@ export function formatError(error: unknown, context?: string): string {
 
         return `[Error]: ${prefix}${base}`;
     } catch {
-        return '[Ошибка]: Непредвиденная ошибка';
+        return '[Error]: Unexpected error';
     }
 }
 
@@ -155,7 +161,7 @@ export function reportError(error: unknown, context?: string): void {
     try {
         const baseMessage = (() => {
             if (error instanceof Error) {
-                return error.message || 'Неизвестная ошибка';
+                return error.message || 'Unknown error';
             }
             if (typeof error === 'string') {
                 return error;

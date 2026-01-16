@@ -1,12 +1,18 @@
 {
   "app": {
     "title": "Browse Bot",
-    "disclaimer": "The agent may make mistakes. Please verify the results.",
+    "disclaimer": "Browse Bot may make mistakes. Always verify the results yourself.",
     "nav": {
       "chat": "Chat",
-      "capabilities": "Capabilities",
+      "capabilities": "What you can do",
       "settings": "Settings"
     }
+  },
+  "prefix": {
+    "error": "[Error]",
+    "result": "[Result]",
+    "system": "[System]",
+    "agent": "[Agent]"
   },
   "common": {
     "provider": "Provider",
@@ -21,15 +27,18 @@
     "add": "Add",
     "remove": "Remove",
     "save": "Save",
-    "saved": "Settings saved",
+    "saved": "✓ Settings saved",
     "language": "Language",
+    "en": "English",
     "ru": "Russian",
-    "en": "English"
+    "de": "German",
+    "es": "Spanish",
+    "fr": "French"
   },
   "tabs": {
     "general": "General",
-    "behavior": "Behavior",
-    "prompt": "Prompt",
+    "behavior": "Interface",
+    "prompt": "Prompts",
     "about": "About"
   },
   "settings": {
@@ -38,8 +47,8 @@
     "apiKeyXAI": "xAI API Key",
     "ollamaBaseURL": "Ollama Base URL",
     "lmstudioBaseURL": "LM Studio Base URL",
-    "sendOnEnter": "Enter — send, Ctrl/Cmd+Enter — new line",
-    "hideAgentMessages": "Show final answer only",
+    "sendOnEnter": "Yes (new line - Ctrl+Enter / Cmd+Enter)",
+    "hideAgentMessages": "Yes, show only the final answer",
     "theme": {
       "light": "Light",
       "dark": "Dark",
@@ -47,29 +56,29 @@
     },
     "help": {
       "needKey": "An API key is required to use models via {provider}.",
-      "openrouterHint": "Get a key at openrouter.ai",
-      "openaiHint": "Get a key at platform.openai.com",
-      "ollamaHint": "Specify base URL, default http://localhost:11434",
-      "openrouterCta": "Get a key at {url}",
+      "openrouterHint": "Go to openrouter.ai.",
+      "openaiHint": "Go to platform.openai.com.",
+      "ollamaHint": "Specify base URL (default - http://localhost:11434/api)",
+      "openrouterCta": "Go to {url}",
       "steps": {
         "signInGoToApiKeys": "Sign in and go to API Keys.",
         "createKey": "Create a new key and copy it.",
-        "pasteAutoSave": "Paste the key above — it will auto-save."
+        "pasteAutoSave": "Paste the key above — it will be saved automatically."
       },
       "xai": {
-        "link": "https://api.x.ai",
-        "signInGetKey": "Sign in and obtain an API key.",
-        "pasteAutoSave": "Paste the key above — it will auto-save."
+        "link": "Go to https://api.x.ai.",
+        "signInGetKey": "Sign in and get an API key.",
+        "pasteAutoSave": "Paste the key above — it will be saved automatically."
       },
       "ollama": {
-        "install": "Install Ollama locally.",
-        "ensurePort": "Run with CORS: OLLAMA_ORIGINS=\"*\" ollama serve",
-        "changeBaseUrl": "Default URL: http://localhost:11434"
+        "install": "Install and run Ollama.",
+        "ensurePort": "Ensure that port 11434 is accessible.",
+        "changeBaseUrl": "Change the base URL if needed."
       },
       "lmstudio": {
         "install": "Install LM Studio and start the local server.",
-        "ensurePort": "Ensure port 1234 is accessible.",
-        "changeBaseUrl": "Change Base URL below if needed."
+        "ensurePort": "Ensure that port 1234 is accessible.",
+        "changeBaseUrl": "Change the base URL if needed."
       }
     }
     ,
@@ -77,45 +86,45 @@
       "openrouterKey": "Enter your OpenRouter API key",
       "openaiKey": "Enter your OpenAI API key",
       "xaiKey": "Enter your xAI API key",
-      "ollamaBaseUrl": "http://localhost:11434",
+      "ollamaBaseUrl": "Example: http://localhost:11434/api",
       "lmstudioBaseUrl": "Example: http://localhost:1234/v1",
       "modelName": "Model name",
-      "globalPrompt": "This text will be added to all LLM requests as a system prompt."
+      "globalPrompt": "This text will be added to all your requests as a system prompt."
     },
-    "globalPromptLabel": "Global prompt / about you",
-    "domainPrompts": "Domain prompts",
+    "globalPromptLabel": "System prompt",
+    "domainPrompts": "Individual domain prompts",
     "externalTools": {
-      "label": "External Tools",
+      "label": "External tools",
       "noDescription": "No description",
-      "modalTitle": "External Tool",
-      "namePlaceholder": "Name (alphanumeric, a-z, A-Z, 0-9, _)",
+      "modalTitle": "External tool",
+      "namePlaceholder": "Name (a-z, A-Z, 0-9, _)",
       "descriptionPlaceholder": "Description",
       "codePlaceholder": "Paste JS function or async function body code\nExample: async ({ args, api }) => { api.log('hi', args); return 123; }",
       "enabled": "Enabled",
       "add": "Add",
       "save": "Save",
-      "editAriaLabel": "Edit external tool",
-      "removeAriaLabel": "Remove external tool"
+      "editAriaLabel": "Edit tool",
+      "removeAriaLabel": "Remove tool"
     },
-    "sendOnEnterLabel": "Send on Enter",
+    "sendOnEnterLabel": "Send messages on Enter",
     "themeLabel": "Theme",
-    "hideAgentMessagesLabel": "Hide intermediate agent messages"
+    "hideAgentMessagesLabel": "Hide intermediate messages in chat"
   },
   "chat": {
-    "welcome": "Good day, user",
+    "welcome": "Enter your request",
     "domainPrompt": "Prompt for",
-    "domainPromptPlaceholder": "Prompt for the current domain...",
-    "helpPlaceholder": "How can I help today?",
+    "domainPromptPlaceholder": "Add an individual prompt for the current domain.",
+    "helpPlaceholder": "What do you need help with?",
     "clearHistoryTitle": "Clear history",
     "clearHistoryAria": "Clear chat history",
     "capabilities": "Capabilities",
     "clearConfirm": {
       "title": "Clear chat history?",
-      "text": "This will delete the current list of messages. This cannot be undone.",
+      "text": "It will delete the current list of messages. This action cannot be undone.",
       "cancel": "Cancel",
       "confirm": "Clear"
     },
-    "typing": "The agent is thinking..."
+    "typing": "Thinking..."
   },
   "cap": {
     "title": "Browse Bot capabilities",
@@ -123,18 +132,18 @@
       "automation": {
         "title": "Browser automation",
         "items": {
-          "search": "Search products on sites",
-          "addToCart": "Add to cart",
+          "search": "Conduct advanced product research",
+          "addToCart": "Add products to cart",
           "fillForms": "Fill forms",
-          "navigate": "Navigate sites"
+          "navigate": "Navigate websites better"
         }
       },
       "chat": {
         "title": "Smart chat",
         "items": {
-          "autoDetect": "Automatically detect request type",
-          "directQuestions": "Direct questions to AI",
-          "analysis": "Work analysis",
+          "autoDetect": "Automatically detects request type",
+          "directQuestions": "Answers direct questions",
+          "analysis": "Analyzes",
           "context": "Context understanding",
           "tabSelection": "Type @ in the chat to open a list of all active tabs. Select a tab to interact with it directly."
         }
@@ -173,9 +182,9 @@
   },
   "errors": {
     "agentAborted": "Task was aborted by the user",
-    "openLinkInBg": "Failed to open link in background",
+    "openLinkInBg": "Failed to open link in the background",
     "noElementsContext": "No elements context. Call parsePage/parsePageInteractiveElements first",
-    "elementNotFound": "Element not found by description: {description}",
+    "elementNotFound": "Element not found according to the description: {description}",
     "aiInvalidJson": "Invalid JSON response from the model",
     "aiGenerateText": "Failed to generate text from the model",
     "aiGenerateWithTools": "Failed to execute request with tools",
@@ -194,10 +203,10 @@
   },
   "system": {
     "noActiveTabNoTools": "No active tab — answering without tools, but with history",
-    "taskStoppedByUser": "Task stopped by user"
+    "taskStoppedByUser": "Task stopped by the user"
   },
   "wizard": {
-    "welcome": "Welcome to Web Walker",
+    "welcome": "Welcome to Browse Bot",
     "selectProvider": "Choose your AI provider to get started",
     "loadingProviders": "Loading providers...",
     "usingFallback": "Using local configuration",
@@ -206,7 +215,7 @@
     "apiKey": "API Key",
     "baseUrl": "Base URL",
     "getApiKey": "Get API Key",
-    "ollamaHelp": "Run Ollama with CORS: OLLAMA_ORIGINS=\"*\" ollama serve",
+    "ollamaHelp": "Make sure Ollama is running locally. Default URL: http://localhost:11434",
     "lmstudioHelp": "Make sure LM Studio local server is running. Default URL: http://localhost:1234/v1",
     "back": "Back",
     "continue": "Continue",
@@ -218,7 +227,7 @@
     }
   },
   "about": {
-    "description": "AI-powered browser extension that helps you navigate and interact with web pages using natural language",
+    "description": "Browse Bot is a page-aware AI browser assistant that helps automate on-page interactions, summarize webpages and images, and find information promptly.",
     "github": "View on GitHub",
     "copyright": "© 2025 PROTOS GALAXIAS LIMITED",
     "license": "Licensed under BSL 1.1"

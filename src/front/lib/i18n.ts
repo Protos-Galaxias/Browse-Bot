@@ -7,6 +7,9 @@ import { extStorage } from '../../services/ExtStorage';
 // Register locales (lazy loaded)
 register('en', () => import('../locales/en.json'));
 register('ru', () => import('../locales/ru.json'));
+register('de', () => import('../locales/de.json'));
+register('es', () => import('../locales/es.json'));
+register('fr', () => import('../locales/fr.json'));
 
 export async function initializeI18n(): Promise<void> {
     const stored = await extStorage.local.get(['locale']);

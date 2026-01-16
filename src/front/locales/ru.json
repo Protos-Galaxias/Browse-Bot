@@ -1,14 +1,20 @@
 {
   "app": {
     "title": "Browse Bot",
-    "disclaimer": "Агент может допускать ошибки. Пожалуйста, проверяйте результаты.",
+    "disclaimer": "Browse Bot может допускать ошибки. Всегда проверяйте результаты самостоятельно.",
     "nav": {
       "chat": "Чат",
-      "capabilities": "Возможности",
+      "capabilities": "Сценарии использования",
       "settings": "Настройки"
     }
   },
-  "common": {
+  "prefix": {
+    "error": "[Ошибка]",
+    "result": "[Результат]",
+    "system": "[Система]",
+    "agent": "[Агент]"
+  },
+    "common": {
     "provider": "Провайдер",
     "openrouter": "OpenRouter",
     "openai": "OpenAI",
@@ -23,99 +29,102 @@
     "save": "Сохранить",
     "saved": "✓ Настройки сохранены",
     "language": "Язык",
+    "en": "Английский",
     "ru": "Русский",
-    "en": "Английский"
+    "de": "Немецкий",
+    "es": "Испанский",
+    "fr": "Французский"
   },
   "tabs": {
     "general": "Общие",
-    "behavior": "Поведение",
-    "prompt": "Глобальный промт",
+    "behavior": "Интерфейс",
+    "prompt": "Промпты",
     "about": "О программе"
   },
   "settings": {
-    "apiKeyOpenRouter": "OpenRouter API ключ",
-    "apiKeyOpenAI": "OpenAI API ключ",
-    "apiKeyXAI": "xAI API ключ",
+    "apiKeyOpenRouter": "OpenRouter API-ключ",
+    "apiKeyOpenAI": "OpenAI API-ключ",
+    "apiKeyXAI": "xAI API-ключ",
     "ollamaBaseURL": "Ollama Base URL",
     "lmstudioBaseURL": "LM Studio Base URL",
-    "sendOnEnter": "Enter — отправка, Ctrl/Cmd+Enter — новая строка",
-    "hideAgentMessages": "Показывать только итоговый ответ",
+    "sendOnEnter": "Да (новая строка - Ctrl+Enter / Cmd+Enter)",
+    "hideAgentMessages": "Да, показывать только итоговый ответ",
     "theme": {
       "light": "Светлая",
       "dark": "Темная",
       "system": "Системная"
     },
     "help": {
-      "needKey": "API ключ необходим для обращения к моделям через {provider}.",
-      "openrouterHint": "Получить ключ можно на openrouter.ai",
-      "openaiHint": "Получить ключ можно на platform.openai.com",
-      "ollamaHint": "Укажите базовый URL, по умолчанию http://localhost:11434",
-      "openrouterCta": "Получить ключ можно на сайте: {url}",
+      "needKey": "API-ключ необходим для обращения к моделям через {provider}.",
+      "openrouterHint": "Перейдите на openrouter.ai.",
+      "openaiHint": "Перейдите на platform.openai.com.",
+      "ollamaHint": "Укажите базовый URL (по умолчанию - http://localhost:11434/api)",
+      "openrouterCta": "Перейдите на {url}",
       "steps": {
         "signInGoToApiKeys": "Авторизуйтесь и перейдите в раздел API Keys.",
-        "createKey": "Создайте новый ключ и скопируйте его значение.",
-        "pasteAutoSave": "Вставьте ключ в поле выше — сохранится автоматически."
+        "createKey": "Создайте новый ключ и скопируйте его.",
+        "pasteAutoSave": "Вставьте ключ в поле выше — он сохранится автоматически."
       },
       "xai": {
-        "link": "https://api.x.ai",
-        "signInGetKey": "Авторизуйтесь и получите API ключ.",
-        "pasteAutoSave": "Вставьте ключ в поле выше — сохранится автоматически."
+        "link": "Перейдите на https://api.x.ai",
+        "signInGetKey": "Авторизуйтесь и получите API-ключ.",
+        "pasteAutoSave": "Вставьте ключ в поле выше — он сохранится автоматически."
       },
       "ollama": {
-        "install": "Установите Ollama локально.",
-        "ensurePort": "Запустите с CORS: OLLAMA_ORIGINS=\"*\" ollama serve",
-        "changeBaseUrl": "URL по умолчанию: http://localhost:11434"
+        "install": "Установите и запустите Ollama.",
+        "ensurePort": "Убедитесь, что порт 11434 доступен.",
+        "changeBaseUrl": "При необходимости измените Base URL."
       },
       "lmstudio": {
         "install": "Установите LM Studio и запустите локальный сервер.",
         "ensurePort": "Убедитесь, что порт доступен: 1234.",
-        "changeBaseUrl": "При необходимости измените Base URL ниже."
+        "changeBaseUrl": "При необходимости измените Base URL."
       }
     }
     ,
     "placeholders": {
-      "openrouterKey": "Введите ваш OpenRouter API ключ",
-      "openaiKey": "Введите ваш OpenAI API ключ",
-      "xaiKey": "Введите ваш xAI API ключ",
-      "ollamaBaseUrl": "http://localhost:11434",
+      "openrouterKey": "Введите API-ключ OpenRouter",
+      "openaiKey": "Введите API-ключ OpenAI",
+      "xaiKey": "Введите API-ключ xAI",
+      "ollamaBaseUrl": "Например: http://localhost:11434/api",
       "lmstudioBaseUrl": "Например: http://localhost:1234/v1",
       "modelName": "Название модели",
-      "globalPrompt": "Этот текст будет добавляться ко всем запросам в LLM как системная подсказка."
+      "globalPrompt": "Этот текст будет добавляться ко всем вашим запросам как системный промпт."
     },
-    "globalPromptLabel": "Глобальный промт / информация о вас",
-    "domainPrompts": "Промты для доменов",
+    "globalPromptLabel": "Системный промпт",
+    "domainPrompts": "Индивидуальные доменные промпты",
     "externalTools": {
-      "label": "Внешние тулы",
+      "label": "Внешние инструменты",
       "noDescription": "Без описания",
-      "modalTitle": "Внешний тул",
-      "namePlaceholder": "Имя (латиница, a-z, A-Z, 0-9, _)",
+      "modalTitle": "Внешний инструмент",
+      "namePlaceholder": "Название (a-z, A-Z, 0-9, _)",
       "descriptionPlaceholder": "Описание",
-      "codePlaceholder": "Вставьте JS код функции или тела async-функции\nПример: async ({ args, api }) => { api.log('hi', args); return 123; }",
+      "codePlaceholder": "Вставьте код JS функции или body async-функции\nПример: async ({ args, api }) => { api.log('hi', args); return 123; }",
       "enabled": "Включен",
       "add": "Добавить",
       "save": "Сохранить",
-      "editAriaLabel": "Редактировать внешний тул",
-      "removeAriaLabel": "Удалить внешний тул"
+      "editAriaLabel": "Редактировать инструмент",
+      "removeAriaLabel": "Удалить инструмент"
     },
-    "sendOnEnterLabel": "Отправка по Enter",
-    "themeLabel": "Цветовая схема",
-    "hideAgentMessagesLabel": "Скрывать промежуточные сообщения агента"
+    "sendOnEnterLabel": "Отправка сообщений при нажатии Enter",
+    "themeLabel": "Тема",
+    "hideAgentMessagesLabel": "Скрывать промежуточные сообщения в чате"
   },
   "chat": {
-    "welcome": "Добрый день, пользователь",
-    "domainPrompt": "Промт для",
-    "domainPromptPlaceholder": "Промт для текущего домена...",
-    "helpPlaceholder": "Чем могу помочь сегодня?",
+    "welcome": "Введите ваш запрос",
+    "domainPrompt": "Промпт для",
+    "domainPromptPlaceholder": "Добавьте индивидуальный промпт для текущего домена.",
+    "helpPlaceholder": "С чем вам нужна помощь?",
     "clearHistoryTitle": "Очистить историю",
     "clearHistoryAria": "Очистить историю чата",
     "capabilities": "Возможности",
     "clearConfirm": {
       "title": "Очистить историю чата?",
-      "text": "Это действие удалит текущий список сообщений. Отменить нельзя.",
+      "text": "Это действие удалит текущий список сообщений. Его нельзя отменить.",
       "cancel": "Отмена",
       "confirm": "Очистить"
     },
-    "typing": "Агент думает..."
+    "typing": "Генерация ответа..."
   },
   "cap": {
     "title": "Возможности Browse Bot",
@@ -123,18 +132,18 @@
       "automation": {
         "title": "Автоматизация браузера",
         "items": {
-          "search": "Поиск товаров на сайтах",
-          "addToCart": "Добавление в корзину",
-          "fillForms": "Заполнение форм",
-          "navigate": "Навигация по сайтам"
+          "search": "Проводите расширенный поиск товаров",
+          "addToCart": "Добавляйте товары в корзину",
+          "fillForms": "Заполняйте формы",
+          "navigate": "Улучшите навигацию по сайтам"
         }
       },
       "chat": {
         "title": "Умный чат",
         "items": {
-          "autoDetect": "Автоматическое определение типа запроса",
-          "directQuestions": "Прямые вопросы к ИИ",
-          "analysis": "Анализ проделанной работы",
+          "autoDetect": "Автоматически определяет тип запроса",
+          "directQuestions": "Отвечает на прямые вопросы",
+          "analysis": "Анализирует проделанную работу",
           "context": "Контекстное понимание",
           "tabSelection": "Введите символ @ в чате, чтобы открыть список всех активных вкладок. Выберите нужную вкладку, чтобы взаимодействовать с ней напрямую."
         }
@@ -160,7 +169,7 @@
       "settings": {
         "title": "Настройки",
         "items": {
-          "apiKeys": "Настройка API ключей",
+          "apiKeys": "Настройка API-ключей",
           "modelChoice": "Выбор модели ИИ",
           "dataSecurity": "Безопасность данных"
         }
@@ -169,11 +178,11 @@
   },
   "domains": {
     "filterPlaceholder": "Фильтр по домену",
-    "empty": "Нет сохранённых доменных промтов"
+    "empty": "Нет сохраненных доменных промптов"
   },
   "errors": {
     "agentAborted": "Задача была прервана пользователем",
-    "openLinkInBg": "Не удалось открыть ссылку в фоне",
+    "openLinkInBg": "Не удалось открыть ссылку на фоне",
     "noElementsContext": "Нет контекста элементов. Сначала вызовите parsePage/parsePageInteractiveElements",
     "elementNotFound": "Элемент не найден по описанию: {description}",
     "aiInvalidJson": "Неверный JSON ответ от модели",
@@ -193,51 +202,51 @@
     "generic": "Произошла ошибка"
   },
   "system": {
-    "noActiveTabNoTools": "Нет активной вкладки — отвечаю без инструментов, но с историей",
+    "noActiveTabNoTools": "Нет активной вкладки — ответ без инструментов, но с историей",
     "taskStoppedByUser": "Задача остановлена пользователем"
   },
   "wizard": {
-    "welcome": "Добро пожаловать в Web Walker",
+    "welcome": "Добро пожаловать в Browse Bot",
     "selectProvider": "Выберите AI провайдера для начала работы",
     "loadingProviders": "Загрузка провайдеров...",
     "usingFallback": "Используется локальная конфигурация",
     "reload": "Обновить",
     "setupProvider": "Настройка {provider}",
-    "apiKey": "API ключ",
+    "apiKey": "API-ключ",
     "baseUrl": "Base URL",
-    "getApiKey": "Получить API ключ",
-    "ollamaHelp": "Запустите Ollama с CORS: OLLAMA_ORIGINS=\"*\" ollama serve",
+    "getApiKey": "Получить API-ключ",
+    "ollamaHelp": "Убедитесь, что Ollama запущена локально. URL по умолчанию: http://localhost:11434",
     "lmstudioHelp": "Убедитесь, что локальный сервер LM Studio запущен. URL по умолчанию: http://localhost:1234/v1",
     "back": "Назад",
     "continue": "Продолжить",
     "saving": "Сохранение...",
     "errors": {
-      "apiKeyRequired": "Введите API ключ",
-      "baseUrlRequired": "Введите базовый URL",
+      "apiKeyRequired": "Введите API-ключ",
+      "baseUrlRequired": "Введите Base URL",
       "saveFailed": "Не удалось сохранить настройки. Попробуйте снова."
     }
   },
   "about": {
-    "description": "Расширение для браузера с поддержкой ИИ, которое помогает взаимодействовать с веб-страницами на естественном языке",
+    "description": "Browse Bot — это браузерный AI-ассистент, учитывающий контекст страницы, который помогает автоматизировать взаимодействие с контентом, кратко пересказывать веб-страницы и изображения и быстро находить информацию.",
     "github": "Посмотреть на GitHub",
     "copyright": "© 2025 PROTOS GALAXIAS LIMITED",
     "license": "Лицензировано под BSL 1.1"
   },
   "ui": {
     "titles": {
-      "clicked": "Нажали",
-      "typed": "Ввели текст",
-      "parsed": "Прочитал страницу",
-      "found": "Нашли элемент",
+      "clicked": "Клик",
+      "typed": "Введение текста",
+      "parsed": "Парсинг страницы",
+      "found": "Найден элемент",
       "checkbox": "Чекбокс",
       "radio": "Радио-кнопка",
       "select": "Выбор в списке",
-      "youtube": "Получаю субтитры YouTube"
+      "youtube": "Получение субтитры YouTube"
     },
     "texts": {
-      "parse.all": "Собираю интерактивные элементы и текст со всех вкладок2",
-      "parse.interactive": "Сканирую интерактивные элементы на всех вкладках2",
-      "parse.text": "Получаю смысловой текст со страницы",
+      "parse.all": "Сбор интерактивных элементов и текста со всех вкладок",
+      "parse.interactive": "Сканирование интерактивных элементов на всех вкладках",
+      "parse.text": "Получение смыслового текста со страницы",
       "click": "{reasoning}. {element}",
       "insert": "{reasoning}. {element}. Текст: \"{text}\"",
       "select": "{reasoning}. Выбор опции \"{option}\". {element}",
@@ -245,7 +254,7 @@
       "checkboxOff": "{reasoning}. Чекбокс: выключен. {element}",
       "radio": "{reasoning}. Выбор радио-кнопки. {element}",
       "find": "Запрос: {query}. Найдено: {count}",
-      "youtube": "Читаю панель транскрипта"
+      "youtube": "Чтение панели транскрипта"
     }
   }
 }

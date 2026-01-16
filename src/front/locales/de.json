@@ -1,0 +1,259 @@
+{
+  "app": {
+    "title": "Browse Bot",
+    "disclaimer": "Browse Bot kann Fehler machen. Überprüfen Sie die Ergebnisse immer selbst.",
+    "nav": {
+      "chat": "Chat",
+      "capabilities": "Funktionen",
+      "settings": "Einstellungen"
+    }
+  },
+  "prefix": {
+    "error": "[Fehler]",
+    "result": "[Ergebnis]",
+    "system": "[System]",
+    "agent": "[Agent]"
+  },
+  "common": {
+    "provider": "Anbieter",
+    "openrouter": "OpenRouter",
+    "openai": "OpenAI",
+    "ollama": "Ollama",
+    "xai": "xAI (Grok)",
+    "lmstudio": "LM Studio",
+    "models": "KI-Modelle",
+    "choose": "Auswählen",
+    "selected": "Ausgewählt",
+    "add": "Hinzufügen",
+    "remove": "Entfernen",
+    "save": "Speichern",
+    "saved": "✓ Einstellungen gespeichert",
+    "language": "Sprache",
+    "en": "Englisch",
+    "ru": "Russisch",
+    "de": "Deutsch",
+    "es": "Spanisch",
+    "fr": "Französisch"
+  },
+  "tabs": {
+    "general": "Allgemein",
+    "behavior": "Oberfläche",
+    "prompt": "Prompts",
+    "about": "Über"
+  },
+  "settings": {
+    "apiKeyOpenRouter": "OpenRouter-API-Schlüssel",
+    "apiKeyOpenAI": "OpenAI-API-Schlüssel",
+    "apiKeyXAI": "xAI-API-Schlüssel",
+    "ollamaBaseURL": "Ollama-Basis-URL",
+    "lmstudioBaseURL": "LM Studio Basis-URL",
+    "sendOnEnter": "Ja (neue Zeile – Strg+Enter / Cmd+Enter)",
+    "hideAgentMessages": "Ja, nur die endgültige Antwort anzeigen",
+    "theme": {
+      "light": "Hell",
+      "dark": "Dunkel",
+      "system": "System"
+    },
+    "help": {
+      "needKey": "Ein API-Schlüssel ist erforderlich, um Modelle über {provider} zu verwenden.",
+      "openrouterHint": "Gehen Sie zu openrouter.ai.",
+      "openaiHint": "Gehen Sie zu platform.openai.com.",
+      "ollamaHint": "Geben Sie die Basis-URL an (Standard – http://localhost:11434/api)",
+      "openrouterCta": "Zu {url} gehen",
+      "steps": {
+        "signInGoToApiKeys": "Melden Sie sich an und gehen Sie zu den API-Schlüsseln.",
+        "createKey": "Erstellen Sie einen neuen Schlüssel und kopieren Sie ihn.",
+        "pasteAutoSave": "Fügen Sie den Schlüssel oben ein — er wird automatisch gespeichert."
+      },
+      "xai": {
+        "link": "Gehen Sie zu https://api.x.ai.",
+        "signInGetKey": "Melden Sie sich an und erhalten Sie einen API-Schlüssel.",
+        "pasteAutoSave": "Fügen Sie den Schlüssel oben ein — er wird automatisch gespeichert."
+      },
+      "ollama": {
+        "install": "Installieren und starten Sie Ollama.",
+        "ensurePort": "Stellen Sie sicher, dass Port 11434 erreichbar ist.",
+        "changeBaseUrl": "Ändern Sie die Basis-URL bei Bedarf."
+      },
+      "lmstudio": {
+        "install": "Installieren Sie LM Studio und starten Sie den lokalen Server.",
+        "ensurePort": "Stellen Sie sicher, dass Port 1234 erreichbar ist.",
+        "changeBaseUrl": "Ändern Sie die Basis-URL bei Bedarf."
+      }
+    },
+    "placeholders": {
+      "openrouterKey": "Geben Sie Ihren OpenRouter-API-Schlüssel ein",
+      "openaiKey": "Geben Sie Ihren OpenAI-API-Schlüssel ein",
+      "xaiKey": "Geben Sie Ihren xAI-API-Schlüssel ein",
+      "ollamaBaseUrl": "Beispiel: http://localhost:11434/api",
+      "lmstudioBaseUrl": "Beispiel: http://localhost:1234/v1",
+      "modelName": "Modellname",
+      "globalPrompt": "Dieser Text wird allen Anfragen als System-Prompt hinzugefügt."
+    },
+    "globalPromptLabel": "System-Prompt",
+    "domainPrompts": "Domänenspezifische Prompts",
+    "externalTools": {
+      "label": "Externe Werkzeuge",
+      "noDescription": "Keine Beschreibung",
+      "modalTitle": "Externes Werkzeug",
+      "namePlaceholder": "Name (a-z, A-Z, 0-9, _)",
+      "descriptionPlaceholder": "Beschreibung",
+      "codePlaceholder": "JS-Funktion oder Code einer async-Funktion einfügen\nBeispiel: async ({ args, api }) => { api.log('hi', args); return 123; }",
+      "enabled": "Aktiviert",
+      "add": "Hinzufügen",
+      "save": "Speichern",
+      "editAriaLabel": "Werkzeug bearbeiten",
+      "removeAriaLabel": "Werkzeug entfernen"
+    },
+    "sendOnEnterLabel": "Nachrichten mit Enter senden",
+    "themeLabel": "Design",
+    "hideAgentMessagesLabel": "Zwischennachrichten im Chat ausblenden"
+  },
+  "chat": {
+    "welcome": "Geben Sie Ihre Anfrage ein",
+    "domainPrompt": "Prompt für",
+    "domainPromptPlaceholder": "Fügen Sie einen individuellen Prompt für die aktuelle Domäne hinzu.",
+    "helpPlaceholder": "Wobei kann ich helfen?",
+    "clearHistoryTitle": "Verlauf löschen",
+    "clearHistoryAria": "Chatverlauf löschen",
+    "capabilities": "Funktionen",
+    "clearConfirm": {
+      "title": "Chatverlauf löschen?",
+      "text": "Die aktuelle Nachrichtenliste wird gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
+      "cancel": "Abbrechen",
+      "confirm": "Löschen"
+    },
+    "typing": "Denkt nach..."
+  },
+  "cap": {
+    "title": "Browse-Bot-Funktionen",
+    "sections": {
+      "automation": {
+        "title": "Browser-Automatisierung",
+        "items": {
+          "search": "Erweiterte Produktrecherche durchführen",
+          "addToCart": "Produkte zum Warenkorb hinzufügen",
+          "fillForms": "Formulare ausfüllen",
+          "navigate": "Websites besser navigieren"
+        }
+      },
+      "chat": {
+        "title": "Intelligenter Chat",
+        "items": {
+          "autoDetect": "Erkennt automatisch den Anfrage-Typ",
+          "directQuestions": "Beantwortet direkte Fragen",
+          "analysis": "Analysiert",
+          "context": "Kontextverständnis",
+          "tabSelection": "Geben Sie @ im Chat ein, um eine Liste aller aktiven Tabs zu öffnen. Wählen Sie einen Tab aus, um direkt mit ihm zu interagieren."
+        }
+      },
+      "tools": {
+        "title": "Werkzeuge",
+        "items": {
+          "scan": "Seite scannen",
+          "findElements": "Elemente finden",
+          "clickElements": "Elemente anklicken",
+          "typeText": "Text eingeben",
+          "observeChanges": "Änderungen beobachten"
+        }
+      },
+      "analytics": {
+        "title": "Analyse",
+        "items": {
+          "history": "Aktionsverlauf",
+          "performance": "Leistungsanalyse",
+          "reports": "Arbeitsberichte"
+        }
+      },
+      "settings": {
+        "title": "Einstellungen",
+        "items": {
+          "apiKeys": "API-Schlüssel konfigurieren",
+          "modelChoice": "KI-Modell auswählen",
+          "dataSecurity": "Datensicherheit"
+        }
+      }
+    }
+  },
+  "domains": {
+    "filterPlaceholder": "Nach Domäne filtern",
+    "empty": "Keine gespeicherten Domänen-Prompts"
+  },
+  "errors": {
+    "agentAborted": "Die Aufgabe wurde vom Benutzer abgebrochen",
+    "openLinkInBg": "Link konnte nicht im Hintergrund geöffnet werden",
+    "noElementsContext": "Kein Elementkontext. Rufen Sie zuerst parsePage/parsePageInteractiveElements auf",
+    "elementNotFound": "Element gemäß Beschreibung nicht gefunden: {description}",
+    "aiInvalidJson": "Ungültige JSON-Antwort vom Modell",
+    "aiGenerateText": "Textgenerierung durch das Modell fehlgeschlagen",
+    "aiGenerateWithTools": "Ausführung der Anfrage mit Tools fehlgeschlagen",
+    "sendMessageGetLinkInfo": "Link-Informationen konnten nicht abgerufen werden",
+    "sendMessageOpenLink": "Link konnte nicht geöffnet werden",
+    "sendMessageClick": "Element konnte nicht angeklickt werden",
+    "sendMessageInsert": "Text konnte nicht eingefügt werden",
+    "sendMessageEnter": "Enter konnte nicht gedrückt werden",
+    "sendMessageSelect": "Option konnte nicht ausgewählt werden",
+    "sendMessageCheckbox": "Checkbox konnte nicht gesetzt werden",
+    "sendMessageRadio": "Radio-Button konnte nicht ausgewählt werden",
+    "parseAll": "Seite konnte nicht vollständig analysiert werden",
+    "parseInteractive": "Interaktive Elemente konnten nicht analysiert werden",
+    "parseText": "Seitentext konnte nicht analysiert werden",
+    "generic": "Ein Fehler ist aufgetreten"
+  },
+  "system": {
+    "noActiveTabNoTools": "Kein aktiver Tab — Antwort ohne Tools, aber mit Verlauf",
+    "taskStoppedByUser": "Aufgabe vom Benutzer gestoppt"
+  },
+  "wizard": {
+    "welcome": "Willkommen bei Browse Bot",
+    "selectProvider": "Wählen Sie Ihren KI-Anbieter, um zu beginnen",
+    "loadingProviders": "Anbieter werden geladen...",
+    "usingFallback": "Using local configuration",
+    "reload": "Neu laden",
+    "setupProvider": "Einrichtung von {provider}",
+    "apiKey": "API-Schlüssel",
+    "baseUrl": "Basis-URL",
+    "getApiKey": "API-Schlüssel abrufen",
+    "ollamaHelp": "Stellen Sie sicher, dass Ollama lokal ausgeführt wird. Standard-URL: http://localhost:11434",
+    "lmstudioHelp": "Stellen Sie sicher, dass der lokale LM-Studio-Server läuft. Standard-URL: http://localhost:1234/v1",
+    "back": "Zurück",
+    "continue": "Weiter",
+    "saving": "Speichern…",
+    "errors": {
+      "apiKeyRequired": "Bitte geben Sie Ihren API-Schlüssel ein",
+      "baseUrlRequired": "Bitte geben Sie die Basis-URL ein",
+      "saveFailed": "Speichern der Einstellungen fehlgeschlagen. Bitte versuchen Sie es erneut."
+    }
+  },
+  "about": {
+    "description": "Browse Bot ist ein seitenbewusster KI-Browser-Assistent, der bei der Automatisierung von Interaktionen auf der Seite hilft, Webseiten und Bilder zusammenfasst und Informationen schnell auffindet.",
+    "github": "Auf GitHub ansehen",
+    "copyright": "© 2025 PROTOS GALAXIAS LIMITED",
+    "license": "Lizenziert unter BSL 1.1"
+  },
+  "ui": {
+    "titles": {
+      "clicked": "Angeklickt",
+      "typed": "Text eingegeben",
+      "parsed": "Seite analysiert",
+      "found": "Element gefunden",
+      "checkbox": "Checkbox",
+      "radio": "Radio-Button",
+      "select": "In Dropdown ausgewählt",
+      "youtube": "YouTube-Untertitel werden geladen"
+    },
+    "texts": {
+      "parse.all": "Interaktive Elemente und Text aus allen Tabs werden gesammelt",
+      "parse.interactive": "Interaktive Elemente werden über alle Tabs hinweg analysiert",
+      "parse.text": "Relevanter Text von der Seite wird abgerufen",
+      "click": "{reasoning}. {element}",
+      "insert": "{reasoning}. {element}. Text: \"{text}\"",
+      "select": "{reasoning}. Option \"{option}\" wird ausgewählt. {element}",
+      "checkboxOn": "{reasoning}. Checkbox auf ein gesetzt. {element}",
+      "checkboxOff": "{reasoning}. Checkbox auf aus gesetzt. {element}",
+      "radio": "{reasoning}. Radio-Button ausgewählt. {element}",
+      "find": "Abfrage: {query}. Gefunden: {count}",
+      "youtube": "Transkriptionspanel wird gelesen"
+    }
+  }
+}
