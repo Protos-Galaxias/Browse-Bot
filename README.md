@@ -1,6 +1,6 @@
 # Browse Bot - AI-Powered Web Extension
 
-A page-aware AI browser extension helps users navigate and interact with web pages. Built with Svelte, TypeScript, and Vite for both Chrome and Firefox, this tool supports AI agent-style workflows to save time, reduce errors during research, and improve user experience.
+A page-aware AI browser extension that helps users navigate and interact with web pages. Built with Svelte, TypeScript, and Vite for both Chrome and Firefox, this tool supports AI agent-style workflows to save time, reduce errors during research, and improve user experience.
 
 ## Install
 
