@@ -192,3 +192,4 @@ export function compareRuns(dir: string, limit = 5): void {
   console.log(table.toString());
 }
 
+

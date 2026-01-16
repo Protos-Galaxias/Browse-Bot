@@ -16,3 +16,4 @@ assertions:
   - type: tool_called
     tool: "findAndClick"
 
+

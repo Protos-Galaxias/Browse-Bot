@@ -7,16 +7,8 @@ const __dirname = dirname(__filename);
 
 export const DEFAULT_MODELS: ModelConfig[] = [
   {
-    provider: 'openrouter',
-    model: 'openai/gpt-4.1-mini',
-  },
-  {
-    provider: 'openrouter',
-    model: 'anthropic/claude-sonnet-4-20250514',
-  },
-  {
-    provider: 'openrouter',
-    model: 'google/gemini-2.0-flash-001',
+    provider: 'openai',
+    model: 'gpt-4.1-mini',
   },
 ];
 
@@ -82,4 +74,5 @@ export function getStorageKeysForModel(config: ModelConfig): Record<string, stri
 
   return keys;
 }
+
 
