@@ -1,7 +1,7 @@
 name: "Fill contact form"
 description: "Test if the agent can fill out a multi-field contact form"
 url: "/form.html"
-task: "Fill out the contact form with name John Smith, email john@test.com, subject Technical Support, and message I need help with my account. Then submit the form."
+task: "Fill out the contact form with name John Smith, email john@test.com, subject Technical Support, and message I need help with my account. Check the terms checkbox and submit the form."
 timeout: 60000
 
 assertions:
@@ -17,6 +17,7 @@ assertions:
   
   - type: tool_called
     tool: "selectOption"
+
 
 
 

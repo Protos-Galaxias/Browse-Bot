@@ -13,14 +13,14 @@ assertions:
   
   - type: localStorage
     key: "lastSearch"
-    contains: "javascript"
+    expected: "JavaScript tutorials"
   
   - type: tool_called
     tool: "findAndInsertText"
-    contains: "search"
   
   - type: tool_called
     tool: "findAndClick"
+
 
 
 

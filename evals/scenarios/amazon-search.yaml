@@ -1,0 +1,10 @@
+name: "Amazon search"
+description: "Test if the agent can search for a product on Amazon"
+url: "https://www.amazon.com"
+task: "First click the 'Continue shopping' button if you see it. Then search for 'wireless mouse' using the search box and click the search button."
+timeout: 90000
+
+assertions:
+  - type: url_contains
+    expected: "wireless+mouse"
+

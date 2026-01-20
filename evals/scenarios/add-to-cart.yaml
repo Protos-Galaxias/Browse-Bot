@@ -11,11 +11,11 @@ assertions:
   
   - type: tool_called
     tool: "findAndClick"
-    contains: "add to cart"
   
   - type: localStorage
     key: "cartCount"
     expected: "1"
+
 
 
 

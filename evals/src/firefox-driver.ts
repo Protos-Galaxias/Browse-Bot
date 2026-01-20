@@ -250,6 +250,13 @@ export async function configureExtension(
   await driver.get(targetUrl);
   await sleep(2000);
   
+  // Clear localStorage to ensure clean state for each test
+  await driver.executeScript(`
+    localStorage.clear();
+    sessionStorage.clear();
+    console.log('Storage cleared for clean test state');
+  `);
+  
   // Wait for content script to load (poll for DOM marker)
   console.log('Waiting for content script to load...');
   for (let i = 0; i < 20; i++) {

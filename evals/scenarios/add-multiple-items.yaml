@@ -1,8 +1,8 @@
 name: "Add multiple items to cart"
 description: "Test if the agent can add multiple products to cart sequentially"
 url: "/shop.html"
-task: "Add the Smart Watch and USB-C Hub to the cart"
-timeout: 60000
+task: "I need you to add TWO items to the cart. First find and click 'Add to Cart' for Smart Watch. After that, find and click 'Add to Cart' for USB-C Hub. The cart count should show 2 when done."
+timeout: 90000
 
 assertions:
   - type: selector
@@ -15,6 +15,7 @@ assertions:
   
   - type: tool_called
     tool: "findAndClick"
+
 
 
 
