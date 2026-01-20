@@ -570,7 +570,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 if (moreBtn) {
                     moreBtn.click();
                 } else {
-                    console.warn('YouTube: Кнопка "Ещё" не найдена');
+                    console.warn('YouTube: "More" button not found');
                     return;
                 }
                 await sleep(1000);
@@ -580,7 +580,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 if (transcriptBtn) {
                     transcriptBtn.click();
                 } else {
-                    console.warn('YouTube: Кнопка "Показать стенограмму" не найдена');
+                    console.warn('YouTube: "Show transcript" button not found');
                 }
             };
 
@@ -611,7 +611,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                     )
                     .filter(Boolean)
                     .join('\n');
-                console.log('YouTube: Очищенные субтитры', cleaned);
+                console.log('YouTube: Cleaned subtitles', cleaned);
                 sendResponse({ status: 'ok', subtitles: cleaned });
             } catch (e) {
                 console.error('Failed to extract YouTube subtitles', e);

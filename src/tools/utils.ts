@@ -8,7 +8,7 @@ export const resolveTabId = (context: ToolContext, tabId?: number): number => {
     const available = Array.isArray(context.tabs) && context.tabs.length > 0 ? context.tabs.map(t => t.id) : [];
     if (available.length === 0) {
         const error = new Error('No tabs available in ToolContext');
-        reportError(error, 'Нет доступных вкладок для выполнения операции');
+        reportError(error, 'No available tabs for operation');
         throw error;
     }
     if (typeof tabId === 'number' && available.includes(tabId)) return tabId;

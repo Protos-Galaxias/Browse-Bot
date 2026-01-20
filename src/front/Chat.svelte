@@ -378,7 +378,7 @@ SPDX-License-Identifier: BSL-1.1
         }
         prompt = '';
         mentions = [];
-        // После отправки снова показываем активную вкладку
+        // After sending, show the active tab again
         ensureActiveMention();
         saveChatState();
     }

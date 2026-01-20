@@ -46,7 +46,7 @@ SPDX-License-Identifier: BSL-1.1
     let formExtCode: string = '';
     let formExtEnabled: boolean = true;
 
-    // Провайдеры из JSON
+    // Providers from JSON
     let availableProviders: ProviderConfig[] = [];
 
     onMount(async () => {
@@ -546,7 +546,7 @@ SPDX-License-Identifier: BSL-1.1
                         <input
                             type="text"
                             class="setting-input"
-                            placeholder="Имя сервера"
+                            placeholder={$_('settings.mcp.serverName')}
                             bind:value={formMcpLabel}
                             style="margin-bottom: 0.5rem;"
                         />
@@ -559,11 +559,11 @@ SPDX-License-Identifier: BSL-1.1
                         />
                         <div class="toggle-row" style="margin-top: 0.25rem;">
                             <input id="mcp-enabled-form" type="checkbox" bind:checked={formMcpEnabled} />
-                            <label for="mcp-enabled-form">Включен</label>
+                            <label for="mcp-enabled-form">{$_('settings.mcp.enabled')}</label>
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button class="primary-btn" type="button" on:click={submitMcp}>{editingMcpIndex === null ? 'Добавить сервер' : 'Сохранить'}</button>
+                        <button class="primary-btn" type="button" on:click={submitMcp}>{editingMcpIndex === null ? $_('settings.mcp.addServer') : $_('settings.mcp.save')}</button>
                     </div>
                 </div>
             </div>

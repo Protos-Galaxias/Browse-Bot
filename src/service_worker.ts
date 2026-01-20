@@ -16,6 +16,13 @@ import { ProviderConfigs } from './services/ProviderConfigs';
 
 console.log('[SW] booting service worker');
 
+class UserAbortedError extends Error {
+    constructor() {
+        super('User aborted');
+        this.name = 'UserAbortedError';
+    }
+}
+
 if (chrome.sidePanel) {
     chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 }
@@ -185,9 +192,9 @@ async function runAgentTask(
         return text || 'Task completed without a final text answer.';
     } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') {
-            return 'Задача была остановлена пользователем';
+            throw new UserAbortedError();
         }
-        reportError(error, 'Агент завершился с ошибкой');
+        reportError(error, 'Agent finished with error');
         throw error;
     }
 }
@@ -197,26 +204,26 @@ function formatWorkHistoryForContext(): string | null {
     try {
         const lines: string[] = agentHistory.map((msg: any, index: number) => {
             if (msg.role === 'user' && typeof msg.content === 'string') {
-                return `Шаг ${index}: Пользователь: ${msg.content}`;
+                return `Step ${index}: User: ${msg.content}`;
             }
             if (msg.role === 'assistant' && Array.isArray(msg.content)) {
                 const item = msg.content[0];
                 if (item?.type === 'tool-call') {
-                    return `Шаг ${index}: Агент вызвал инструмент '${item.toolName}'`;
+                    return `Step ${index}: Agent called tool '${item.toolName}'`;
                 }
             }
             if (msg.role === 'tool' && Array.isArray(msg.content)) {
                 const item = msg.content[0];
                 if (item?.type === 'tool-result') {
-                    return `Шаг ${index}: Результат '${item.toolName}': ${JSON.stringify(item.output)}`;
+                    return `Step ${index}: Result of '${item.toolName}': ${JSON.stringify(item.output)}`;
                 }
             }
             if (typeof msg.content === 'string') {
-                return `Шаг ${index}: ${msg.role}: ${msg.content}`;
+                return `Step ${index}: ${msg.role}: ${msg.content}`;
             }
-            return `Шаг ${index}: ${msg.role}`;
+            return `Step ${index}: ${msg.role}`;
         });
-        return `Контекст (история предыдущей работы агента):\n${lines.join('\n')}`;
+        return `Context (agent's previous work history):\n${lines.join('\n')}`;
     } catch {
         return null;
     }
@@ -226,7 +233,7 @@ function convertChatHistoryToMessages(chatHistory: Array<string | { type: string
     const messages: ModelMessage[] = [];
     for (const entry of chatHistory) {
         if (typeof entry === 'string') {
-            // Parse string format: "[User]: message" or "[Результат]: message" etc.
+            // Parse string format: "[User]: message" or "[Result]: message" etc.
             if (entry.startsWith('[User]:')) {
                 messages.push({ role: 'user', content: entry.replace(/^\[User\]:\s*/, '') });
             } else {
@@ -415,8 +422,16 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
                     agentHistory = [...messages];
 
                     const providerConfig = ProviderConfigs[providerFromConfig] || ProviderConfigs['openrouter'];
-                    const finalAnswer = await runAgentTask(messages, {} as ToolSet, selectedServiceGeneric, providerConfig.defaultMaxContextTokens);
-                    logResult(finalAnswer);
+                    try {
+                        const finalAnswer = await runAgentTask(messages, {} as ToolSet, selectedServiceGeneric, providerConfig.defaultMaxContextTokens);
+                        logResult(finalAnswer);
+                    } catch (err) {
+                        if (err instanceof UserAbortedError) {
+                            updateLogI18n('task.aborted', {}, 'result');
+                        } else {
+                            throw err;
+                        }
+                    }
                     return;
                 } else {
                     seedTabs = [{ id: activeTab.id, title: activeTab.title, url: activeTab.url }];
@@ -457,7 +472,11 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
 
             logResult(finalAnswer);
         } catch (err) {
-            reportError(err, 'Во время выполнения задачи произошла ошибка');
+            if (err instanceof UserAbortedError) {
+                updateLogI18n('task.aborted', {}, 'result');
+            } else {
+                reportError(err, 'Error during task execution');
+            }
         } finally {
             chrome.runtime.sendMessage({ type: 'TASK_COMPLETE' }).catch(console.error);
             currentTaskTabs = [];

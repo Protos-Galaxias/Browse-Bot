@@ -24,7 +24,7 @@ export const setCheckboxTool = (context: ToolContext) => tool({
         const targetId = elementIds[0];
         const tid = elements.find(e => e.id === targetId)?.tid;
         const targetTabId = resolveTabId(context, tid);
-        await sendToTabOrThrow(context, { type: 'SET_CHECKBOX', aid: targetId, checked, tid }, targetTabId).catch((e) => reportError(e, 'Не удалось установить чекбокс'));
+        await sendToTabOrThrow(context, { type: 'SET_CHECKBOX', aid: targetId, checked, tid }, targetTabId).catch((e) => reportError(e, 'Failed to set checkbox'));
         return { success: true, elementId: targetId };
     }
 });

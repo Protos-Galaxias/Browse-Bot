@@ -14,6 +14,9 @@
     "system": "[Système]",
     "agent": "[Agent]"
   },
+  "task": {
+    "aborted": "La tâche a été arrêtée par l'utilisateur"
+  },
   "common": {
     "provider": "Fournisseur",
     "openrouter": "OpenRouter",
@@ -93,6 +96,12 @@
     },
     "globalPromptLabel": "Prompt système",
     "domainPrompts": "Prompts par domaine",
+    "mcp": {
+      "serverName": "Nom du serveur",
+      "enabled": "Activé",
+      "addServer": "Ajouter serveur",
+      "save": "Enregistrer"
+    },
     "externalTools": {
       "label": "Outils externes",
       "noDescription": "Aucune description",

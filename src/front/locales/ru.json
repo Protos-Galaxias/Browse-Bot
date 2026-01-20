@@ -14,6 +14,9 @@
     "system": "[Система]",
     "agent": "[Агент]"
   },
+  "task": {
+    "aborted": "Задача была остановлена пользователем"
+  },
     "common": {
     "provider": "Провайдер",
     "openrouter": "OpenRouter",
@@ -93,6 +96,12 @@
     },
     "globalPromptLabel": "Системный промпт",
     "domainPrompts": "Индивидуальные доменные промпты",
+    "mcp": {
+      "serverName": "Имя сервера",
+      "enabled": "Включен",
+      "addServer": "Добавить сервер",
+      "save": "Сохранить"
+    },
     "externalTools": {
       "label": "Внешние инструменты",
       "noDescription": "Без описания",

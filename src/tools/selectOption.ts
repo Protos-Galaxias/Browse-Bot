@@ -25,7 +25,7 @@ export const selectOptionTool = (context: ToolContext) => tool({
         const targetId = elementIds[0];
         const tid = elements.find(e => e.id === targetId)?.tid;
         const targetTabId = resolveTabId(context, tid);
-        await sendToTabOrThrow(context, { type: 'SELECT_OPTION', aid: targetId, option, matchBy, tid }, targetTabId).catch((e) => reportError(e, 'Не удалось выбрать опцию'));
+        await sendToTabOrThrow(context, { type: 'SELECT_OPTION', aid: targetId, option, matchBy, tid }, targetTabId).catch((e) => reportError(e, 'Failed to select option'));
         return { success: true, elementId: targetId };
     }
 });

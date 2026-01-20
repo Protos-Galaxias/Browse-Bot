@@ -23,7 +23,7 @@ export const setRadioTool = (context: ToolContext) => tool({
         const targetId = elementIds[0];
         const tid = elements.find(e => e.id === targetId)?.tid;
         const targetTabId = resolveTabId(context, tid);
-        await sendToTabOrThrow(context, { type: 'SET_RADIO', aid: targetId, tid }, targetTabId).catch((e) => reportError(e, 'Не удалось выбрать радио-кнопку'));
+        await sendToTabOrThrow(context, { type: 'SET_RADIO', aid: targetId, tid }, targetTabId).catch((e) => reportError(e, 'Failed to select radio button'));
         return { success: true, elementId: targetId };
     }
 });
