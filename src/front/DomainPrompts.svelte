@@ -30,7 +30,7 @@ SPDX-License-Identifier: BSL-1.1
     }
 
     async function persist() {
-        try { await extStorage.local.set({ domainPrompts }); } catch {}
+        try { await extStorage.local.set({ domainPrompts }); } catch { /* ignore */ }
         rebuildEntries();
     }
 

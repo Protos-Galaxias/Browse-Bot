@@ -43,12 +43,18 @@ class StorageEventHub {
         // Broadcast to other contexts
         try {
             this.channel?.postMessage({ type: 'storage-changes', changes });
-        } catch {}
+        } catch {
+            // Broadcast channel may fail silently - non-critical
+        }
     }
 
     private emitLocal(changes: StorageChanges, areaName: 'local'): void {
         for (const l of this.listeners) {
-            try { l(changes, areaName); } catch {}
+            try {
+                l(changes, areaName);
+            } catch {
+                // Listener errors should not break other listeners
+            }
         }
     }
 }
@@ -72,7 +78,7 @@ class IDBStore {
         });
     }
 
-    private async withStore<T>(mode: IDBTransactionMode, fn: (store: IDBObjectStore) => Promise<T> | T): Promise<T> {
+    private async withStore<T>(mode: 'readonly' | 'readwrite', fn: (store: IDBObjectStore) => Promise<T> | T): Promise<T> {
         const db = await this.dbPromise;
         return await new Promise<T>((resolve, reject) => {
             const tx = db.transaction(this.storeName, mode);
@@ -218,7 +224,9 @@ class LocalArea {
             // If there is already data in IDB, skip migration
             const existing = await this.idb.getAllMap();
             if (Object.keys(existing).length > 0) return;
-        } catch {}
+        } catch {
+            // IDB check failed - proceed with migration attempt
+        }
         try {
             // Best-effort migration from chrome.storage.local if available
             const chromeAny: any = (globalThis as any).chrome;

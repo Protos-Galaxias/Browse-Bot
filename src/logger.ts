@@ -36,7 +36,7 @@ const SENSITIVE_PATTERNS = [
     /xai-[a-zA-Z0-9_-]{20,}/g,          // xAI keys
     /Bearer\s+[a-zA-Z0-9_.-]+/gi,       // Bearer tokens
     /api[_-]?key["\s:=]+["']?[a-zA-Z0-9_-]{10,}["']?/gi,  // Generic API keys
-    /authorization["\s:=]+["']?[a-zA-Z0-9_.-]+["']?/gi,   // Authorization headers
+    /authorization["\s:=]+["']?[a-zA-Z0-9_.-]+["']?/gi   // Authorization headers
 ];
 
 export function maskSensitiveData(text: string): string {
@@ -75,15 +75,15 @@ function extractErrorDetails(error: unknown): ErrorLog['details'] | undefined {
     if (!error || typeof error !== 'object') {
         return undefined;
     }
-    
+
     const details: ErrorLog['details'] = {};
     const e = error as Record<string, unknown>;
-    
+
     // Stack trace
     if (e.stack && typeof e.stack === 'string') {
         details.stack = maskSensitiveData(e.stack);
     }
-    
+
     // Request details (from AI SDK errors)
     if (e.url && typeof e.url === 'string') {
         details.requestUrl = maskSensitiveData(e.url);
@@ -93,7 +93,7 @@ function extractErrorDetails(error: unknown): ErrorLog['details'] | undefined {
             details.requestBody = maskSensitiveData(JSON.stringify(e.requestBodyValues, null, 2));
         } catch { /* ignore */ }
     }
-    
+
     // Response details
     if (typeof e.statusCode === 'number') {
         details.responseStatus = e.statusCode;
@@ -104,7 +104,7 @@ function extractErrorDetails(error: unknown): ErrorLog['details'] | undefined {
     if (e.responseHeaders) {
         details.responseHeaders = headersToRecord(e.responseHeaders as Headers | Record<string, string>);
     }
-    
+
     // Check cause for nested error details
     if (e.cause && typeof e.cause === 'object') {
         const causeDetails = extractErrorDetails(e.cause);
@@ -112,7 +112,7 @@ function extractErrorDetails(error: unknown): ErrorLog['details'] | undefined {
             Object.assign(details, causeDetails);
         }
     }
-    
+
     // Check data field (some errors put details here)
     if (e.data && typeof e.data === 'object') {
         const dataObj = e.data as Record<string, unknown>;
@@ -172,19 +172,19 @@ export function reportError(error: unknown, context?: string): void {
                 return String(error);
             }
         })();
-        
+
         const prefix = context && context.trim().length > 0 ? `${context}: ` : '';
         const message = maskSensitiveData(`${prefix}${baseMessage}`);
         const details = extractErrorDetails(error);
-        
+
         console.error(`[Error]: ${message}`, error);
-        
+
         const errorLog: ErrorLog = {
             type: 'error',
             message,
             details
         };
-        
+
         updateLog(errorLog);
     } catch (e) {
         try {

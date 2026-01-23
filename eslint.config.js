@@ -34,7 +34,7 @@ export default [
             'comma-dangle': ['error', 'never'],
             'no-trailing-spaces': 'error',
             'eol-last': ['error', 'always'],
-            '@typescript-eslint/no-explicit-any': 'warn'
+            '@typescript-eslint/no-explicit-any': 'off'
         }
     },
     {
@@ -58,7 +58,7 @@ export default [
         },
         rules: {
             ...svelte.configs.recommended.rules,
-            'indent': ['error', 4],
+            'indent': 'off',
             'svelte/indent': ['error', {
                 indent: 4,
                 indentScript: true
@@ -69,6 +69,14 @@ export default [
             'comma-dangle': ['error', 'never'],
             'no-trailing-spaces': 'error',
             'eol-last': ['error', 'always']
+        }
+    },
+    {
+        files: ['evals/**/*.ts', 'evals/**/*.js'],
+        languageOptions: {
+            globals: {
+                ...globals.node
+            }
         }
     },
     {

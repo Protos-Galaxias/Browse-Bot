@@ -101,7 +101,7 @@ export class MCPClient {
 
     private async postForSingleResponse(req: JsonRpcRequest): Promise<{ response: JsonRpcResponse; headers: Headers }> {
         const payload = JSON.stringify(req);
-        const headers: HeadersInit = {
+        const headers: Record<string, string> = {
             'Content-Type': 'application/json',
             'Accept': 'application/json, text/event-stream'
         };
@@ -112,7 +112,7 @@ export class MCPClient {
         try {
             // Debug outgoing MCP request (safe: no secrets in body by default)
             console.debug('[MCP] POST', { endpoint: this.endpoint, body: req });
-        } catch {}
+        } catch { /* ignore */ }
 
         const res = await fetch(this.endpoint, {
             method: 'POST',
@@ -128,7 +128,7 @@ export class MCPClient {
         const contentType = String(res.headers.get('Content-Type') || '').toLowerCase();
         try {
             console.debug('[MCP] RESP', { status: res.status, contentType });
-        } catch {}
+        } catch { /* ignore */ }
         if (contentType.includes('application/json')) {
             const body = await res.json();
             // Body can be one object or an array

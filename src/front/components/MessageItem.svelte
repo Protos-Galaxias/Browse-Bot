@@ -23,7 +23,7 @@ SPDX-License-Identifier: BSL-1.1
         textKey?: string;
         params?: Record<string, unknown>;
     };
-    
+
     type ErrorLog = {
         type: 'error';
         message: string;
@@ -39,18 +39,18 @@ SPDX-License-Identifier: BSL-1.1
             stack?: string;
         };
     };
-    
+
     type ResultLog = {
         type: 'result';
         text: string;
     };
-    
+
     type I18nProcessed = {
         type: 'i18n';
         prefix?: 'error' | 'result' | 'system' | 'agent' | 'user';
         text: string;
     };
-    
+
     export let entry: string | {
         type: 'i18n';
         key: string;
@@ -70,21 +70,24 @@ SPDX-License-Identifier: BSL-1.1
     function isUiLog(x: unknown): x is UiLog {
         return Boolean(x && typeof x === 'object' && (x as any).type === 'ui' && typeof (x as any).text === 'string');
     }
-    
+
     function isErrorLog(x: unknown): x is ErrorLog {
         return Boolean(x && typeof x === 'object' && (x as any).type === 'error' && typeof (x as any).message === 'string');
     }
-    
+
     function isResultLog(x: unknown): x is ResultLog {
         return Boolean(x && typeof x === 'object' && (x as any).type === 'result' && typeof (x as any).text === 'string');
     }
-    
+
     function isI18nProcessed(x: unknown): x is I18nProcessed {
         return Boolean(x && typeof x === 'object' && (x as any).type === 'i18n' && typeof (x as any).text === 'string' && !('key' in (x as any)));
     }
-    
+
+    // eslint-disable-next-line no-unused-vars
+    type I18nFmt = (k: string, v?: Record<string, unknown>) => string;
+
     function getLocalizedPrefix(prefix: string | undefined): string {
-        const fmt = get(format) as (key: string) => string;
+        const fmt = get(format) as I18nFmt;
         switch (prefix) {
             case 'error': return fmt('prefix.error');
             case 'result': return fmt('prefix.result');
@@ -125,14 +128,14 @@ SPDX-License-Identifier: BSL-1.1
         }
         if (isI18n && isI18nLog(entry)) {
             const prefix = getLocalizedPrefix(entry.prefix);
-            const fmt = get(format) as (key: string, values?: Record<string, unknown>) => string;
+            const fmt = get(format) as I18nFmt;
             const text = fmt(entry.key, entry.params ?? {});
             return renderMarkdownSafe(`${prefix ? prefix + ': ' : ''}${text}`);
         }
         const val = String(entry);
         return isUser ? renderUserMessage(val.replace('[User]: ', '')) : renderMarkdownSafe(val);
     })();
-    
+
     function formatHeaders(headers: Record<string, string> | undefined): string {
         if (!headers) return '';
         return Object.entries(headers).map(([k, v]) => `${k}: ${v}`).join('\n');
@@ -141,7 +144,7 @@ SPDX-License-Identifier: BSL-1.1
     $: uiTitle = (() => {
         if (!isUi) return '';
         const e = entry as UiLog;
-        const fmt = get(format) as (key: string, values?: Record<string, unknown>) => string;
+        const fmt = get(format) as I18nFmt;
         if (e.titleKey) return fmt(e.titleKey, e.params ?? {});
         if (e.title) return e.title;
         return fmt('ui.titles.clicked');
@@ -150,7 +153,7 @@ SPDX-License-Identifier: BSL-1.1
     $: uiText = (() => {
         if (!isUi) return '';
         const e = entry as UiLog;
-        const fmt = get(format) as (key: string, values?: Record<string, unknown>) => string;
+        const fmt = get(format) as I18nFmt;
         if (e.textKey) return fmt(e.textKey, e.params ?? {});
         return e.text;
     })();

@@ -61,7 +61,7 @@ export class StateService {
 
     async initialize(): Promise<void> {
         try {
-            const config = await ConfigService.getInstance().getAll();
+            await ConfigService.getInstance().getAll();
             // Load any persisted state if needed
         } catch (error) {
             console.error('Failed to initialize StateService:', error);

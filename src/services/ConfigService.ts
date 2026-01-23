@@ -46,7 +46,7 @@ async function idbGet(keys?: string | string[] | null): Promise<Record<string, u
     const list = typeof keys === 'string' ? [keys] : keys;
     const out: Record<string, unknown> = {};
     for (const k of list) {
-        try { const v = await idbReq(store.get(k)); if (v !== undefined) out[k] = v; } catch {}
+        try { const v = await idbReq(store.get(k)); if (v !== undefined) out[k] = v; } catch { /* ignore */ }
     }
     return out;
 }
@@ -56,7 +56,7 @@ async function idbSet(items: Record<string, unknown>): Promise<void> {
     await new Promise<void>((resolve, reject) => {
         const tx = db.transaction(IDB_STORE, 'readwrite');
         const store = tx.objectStore(IDB_STORE);
-        for (const key of Object.keys(items)) { try { store.put(items[key], key); } catch {} }
+        for (const key of Object.keys(items)) { try { store.put(items[key], key); } catch { /* ignore */ } }
         tx.oncomplete = () => resolve();
         tx.onerror = () => reject(tx.error);
     });

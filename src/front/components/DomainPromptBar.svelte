@@ -18,19 +18,19 @@ SPDX-License-Identifier: BSL-1.1
         try {
             const store = await extStorage.local.get(['domainPrompts']);
             domainPrompts = (store?.domainPrompts && typeof store.domainPrompts === 'object') ? store.domainPrompts : {};
-        } catch {}
+        } catch { /* storage may be unavailable */ }
         try {
             const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
             if (tab?.id) activeTabMeta = { id: tab.id as number, title: tab.title || '', url: tab.url, favIconUrl: (tab as any).favIconUrl };
-        } catch {}
+        } catch { /* tabs API may fail */ }
         try {
             chrome.tabs.onActivated.addListener(async (activeInfo) => {
-                try { const tab = await chrome.tabs.get(activeInfo.tabId); activeTabMeta = { id: tab.id as number, title: tab.title || '', url: tab.url, favIconUrl: (tab as any).favIconUrl }; } catch {}
+                try { const tab = await chrome.tabs.get(activeInfo.tabId); activeTabMeta = { id: tab.id as number, title: tab.title || '', url: tab.url, favIconUrl: (tab as any).favIconUrl }; } catch { /* ignore */ }
             });
             chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-                try { if (tab.active) activeTabMeta = { id: tab.id as number, title: tab.title || '', url: tab.url, favIconUrl: (tab as any).favIconUrl }; } catch {}
+                try { if (tab.active) activeTabMeta = { id: tab.id as number, title: tab.title || '', url: tab.url, favIconUrl: (tab as any).favIconUrl }; } catch { /* ignore */ }
             });
-        } catch {}
+        } catch { /* listeners may fail */ }
         try {
             extStorage.onChanged.addListener((changes) => {
                 if (changes.domainPrompts) {
@@ -38,7 +38,7 @@ SPDX-License-Identifier: BSL-1.1
                     if (next && typeof next === 'object') domainPrompts = next as Record<string,string>;
                 }
             });
-        } catch {}
+        } catch { /* listener may fail */ }
     });
 
     $: activeDomain = (activeTabMeta?.url ? (() => { try { return new URL(activeTabMeta!.url!).hostname.replace(/^www\./,''); } catch { return ''; } })() : '');
@@ -47,7 +47,7 @@ SPDX-License-Identifier: BSL-1.1
     async function saveDomainPrompt() {
         if (!activeDomain) return;
         domainPrompts = { ...domainPrompts, [activeDomain]: domainPromptText };
-        try { await extStorage.local.set({ domainPrompts }); } catch {}
+        try { await extStorage.local.set({ domainPrompts }); } catch { /* ignore */ }
     }
 </script>
 

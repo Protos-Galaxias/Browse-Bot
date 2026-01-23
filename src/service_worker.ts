@@ -1,7 +1,7 @@
 // Copyright (c) 2025 PROTOS GALAXIAS LIMITED
 // SPDX-License-Identifier: BSL-1.1
 
-import { updateLog, reportError, updateLogI18n, logResult } from './logger';
+import { reportError, updateLogI18n, logResult } from './logger';
 import { AiService } from './services/AIService';
 import { agentTools } from './tools/agent-tools';
 import type { ToolContext } from './tools/types';
@@ -69,14 +69,14 @@ async function injectContentIntoTab(tabId: number): Promise<void> {
         const results = await chrome.scripting.executeScript({
             target: { tabId },
             func: () => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                 const w = window as any;
                 const already = Boolean(w.__webWalkerInjected);
                 w.__webWalkerInjected = true;
                 return already;
             }
         });
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         const alreadyInjected = Array.isArray(results) && results.length > 0 ? Boolean((results[0] as any)?.result) : false;
         if (!alreadyInjected) {
             await chrome.scripting.executeScript({
@@ -125,11 +125,11 @@ async function runAgentTask(
     const truncatedMessages = truncateContext(messages, { maxContextTokens });
     const originalTokens = getTotalTokenEstimate(messages);
     const truncatedTokens = getTotalTokenEstimate(truncatedMessages);
-    
+
     if (originalTokens !== truncatedTokens) {
         console.log(`[SW] Context truncated: ${originalTokens} -> ${truncatedTokens} tokens (est.)`);
     }
-    
+
     const history: ModelMessage[] = truncatedMessages;
 
     agentHistory = [...history];
@@ -159,7 +159,7 @@ async function runAgentTask(
             promptTokens: usage.promptTokens || 0,
             completionTokens: usage.completionTokens || 0,
             totalTokens: usage.totalTokens || 0,
-            llmCalls: steps?.length || 1,
+            llmCalls: steps?.length || 1
         };
         console.log('[SW] LLM metrics:', metrics);
 
@@ -263,7 +263,7 @@ function convertChatHistoryToMessages(chatHistory: Array<string | { type: string
         } else if (entry && typeof entry === 'object') {
             // Handle object log entries
             const obj = entry as { type: string; text?: string; message?: string; prefix?: string };
-            
+
             if (obj.type === 'result' && typeof obj.text === 'string') {
                 // ResultLog: { type: 'result', text: '...' }
                 messages.push({ role: 'assistant', content: obj.text });
@@ -378,7 +378,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
         // Used by eval system to configure extension via content script
         const { config } = message as { config: Record<string, unknown> };
         console.log('[SW] SET_CONFIG received:', Object.keys(config));
-        
+
         (async () => {
             try {
                 const configService = ConfigService.getInstance();
@@ -391,7 +391,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
                 sendResponse({ ok: false, error: String(e) });
             }
         })();
-        
+
         return true; // Keep message channel open for async response
     }
     if (message.type === 'GENERATE_CHAT_TITLE') {
@@ -445,7 +445,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
             const historyText = formatWorkHistoryForContext();
             // Convert persisted chat history to messages for context continuity
             const persistedHistory = Array.isArray(chatHistory) ? convertChatHistoryToMessages(chatHistory) : [];
-            
+
             if (seedTabs.length === 0) {
                 const [activeTab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
                 if (!activeTab?.id) {
@@ -523,9 +523,9 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
         // Handle eval task from testing system
         const { task } = message as { task: string };
         console.log('[SW] Received EVAL_TASK:', task);
-        
+
         try { sendResponse({ ok: true, started: true }); } catch (e) { void e; }
-        
+
         // Helper to send debug info to content script for selenium to read
         const sendDebug = async (tabId: number, msg: string) => {
             console.log('[SW] EVAL:', msg);
@@ -533,7 +533,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
                 chrome.tabs.sendMessage(tabId, { type: 'EVAL_DEBUG', message: msg });
             } catch { /* ignore */ }
         };
-        
+
         (async () => {
             let tabId: number | undefined;
             try {
@@ -544,30 +544,30 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
                 }
                 tabId = activeTab.id;
                 await sendDebug(tabId, `Active tab: ${activeTab.id} ${activeTab.url}`);
-                
+
                 const tabs = [{ id: activeTab.id, title: activeTab.title, url: activeTab.url }];
                 currentTaskTabs = tabs;
-                
+
                 const providerFromConfig = (await ConfigService.getInstance().get<string>('provider')) || 'openrouter';
                 await sendDebug(tabId, `Provider: ${providerFromConfig}`);
-                
+
                 const apiKey = await ConfigService.getInstance().get<string>('apiKey');
                 await sendDebug(tabId, `API key present: ${!!apiKey} ${apiKey ? apiKey.substring(0, 10) + '...' : 'none'}`);
-                
+
                 await sendDebug(tabId, 'Creating AI service...');
                 const selectedServiceGeneric = AiService.fromProviderName(providerFromConfig);
-                
+
                 await sendDebug(tabId, 'Initializing AI service...');
                 await selectedServiceGeneric.initialize();
                 await sendDebug(tabId, 'AI service initialized');
-                
+
                 const systemPrompt = await buildSystemPrompt(tabs);
-                
+
                 // Inject content script
                 if (isChrome()) {
                     await injectContentIntoTab(activeTab.id);
                 }
-                
+
                 let elements: any[] = [];
                 const toolContext: ToolContext = {
                     aiService: selectedServiceGeneric,
@@ -576,9 +576,9 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
                     setInteractiveElements: (e) => { elements = e; },
                     sendMessageToTab: (msg, targetTabId?: number) => chrome.tabs.sendMessage(targetTabId ?? activeTab.id!, msg)
                 };
-                
+
                 const tools = await agentTools(toolContext);
-                
+
                 // Wrap tools to emit events for eval tracking
                 const wrappedTools: ToolSet = {};
                 for (const [name, tool] of Object.entries(tools)) {
@@ -593,23 +593,23 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
                                     args
                                 });
                             } catch { /* ignore */ }
-                            
+
                             // Execute original tool
                             return (tool as any).execute(args, options);
                         }
                     };
                 }
-                
+
                 const messages: ModelMessage[] = [
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: task }
                 ];
-                
+
                 agentHistory = [...messages];
-                
+
                 await sendDebug(tabId, `Starting agent task with ${Object.keys(wrappedTools).length} tools`);
                 const providerConfig = ProviderConfigs[providerFromConfig] || ProviderConfigs['openrouter'];
-                
+
                 let taskMetrics = { promptTokens: 0, completionTokens: 0, totalTokens: 0, llmCalls: 0 };
                 try {
                     const result = await runAgentTask(messages, wrappedTools, selectedServiceGeneric, providerConfig.defaultMaxContextTokens);
@@ -619,15 +619,15 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
                     await sendDebug(tabId, `Agent task failed: ${agentError}`);
                     throw agentError;
                 }
-                
+
                 // Notify completion with metrics
                 try {
-                    chrome.tabs.sendMessage(activeTab.id!, { 
+                    chrome.tabs.sendMessage(activeTab.id!, {
                         type: 'EVAL_TASK_COMPLETE',
                         metrics: taskMetrics
                     });
                 } catch { /* ignore */ }
-                
+
             } catch (err) {
                 const errMsg = err instanceof Error ? err.message : String(err);
                 console.error('[SW] EVAL_TASK error:', err);
@@ -638,7 +638,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
                 currentTaskTabs = [];
             }
         })();
-        
+
         return true;
     } else if (message.type === 'STOP_TASK') {
         if (currentController) {

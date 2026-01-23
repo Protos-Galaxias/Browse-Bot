@@ -52,7 +52,7 @@ export interface ToolCall {
 export interface LLMMetrics {
   totalLLMTime: number;          // Total time spent on LLM calls (ms)
   promptTokens: number;          // Input tokens
-  completionTokens: number;      // Output tokens  
+  completionTokens: number;      // Output tokens
   totalTokens: number;           // Total tokens
   llmCalls: number;              // Number of LLM API calls (steps)
   avgResponseTime: number;       // Average response time per call (ms)

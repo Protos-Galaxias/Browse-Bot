@@ -93,7 +93,7 @@ SPDX-License-Identifier: BSL-1.1
             const tabs = await chrome.tabs.query({});
             openTabs = tabs.map(t => ({ id: t.id as number, title: t.title || '', url: t.url, favIconUrl: (t as any).favIconUrl }));
         } catch {
-            try { chrome.tabs.query({}, (tabs) => { openTabs = tabs.map(t => ({ id: t.id as number, title: t.title || '', url: t.url, favIconUrl: (t as any).favIconUrl })); }); } catch {}
+            try { chrome.tabs.query({}, (tabs) => { openTabs = tabs.map(t => ({ id: t.id as number, title: t.title || '', url: t.url, favIconUrl: (t as any).favIconUrl })); }); } catch { /* ignore */ }
         }
     }
     function positionDropdownAtCaret() {
@@ -150,7 +150,7 @@ SPDX-License-Identifier: BSL-1.1
                 positionDropdownAtCaret();
                 setTimeout(adjustDropdownToViewport, 0);
             } else { showTabsDropdown = false; mentionQuery = ''; }
-        } catch {}
+        } catch { /* ignore */ }
     }
     function insertTabMention(tab: { id: number; title: string; url?: string; favIconUrl?: string }) {
         mentionMap.set(tab.id, { id: tab.id, title: tab.title, url: tab.url, favIconUrl: tab.favIconUrl });
@@ -178,7 +178,7 @@ SPDX-License-Identifier: BSL-1.1
                     }
                 }
             }
-        } catch {}
+        } catch { /* ignore */ }
 
         const chip = document.createElement('span');
         chip.className = 'mention-chip';

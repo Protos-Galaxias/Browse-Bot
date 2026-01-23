@@ -31,6 +31,7 @@ SPDX-License-Identifier: BSL-1.1
     let displayMentions: Array<{ id: number; title: string; url?: string; favIconUrl?: string }> = [];
     let domainPrompts: Record<string, string> = {};
     let activeDomain = '';
+
     let domainPromptText = '';
     let hideAgentMessages: boolean = true;
     let showChatList = false;
@@ -207,7 +208,7 @@ SPDX-License-Identifier: BSL-1.1
             await ChatStorage.renameChat(editingChatId, editingTitle.trim());
             await loadChats();
         } catch {
-            // ignored
+        // ignored
         }
         cancelEditing();
     }
@@ -334,7 +335,7 @@ SPDX-License-Identifier: BSL-1.1
             }
         } catch (error) {
             console.warn('[UI] Failed to generate chat title:', error);
-            // Silently fail - not critical
+        // Silently fail - not critical
         }
     }
 
@@ -403,7 +404,8 @@ SPDX-License-Identifier: BSL-1.1
                         return payload; // pass through for result rendering
                     }
                     if (payload && typeof payload === 'object' && payload.type === 'i18n' && typeof payload.key === 'string') {
-                        const fmt = get(format) as (key: string, values?: Record<string, unknown>) => string;
+                        // eslint-disable-next-line no-unused-vars
+                        const fmt: (k: string, v?: Record<string, unknown>) => string = get(format);
                         const localized = fmt(payload.key, payload.params || {});
                         // Return as typed object for filtering
                         return { type: 'i18n', prefix: payload.prefix, text: localized };
@@ -420,7 +422,7 @@ SPDX-License-Identifier: BSL-1.1
                 // Filter by object type, not by string prefix (language-independent)
                 const isError = typeof computed === 'object' && (computed as any).type === 'error';
                 const isResult = typeof computed === 'object' && (computed as any).type === 'result';
-                const isI18nResult = typeof computed === 'object' && (computed as any).type === 'i18n' && 
+                const isI18nResult = typeof computed === 'object' && (computed as any).type === 'i18n' &&
                     ((computed as any).prefix === 'result' || (computed as any).prefix === 'error');
                 const isFinalOrError = isError || isResult || isI18nResult;
                 if (!isFinalOrError) return true;
@@ -483,6 +485,7 @@ SPDX-License-Identifier: BSL-1.1
     }
 
     $: activeDomain = (activeTabMeta?.url ? (() => { try { return new URL(activeTabMeta!.url!).hostname.replace(/^www\./,''); } catch { /* ignored */ return ''; } })() : '');
+    // eslint-disable-next-line no-unused-vars
     $: domainPromptText = (activeDomain && domainPrompts[activeDomain]) ? domainPrompts[activeDomain] : '';
 
     function buildMentionTitle(m: { title?: string; url?: string }) {

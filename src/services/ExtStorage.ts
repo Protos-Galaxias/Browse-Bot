@@ -99,13 +99,13 @@ class OnChanged {
 
     emit(changes: Record<string, StorageChange>): void {
         for (const cb of Array.from(this.listeners)) {
-            try { cb(changes, 'local'); } catch {}
+            try { cb(changes, 'local'); } catch { /* ignore */ }
         }
     }
 
     broadcast(changes: Record<string, StorageChange>): void {
         this.emit(changes);
-        try { this.bc?.postMessage({ type: 'storageChanged', changes }); } catch {}
+        try { this.bc?.postMessage({ type: 'storageChanged', changes }); } catch { /* ignore */ }
     }
 }
 
@@ -135,7 +135,7 @@ class LocalStorageArea {
             const tx = db.transaction(STORE_NAME, 'readwrite');
             const store = tx.objectStore(STORE_NAME);
             for (const key of keys) {
-                try { store.put(items[key], key); } catch {}
+                try { store.put(items[key], key); } catch { /* ignore */ }
             }
             tx.oncomplete = () => resolve();
             tx.onerror = () => reject(tx.error);

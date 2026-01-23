@@ -3,7 +3,7 @@
 
 import { tool } from 'ai';
 import { z } from 'zod';
-import type { ToolContext, ToolOutput } from './types';
+import type { ToolOutput } from './types';
 import { MCPClient, type McpTool } from '../services/MCPClient';
 import { ConfigService } from '../services/ConfigService';
 
@@ -20,7 +20,7 @@ async function getMcpClient(): Promise<MCPClient | null> {
     return new MCPClient(endpoint);
 }
 
-export const mcpListToolsTool = (_context: ToolContext) => tool({
+export const mcpListToolsTool = () => tool({
     description: 'Lists tools exposed by the configured MCP server.',
     inputSchema: z.object({}),
     async execute(): Promise<ToolOutput> {
@@ -35,7 +35,7 @@ export const mcpListToolsTool = (_context: ToolContext) => tool({
     }
 });
 
-export const mcpCallTool = (_context: ToolContext) => tool({
+export const mcpCallTool = () => tool({
     description: 'Calls an MCP tool by name with JSON arguments.',
     inputSchema: z.object({
         name: z.string().min(1),

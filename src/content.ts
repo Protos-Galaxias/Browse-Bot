@@ -648,14 +648,14 @@ function checkForEvalConfig() {
     if (!configJson) {
         return;
     }
-    
+
     // Clear the attribute immediately
     document.documentElement.removeAttribute('data-browse-bot-config');
-    
+
     try {
         const config = JSON.parse(configJson);
         console.log('Browse Bot: Found eval config via polling:', Object.keys(config));
-        
+
         // Forward to service worker to store in extension's IndexedDB
         chrome.runtime.sendMessage({ type: 'SET_CONFIG', config }, (response) => {
             const lastError = chrome.runtime.lastError;
@@ -667,7 +667,7 @@ function checkForEvalConfig() {
             console.log('Browse Bot: SET_CONFIG response:', response);
             // Signal completion via DOM attribute
             document.documentElement.setAttribute(
-                'data-browse-bot-config-result', 
+                'data-browse-bot-config-result',
                 response?.ok ? 'ok' : 'error'
             );
         });
@@ -689,12 +689,12 @@ function checkForEvalTask() {
     if (!task) {
         return;
     }
-    
+
     console.log('Browse Bot: Found eval task via polling:', task);
-    
+
     // Clear the attribute immediately
     document.documentElement.removeAttribute('data-browse-bot-task');
-    
+
     // Forward to service worker
     chrome.runtime.sendMessage({ type: 'EVAL_TASK', task }, (response) => {
         const lastError = chrome.runtime.lastError;

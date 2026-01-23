@@ -38,8 +38,6 @@ SPDX-License-Identifier: BSL-1.1
 </div>
 
 <style>
-	.chat-messages { flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 1rem; }
-	.typing-indicator { display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-style: italic; }
     .chat-messages { flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 1rem; }
     .typing-indicator { display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-style: italic; }
     .typing-indicator .logo-icon { width: 24px; height: 24px; }

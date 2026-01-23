@@ -22,7 +22,7 @@
     onMount(async () => {
         loading = true;
         loadError = '';
-        
+
         try {
             providers = await loadProvidersConfig();
         } catch (error) {
@@ -37,7 +37,7 @@
         selectedProvider = providerId;
         step = 'credentials';
         errorMessage = '';
-        
+
         // Set default values
         const provider = providers.find(p => p.id === providerId);
         if (provider?.needsBaseUrl && providerId === 'ollama') {
@@ -55,7 +55,7 @@
 
     async function saveAndContinue() {
         if (!selectedProvider) return;
-        
+
         const provider = providers.find(p => p.id === selectedProvider);
         if (!provider) return;
 
@@ -64,7 +64,7 @@
             errorMessage = $_('wizard.errors.apiKeyRequired');
             return;
         }
-        
+
         if (provider.needsBaseUrl && !baseUrlInput.trim()) {
             errorMessage = $_('wizard.errors.baseUrlRequired');
             return;
@@ -83,7 +83,7 @@
             if (provider.needsApiKey && meta.storageApiKey) {
                 settings[meta.storageApiKey] = apiKeyInput.trim();
             }
-            
+
             if (provider.needsBaseUrl && meta.storageBaseURL) {
                 settings[meta.storageBaseURL] = baseUrlInput.trim();
             }
@@ -91,7 +91,7 @@
             // Set default model
             settings[meta.storageModels] = meta.defaultModels;
             settings[meta.storageActiveModel] = meta.defaultModelName;
-            
+
             // Legacy fields for backward compatibility
             settings.models = meta.defaultModels;
             settings.activeModel = meta.defaultModelName;
@@ -100,7 +100,7 @@
             }
 
             await extStorage.local.set(settings);
-            
+
             // Notify background service
             try {
                 chrome.runtime.sendMessage({ type: 'UPDATE_CONFIG' });
@@ -166,7 +166,7 @@
             {@const provider = providers.find(p => p.id === selectedProvider)}
             <div class="wizard-step">
                 <h1 class="wizard-title">{$_('wizard.setupProvider', { values: { provider: getProviderDisplayName(selectedProvider) } })}</h1>
-                
+
                 {#if provider?.needsApiKey}
                     <div class="form-group">
                         <label class="form-label" for="wizard-api-key">
