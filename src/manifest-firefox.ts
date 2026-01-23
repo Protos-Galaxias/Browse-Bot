@@ -11,7 +11,7 @@ export default defineManifest({
     content_security_policy: {
         extension_pages: "script-src 'self' 'unsafe-eval'; object-src 'self'"
     } as any,
-    permissions: ['storage', 'activeTab', 'scripting', 'tabs', '<all_urls>'],
+    permissions: ['storage', 'activeTab', 'scripting', 'tabs'],
     background: {
         scripts: ['src/service_worker.ts']
     },
@@ -46,7 +46,12 @@ export default defineManifest({
         },
         browser_specific_settings: {
             gecko: {
-                id: 'browse-bot@protosgalaxias.com'
+                id: 'browse-bot@protosgalaxias.com',
+                data_collection_permissions: {
+                    technicalData: false,
+                    interactionData: false,
+                    analyticsData: false
+                }
             }
         }
     } as any),

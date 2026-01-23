@@ -23,7 +23,7 @@ class UserAbortedError extends Error {
     }
 }
 
-if (chrome.sidePanel) {
+if (isChrome() && chrome.sidePanel) {
     chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 }
 
