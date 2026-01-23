@@ -314,24 +314,47 @@ export async function sendTaskToExtension(
   console.log('Task dispatched to extension via DOM attribute');
 }
 
+export interface LLMMetrics {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  llmCalls: number;
+}
+
+export interface TaskCompletionResult {
+  success: boolean;
+  toolsCalled: Array<{ name: string; args: unknown; timestamp: number }>;
+  metrics?: LLMMetrics;
+}
+
 export async function waitForTaskCompletion(
   driver: WebDriver,
   timeout: number
-): Promise<{ success: boolean; toolsCalled: Array<{ name: string; args: unknown; timestamp: number }> }> {
+): Promise<TaskCompletionResult> {
   const startTime = Date.now();
   let lastDebug = '';
   
   while (Date.now() - startTime < timeout) {
     try {
-      const result = await driver.executeScript<{ completed: boolean; toolsCalled: Array<{ name: string; args: unknown; timestamp: number }>; debug: string }>(`
+      const result = await driver.executeScript<{ 
+        completed: boolean; 
+        toolsCalled: Array<{ name: string; args: unknown; timestamp: number }>; 
+        debug: string;
+        metrics: LLMMetrics | null;
+      }>(`
         const completed = document.documentElement.getAttribute('data-browse-bot-complete') === 'true';
         let toolsCalled = [];
         try {
           const toolsJson = document.documentElement.getAttribute('data-browse-bot-tools');
           if (toolsJson) toolsCalled = JSON.parse(toolsJson);
         } catch {}
+        let metrics = null;
+        try {
+          const metricsJson = document.documentElement.getAttribute('data-browse-bot-metrics');
+          if (metricsJson) metrics = JSON.parse(metricsJson);
+        } catch {}
         const debug = document.documentElement.getAttribute('data-browse-bot-debug') || '';
-        return { completed, toolsCalled, debug };
+        return { completed, toolsCalled, debug, metrics };
       `);
       
       // Print new debug messages
@@ -349,6 +372,7 @@ export async function waitForTaskCompletion(
         return {
           success: true,
           toolsCalled: result.toolsCalled || [],
+          metrics: result.metrics || undefined,
         };
       }
     } catch (e) {
@@ -360,14 +384,23 @@ export async function waitForTaskCompletion(
   
   // Timeout - print final debug and return whatever tools were called
   try {
-    const finalResult = await driver.executeScript<{ toolsCalled: Array<{ name: string; args: unknown; timestamp: number }>; debug: string }>(`
+    const finalResult = await driver.executeScript<{ 
+      toolsCalled: Array<{ name: string; args: unknown; timestamp: number }>; 
+      debug: string;
+      metrics: LLMMetrics | null;
+    }>(`
       let toolsCalled = [];
       try {
         const toolsJson = document.documentElement.getAttribute('data-browse-bot-tools');
         if (toolsJson) toolsCalled = JSON.parse(toolsJson);
       } catch {}
+      let metrics = null;
+      try {
+        const metricsJson = document.documentElement.getAttribute('data-browse-bot-metrics');
+        if (metricsJson) metrics = JSON.parse(metricsJson);
+      } catch {}
       const debug = document.documentElement.getAttribute('data-browse-bot-debug') || '';
-      return { toolsCalled, debug };
+      return { toolsCalled, debug, metrics };
     `);
     
     // Print any remaining debug
@@ -382,7 +415,8 @@ export async function waitForTaskCompletion(
     
     return { 
       success: false, 
-      toolsCalled: finalResult?.toolsCalled || [] 
+      toolsCalled: finalResult?.toolsCalled || [],
+      metrics: finalResult?.metrics || undefined,
     };
   } catch {
     return { success: false, toolsCalled: [] };

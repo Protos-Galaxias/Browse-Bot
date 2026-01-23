@@ -105,12 +105,22 @@ function injectIntoAllOpenTabs(): void {
 }
 
 
+export interface AgentTaskResult {
+    text: string;
+    metrics: {
+        promptTokens: number;
+        completionTokens: number;
+        totalTokens: number;
+        llmCalls: number;
+    };
+}
+
 async function runAgentTask(
     messages: ModelMessage[],
     tools: ToolSet,
     aiService: AIService,
     maxContextTokens?: number
-) {
+): Promise<AgentTaskResult> {
     // Truncate context if needed to prevent overflow errors
     const truncatedMessages = truncateContext(messages, { maxContextTokens });
     const originalTokens = getTotalTokenEstimate(messages);
@@ -142,6 +152,16 @@ async function runAgentTask(
         const flattenContent: Array<any> = Array.isArray(steps)
             ? steps.flatMap((s: any) => (Array.isArray(s?.content) ? s.content : []))
             : [];
+
+        // Extract usage/metrics from result
+        const usage = raw?.usage || {};
+        const metrics = {
+            promptTokens: usage.promptTokens || 0,
+            completionTokens: usage.completionTokens || 0,
+            totalTokens: usage.totalTokens || 0,
+            llmCalls: steps?.length || 1,
+        };
+        console.log('[SW] LLM metrics:', metrics);
 
         const toolCalls = flattenContent.filter((c: any) => c?.type === 'tool-call');
         const sdkToolResults = flattenContent.filter((c: any) => c?.type === 'tool-result');
@@ -179,7 +199,7 @@ async function runAgentTask(
 
         const finish = (sdkToolResults || []).find((tr: ToolResult) => tr.toolName === 'finishTask');
         if (finish && finish.output && typeof finish.output.answer === 'string') {
-            return finish.output.answer as string;
+            return { text: finish.output.answer as string, metrics };
         }
 
 
@@ -189,7 +209,7 @@ async function runAgentTask(
         }
         console.log('agentHistory', agentHistory);
 
-        return text || 'Task completed without a final text answer.';
+        return { text: text || 'Task completed without a final text answer.', metrics };
     } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') {
             throw new UserAbortedError();
@@ -240,8 +260,26 @@ function convertChatHistoryToMessages(chatHistory: Array<string | { type: string
                 // Assistant messages (results, agent responses, etc.)
                 messages.push({ role: 'assistant', content: entry });
             }
+        } else if (entry && typeof entry === 'object') {
+            // Handle object log entries
+            const obj = entry as { type: string; text?: string; message?: string; prefix?: string };
+            
+            if (obj.type === 'result' && typeof obj.text === 'string') {
+                // ResultLog: { type: 'result', text: '...' }
+                messages.push({ role: 'assistant', content: obj.text });
+            } else if (obj.type === 'i18n' && typeof obj.text === 'string') {
+                // Localized i18n message with rendered text
+                if (obj.prefix === 'user') {
+                    messages.push({ role: 'user', content: obj.text });
+                } else {
+                    messages.push({ role: 'assistant', content: obj.text });
+                }
+            } else if (obj.type === 'error' && typeof obj.message === 'string') {
+                // ErrorLog: { type: 'error', message: '...' }
+                messages.push({ role: 'assistant', content: `[Error]: ${obj.message}` });
+            }
+            // Skip 'ui' type objects (clicks, form, parse indicators) - they're UI-only hints
         }
-        // Skip UI objects (clicks, etc.) - they're not relevant for AI context
     }
     return messages;
 }
@@ -423,8 +461,8 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
 
                     const providerConfig = ProviderConfigs[providerFromConfig] || ProviderConfigs['openrouter'];
                     try {
-                        const finalAnswer = await runAgentTask(messages, {} as ToolSet, selectedServiceGeneric, providerConfig.defaultMaxContextTokens);
-                        logResult(finalAnswer);
+                        const result = await runAgentTask(messages, {} as ToolSet, selectedServiceGeneric, providerConfig.defaultMaxContextTokens);
+                        logResult(result.text);
                     } catch (err) {
                         if (err instanceof UserAbortedError) {
                             updateLogI18n('task.aborted', {}, 'result');
@@ -468,9 +506,9 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
             agentHistory = [...messages];
 
             const providerConfig = ProviderConfigs[providerFromConfig] || ProviderConfigs['openrouter'];
-            const finalAnswer = await runAgentTask(messages, tools, selectedServiceGeneric, providerConfig.defaultMaxContextTokens);
+            const result = await runAgentTask(messages, tools, selectedServiceGeneric, providerConfig.defaultMaxContextTokens);
 
-            logResult(finalAnswer);
+            logResult(result.text);
         } catch (err) {
             if (err instanceof UserAbortedError) {
                 updateLogI18n('task.aborted', {}, 'result');
@@ -572,17 +610,22 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
                 await sendDebug(tabId, `Starting agent task with ${Object.keys(wrappedTools).length} tools`);
                 const providerConfig = ProviderConfigs[providerFromConfig] || ProviderConfigs['openrouter'];
                 
+                let taskMetrics = { promptTokens: 0, completionTokens: 0, totalTokens: 0, llmCalls: 0 };
                 try {
-                    await runAgentTask(messages, wrappedTools, selectedServiceGeneric, providerConfig.defaultMaxContextTokens);
-                    await sendDebug(tabId, 'Agent task completed');
+                    const result = await runAgentTask(messages, wrappedTools, selectedServiceGeneric, providerConfig.defaultMaxContextTokens);
+                    taskMetrics = result.metrics;
+                    await sendDebug(tabId, `Agent task completed. Tokens: ${taskMetrics.totalTokens}, LLM calls: ${taskMetrics.llmCalls}`);
                 } catch (agentError) {
                     await sendDebug(tabId, `Agent task failed: ${agentError}`);
                     throw agentError;
                 }
                 
-                // Notify completion
+                // Notify completion with metrics
                 try {
-                    chrome.tabs.sendMessage(activeTab.id!, { type: 'EVAL_TASK_COMPLETE' });
+                    chrome.tabs.sendMessage(activeTab.id!, { 
+                        type: 'EVAL_TASK_COMPLETE',
+                        metrics: taskMetrics
+                    });
                 } catch { /* ignore */ }
                 
             } catch (err) {

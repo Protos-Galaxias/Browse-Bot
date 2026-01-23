@@ -29,7 +29,7 @@ program
     try {
       // Load API keys from environment
       const apiKeys: Record<string, string> = {};
-      
+
       if (process.env.OPENROUTER_API_KEY) {
         apiKeys.apiKey = process.env.OPENROUTER_API_KEY;
       }
@@ -39,20 +39,20 @@ program
       if (process.env.XAI_API_KEY) {
         apiKeys.xaiApiKey = process.env.XAI_API_KEY;
       }
-      
+
       // Determine models to test
       let models: ModelConfig[] = DEFAULT_MODELS;
-      
+
       if (options.model) {
         const [provider, ...modelParts] = options.model.split('/');
         const modelName = modelParts.join('/');
-        
+
         models = [{
           provider: provider as ModelConfig['provider'],
           model: modelName,
         }];
       }
-      
+
       const config = loadConfig({
         extensionPath: resolve(process.cwd(), options.extension),
         fixturesBaseUrl: options.fixturesUrl,
@@ -60,22 +60,22 @@ program
         models,
         outputDir: resolve(process.cwd(), options.output),
       });
-      
+
       let results;
-      
+
       if (options.scenario) {
         // Run specific scenario
         const scenarios = await loadScenarios(['scenarios/*.yaml'], process.cwd());
-        const scenario = scenarios.find(s => 
+        const scenario = scenarios.find(s =>
           s.name.toLowerCase().includes(options.scenario.toLowerCase())
         );
-        
+
         if (!scenario) {
           console.log(chalk.red(`Scenario not found: ${options.scenario}`));
           console.log(chalk.gray(`Available: ${scenarios.map(s => s.name).join(', ')}`));
           process.exit(1);
         }
-        
+
         results = [];
         for (const model of models) {
           const result = await runScenario(scenario, model, config, apiKeys);
@@ -85,19 +85,19 @@ program
         // Run all scenarios
         results = await runAllScenarios(config, apiKeys);
       }
-      
+
       // Save results
       const filepath = saveResults(results, config.outputDir);
       console.log(chalk.gray(`\nResults saved to: ${filepath}`));
-      
+
       // Print summary
       const summary = generateSummary(results);
       printSummary(summary);
-      
+
       // Exit with error code if any failures
       const hasFailures = results.some(r => !r.success);
       process.exit(hasFailures ? 1 : 0);
-      
+
     } catch (error) {
       console.error(chalk.red('Error:'), error);
       process.exit(1);
@@ -113,22 +113,22 @@ program
   .option('-o, --output <dir>', 'Results directory', 'results')
   .action((options) => {
     const outputDir = resolve(process.cwd(), options.output);
-    
+
     if (options.compare) {
       compareRuns(outputDir, parseInt(options.limit, 10));
       return;
     }
-    
+
     const results = loadResultsFromDir(outputDir);
-    
+
     if (results.length === 0) {
       console.log(chalk.yellow('No results found. Run evaluations first.'));
       return;
     }
-    
+
     const summary = generateSummary(results);
     printSummary(summary);
-    
+
     if (options.detailed) {
       printDetailedResults(results);
     }
@@ -139,9 +139,9 @@ program
   .description('List available scenarios')
   .action(async () => {
     const scenarios = await loadScenarios(['scenarios/*.yaml'], process.cwd());
-    
+
     console.log(chalk.bold('\n📝 Available Scenarios\n'));
-    
+
     for (const scenario of scenarios) {
       console.log(chalk.blue(`• ${scenario.name}`));
       if (scenario.description) {

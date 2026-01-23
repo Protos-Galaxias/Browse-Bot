@@ -6,22 +6,22 @@
   <title>Login - Browse-Bot Eval</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { 
-      font-family: system-ui, sans-serif; 
+    body {
+      font-family: system-ui, sans-serif;
       background: linear-gradient(135deg, #1e1e2e, #2d2d44);
-      min-height: 100vh; 
-      display: flex; 
-      align-items: center; 
-      justify-content: center; 
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       padding: 20px;
     }
-    .login-container { 
-      background: rgba(255,255,255,0.05); 
+    .login-container {
+      background: rgba(255,255,255,0.05);
       backdrop-filter: blur(10px);
-      padding: 40px; 
-      border-radius: 20px; 
+      padding: 40px;
+      border-radius: 20px;
       border: 1px solid rgba(255,255,255,0.1);
-      width: 100%; 
+      width: 100%;
       max-width: 400px;
     }
     .logo { text-align: center; margin-bottom: 30px; }
@@ -30,19 +30,19 @@
     .subtitle { text-align: center; color: #94a3b8; margin-bottom: 30px; }
     .form-group { margin-bottom: 20px; }
     label { display: block; margin-bottom: 8px; font-weight: 500; color: #cbd5e1; }
-    input { 
-      width: 100%; 
-      padding: 14px 16px; 
+    input {
+      width: 100%;
+      padding: 14px 16px;
       background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.1); 
-      border-radius: 10px; 
-      font-size: 1rem; 
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      font-size: 1rem;
       color: white;
       transition: border-color 0.2s, background 0.2s;
     }
     input::placeholder { color: #64748b; }
-    input:focus { 
-      outline: none; 
+    input:focus {
+      outline: none;
       border-color: #8b5cf6;
       background: rgba(255,255,255,0.08);
     }
@@ -51,28 +51,28 @@
     .remember-row input[type="checkbox"] { width: auto; }
     .forgot-link { color: #8b5cf6; text-decoration: none; font-size: 0.875rem; }
     .forgot-link:hover { text-decoration: underline; }
-    button[type="submit"] { 
-      width: 100%; 
-      padding: 14px; 
+    button[type="submit"] {
+      width: 100%;
+      padding: 14px;
       background: linear-gradient(135deg, #8b5cf6, #6366f1);
-      color: white; 
-      border: none; 
-      border-radius: 10px; 
-      font-size: 1rem; 
-      font-weight: 600; 
-      cursor: pointer; 
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
       transition: transform 0.2s, box-shadow 0.2s;
     }
-    button[type="submit"]:hover { 
+    button[type="submit"]:hover {
       transform: translateY(-2px);
       box-shadow: 0 10px 30px rgba(139, 92, 246, 0.3);
     }
     .divider { display: flex; align-items: center; gap: 16px; margin: 24px 0; color: #64748b; }
     .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.1); }
     .social-login { display: flex; gap: 12px; }
-    .social-btn { 
-      flex: 1; 
-      padding: 12px; 
+    .social-btn {
+      flex: 1;
+      padding: 12px;
       background: rgba(255,255,255,0.05);
       border: 1px solid rgba(255,255,255,0.1);
       border-radius: 10px;
@@ -83,7 +83,7 @@
     .social-btn:hover { background: rgba(255,255,255,0.1); }
     .signup-link { text-align: center; margin-top: 24px; color: #94a3b8; }
     .signup-link a { color: #8b5cf6; text-decoration: none; }
-    .error-message { 
+    .error-message {
       background: rgba(239, 68, 68, 0.1);
       border: 1px solid rgba(239, 68, 68, 0.3);
       color: #fca5a5;
@@ -119,22 +119,22 @@
     <div class="logo"><span>🔐</span></div>
     <h1>Welcome Back</h1>
     <p class="subtitle">Sign in to continue to your account</p>
-    
+
     <div class="error-message" id="errorMessage">
       Invalid email or password. Please try again.
     </div>
-    
+
     <form id="loginForm">
       <div class="form-group">
         <label for="email">Email</label>
         <input type="email" id="email" name="email" placeholder="you@example.com" required>
       </div>
-      
+
       <div class="form-group">
         <label for="password">Password</label>
         <input type="password" id="password" name="password" placeholder="••••••••" required>
       </div>
-      
+
       <div class="remember-row">
         <label>
           <input type="checkbox" id="remember" name="remember">
@@ -142,78 +142,78 @@
         </label>
         <a href="#" class="forgot-link">Forgot password?</a>
       </div>
-      
+
       <button type="submit">Sign In</button>
-      
+
       <div class="divider">or continue with</div>
-      
+
       <div class="social-login">
         <button type="button" class="social-btn">Google</button>
         <button type="button" class="social-btn">GitHub</button>
       </div>
-      
+
       <p class="signup-link">
         Don't have an account? <a href="#">Sign up</a>
       </p>
     </form>
-    
+
     <div class="success-message" id="successMessage">
       ✅ Login successful! Redirecting...
     </div>
-    
+
     <div class="dashboard" id="dashboard">
       <h2>🎉 Welcome!</h2>
       <p class="user-info">Logged in as: <span id="userEmail"></span></p>
       <button class="logout-btn" id="logoutBtn">Sign Out</button>
     </div>
   </div>
-  
+
   <script>
     // Test credentials
     const TEST_USERS = {
       'test@example.com': 'password123',
       'admin@example.com': 'admin123',
     };
-    
+
     const form = document.getElementById('loginForm');
     const errorMessage = document.getElementById('errorMessage');
     const successMessage = document.getElementById('successMessage');
     const dashboard = document.getElementById('dashboard');
-    
+
     form.addEventListener('submit', (e) => {
       e.preventDefault();
-      
+
       const email = document.getElementById('email').value;
       const password = document.getElementById('password').value;
-      
+
       // Check credentials
       if (TEST_USERS[email] && TEST_USERS[email] === password) {
         // Success
         errorMessage.style.display = 'none';
         form.style.display = 'none';
         successMessage.style.display = 'block';
-        
+
         // Store login state
         localStorage.setItem('loggedIn', 'true');
         localStorage.setItem('userEmail', email);
-        
+
         // Show dashboard after delay
         setTimeout(() => {
           successMessage.style.display = 'none';
           dashboard.style.display = 'block';
           document.getElementById('userEmail').textContent = email;
         }, 1500);
-        
+
         // Dispatch completion event
         window.dispatchEvent(new CustomEvent('browse-bot-task-complete'));
-        
+
       } else {
         // Error
         errorMessage.style.display = 'block';
         localStorage.setItem('loginFailed', 'true');
       }
     });
-    
+
     // Logout
     document.getElementById('logoutBtn').addEventListener('click', () => {
       localStorage.removeItem('loggedIn');
@@ -222,7 +222,7 @@
       form.style.display = 'block';
       form.reset();
     });
-    
+
     // Track input for eval
     document.querySelectorAll('input').forEach(el => {
       el.addEventListener('input', () => {

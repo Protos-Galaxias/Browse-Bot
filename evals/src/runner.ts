@@ -105,6 +105,20 @@ export async function runScenario(
       console.log(chalk.gray(`  Tools: ${toolsCalled.map(t => t.name).join(' → ')}`));
     }
     
+    // Convert metrics to LLMMetrics format
+    const llmMetrics = completionResult.metrics ? {
+      totalLLMTime: 0, // Not available yet - would need timing from service worker
+      promptTokens: completionResult.metrics.promptTokens,
+      completionTokens: completionResult.metrics.completionTokens,
+      totalTokens: completionResult.metrics.totalTokens,
+      llmCalls: completionResult.metrics.llmCalls,
+      avgResponseTime: 0,
+    } : undefined;
+    
+    if (llmMetrics && llmMetrics.totalTokens > 0) {
+      console.log(chalk.gray(`  Tokens: ${llmMetrics.totalTokens} (${llmMetrics.promptTokens} in / ${llmMetrics.completionTokens} out)`));
+    }
+    
     return {
       scenario: scenario.name,
       model,
@@ -112,6 +126,7 @@ export async function runScenario(
       duration,
       assertions: assertionResults,
       toolsCalled,
+      llmMetrics,
       timestamp: new Date().toISOString(),
     };
     

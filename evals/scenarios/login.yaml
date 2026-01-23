@@ -8,15 +8,15 @@ assertions:
   - type: localStorage
     key: "loggedIn"
     expected: "true"
-  
+
   - type: localStorage
     key: "userEmail"
     expected: "test@example.com"
-  
+
   - type: tool_called
     tool: "findAndInsertText"
     contains: "email"
-  
+
   - type: tool_called
     tool: "findAndClick"
     contains: "sign in"

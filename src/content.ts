@@ -743,6 +743,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
     if (message.type === 'EVAL_TASK_COMPLETE') {
         document.documentElement.setAttribute('data-browse-bot-complete', 'true');
+        // Store LLM metrics if provided
+        if (message.metrics) {
+            document.documentElement.setAttribute('data-browse-bot-metrics', JSON.stringify(message.metrics));
+        }
         sendResponse({ status: 'ok' });
         return true;
     }

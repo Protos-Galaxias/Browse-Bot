@@ -24,6 +24,19 @@ export function generateSummary(results: EvalResult[]): EvalSummary {
     const failed = modelRuns.length - passed;
     const avgDuration = modelRuns.reduce((sum, r) => sum + r.duration, 0) / modelRuns.length;
     
+    // Calculate tool call metrics
+    const avgToolCalls = modelRuns.reduce((sum, r) => sum + r.toolsCalled.length, 0) / modelRuns.length;
+    
+    // Calculate LLM metrics if available
+    const runsWithMetrics = modelRuns.filter(r => r.llmMetrics);
+    const avgLLMTime = runsWithMetrics.length > 0
+      ? runsWithMetrics.reduce((sum, r) => sum + (r.llmMetrics?.totalLLMTime || 0), 0) / runsWithMetrics.length
+      : 0;
+    const avgTokens = runsWithMetrics.length > 0
+      ? runsWithMetrics.reduce((sum, r) => sum + (r.llmMetrics?.totalTokens || 0), 0) / runsWithMetrics.length
+      : 0;
+    const totalTokens = modelRuns.reduce((sum, r) => sum + (r.llmMetrics?.totalTokens || 0), 0);
+    
     summaries.push({
       model,
       provider,
@@ -31,11 +44,20 @@ export function generateSummary(results: EvalResult[]): EvalSummary {
       failed,
       successRate: (passed / modelRuns.length) * 100,
       avgDuration,
+      avgToolCalls,
+      avgLLMTime,
+      avgTokens,
+      totalTokens,
     });
   }
   
-  // Sort by success rate descending
-  summaries.sort((a, b) => b.successRate - a.successRate);
+  // Sort by success rate descending, then by avg duration ascending
+  summaries.sort((a, b) => {
+    if (b.successRate !== a.successRate) {
+      return b.successRate - a.successRate;
+    }
+    return a.avgDuration - b.avgDuration;
+  });
   
   return {
     totalScenarios: new Set(results.map(r => r.scenario)).size,
@@ -59,6 +81,8 @@ export function printSummary(summary: EvalSummary): void {
       chalk.red('Failed'),
       chalk.yellow('Success %'),
       chalk.blue('Avg Time'),
+      chalk.cyan('Avg Tools'),
+      chalk.magenta('Avg Tokens'),
     ],
     style: {
       head: [],
@@ -73,6 +97,11 @@ export function printSummary(summary: EvalSummary): void {
         ? chalk.yellow 
         : chalk.red;
     
+    // Format tokens - show "-" if no data
+    const tokensStr = result.avgTokens > 0 
+      ? `${Math.round(result.avgTokens)}`
+      : '-';
+    
     table.push([
       result.model,
       result.provider,
@@ -80,6 +109,8 @@ export function printSummary(summary: EvalSummary): void {
       chalk.red(result.failed.toString()),
       successColor(`${result.successRate.toFixed(1)}%`),
       chalk.blue(`${(result.avgDuration / 1000).toFixed(1)}s`),
+      chalk.cyan(result.avgToolCalls.toFixed(1)),
+      chalk.magenta(tokensStr),
     ]);
   }
   
@@ -89,7 +120,7 @@ export function printSummary(summary: EvalSummary): void {
   if (summary.results.length > 0) {
     const winner = summary.results[0];
     console.log(chalk.bold.green(`\n🏆 Best performer: ${winner.provider}/${winner.model}`));
-    console.log(chalk.gray(`   ${winner.successRate.toFixed(1)}% success rate, ${(winner.avgDuration / 1000).toFixed(1)}s avg\n`));
+    console.log(chalk.gray(`   ${winner.successRate.toFixed(1)}% success rate, ${(winner.avgDuration / 1000).toFixed(1)}s avg, ${winner.avgToolCalls.toFixed(1)} tools/test\n`));
   }
 }
 
@@ -191,6 +222,7 @@ export function compareRuns(dir: string, limit = 5): void {
   
   console.log(table.toString());
 }
+
 
 
 

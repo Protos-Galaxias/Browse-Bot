@@ -35,12 +35,12 @@
       <span class="cart-count" id="cartCount">0</span>
     </div>
   </div>
-  
+
   <div class="search-box">
     <input type="text" id="searchInput" placeholder="Search products...">
     <button id="searchBtn">Search</button>
   </div>
-  
+
   <div class="products" id="products">
     <div class="product" data-id="1">
       <div style="height: 180px; background: linear-gradient(135deg, #667eea, #764ba2);"></div>
@@ -50,7 +50,7 @@
         <button class="add-to-cart" data-product="Wireless Headphones">Add to Cart</button>
       </div>
     </div>
-    
+
     <div class="product" data-id="2">
       <div style="height: 180px; background: linear-gradient(135deg, #f093fb, #f5576c);"></div>
       <div class="product-info">
@@ -59,7 +59,7 @@
         <button class="add-to-cart" data-product="Smart Watch">Add to Cart</button>
       </div>
     </div>
-    
+
     <div class="product" data-id="3">
       <div style="height: 180px; background: linear-gradient(135deg, #4facfe, #00f2fe);"></div>
       <div class="product-info">
@@ -68,7 +68,7 @@
         <button class="add-to-cart" data-product="Bluetooth Speaker">Add to Cart</button>
       </div>
     </div>
-    
+
     <div class="product" data-id="4">
       <div style="height: 180px; background: linear-gradient(135deg, #43e97b, #38f9d7);"></div>
       <div class="product-info">
@@ -78,47 +78,47 @@
       </div>
     </div>
   </div>
-  
+
   <div class="toast" id="toast">Item added to cart!</div>
-  
+
   <script>
     let cartCount = 0;
     const cartItems = [];
-    
+
     // Add to cart functionality
     document.querySelectorAll('.add-to-cart').forEach(btn => {
       btn.addEventListener('click', () => {
         const productName = btn.dataset.product;
         cartCount++;
         cartItems.push(productName);
-        
+
         document.getElementById('cartCount').textContent = cartCount;
-        
+
         btn.textContent = 'Added!';
         btn.classList.add('added');
-        
+
         // Show toast
         const toast = document.getElementById('toast');
         toast.style.display = 'block';
         setTimeout(() => { toast.style.display = 'none'; }, 2000);
-        
+
         // Reset button after delay
         setTimeout(() => {
           btn.textContent = 'Add to Cart';
           btn.classList.remove('added');
         }, 1500);
-        
+
         // Store in localStorage for assertions
         localStorage.setItem('cart', JSON.stringify(cartItems));
         localStorage.setItem('cartCount', cartCount.toString());
-        
+
         // Dispatch event for eval system
         window.dispatchEvent(new CustomEvent('browse-bot-tool-call', {
           detail: { name: 'addToCart', args: { product: productName }, timestamp: Date.now() }
         }));
       });
     });
-    
+
     // Search functionality
     document.getElementById('searchBtn').addEventListener('click', () => {
       const query = document.getElementById('searchInput').value.toLowerCase();
@@ -127,7 +127,7 @@
         product.style.display = name.includes(query) ? 'block' : 'none';
       });
     });
-    
+
     // Listen for eval tasks
     window.addEventListener('browse-bot-eval-task', (e) => {
       console.log('Received eval task:', e.detail);
