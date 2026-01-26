@@ -30,6 +30,13 @@ SPDX-License-Identifier: BSL-1.1
             chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
                 try { if (tab.active) activeTabMeta = { id: tab.id as number, title: tab.title || '', url: tab.url, favIconUrl: (tab as any).favIconUrl }; } catch { /* ignore */ }
             });
+            chrome.windows.onFocusChanged.addListener(async (windowId) => {
+                if (windowId === chrome.windows.WINDOW_ID_NONE) { return; }
+                try {
+                    const [tab] = await chrome.tabs.query({ active: true, windowId });
+                    if (tab?.id) { activeTabMeta = { id: tab.id as number, title: tab.title || '', url: tab.url, favIconUrl: (tab as any).favIconUrl }; }
+                } catch { /* ignore */ }
+            });
         } catch { /* listeners may fail */ }
         try {
             extStorage.onChanged.addListener((changes) => {
