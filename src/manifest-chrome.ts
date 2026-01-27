@@ -6,7 +6,8 @@ import packageJson from '../package.json';
 
 export default defineManifest({
     manifest_version: 3,
-    name: 'Browse Bot',
+    name: 'Browse Bot: your open-source, page-aware AI assistant',
+    description: 'Page-aware AI browser assistant that helps automate on-page interactions, summarize pages and images, and find information promptly',
     version: packageJson.version,
     permissions: ['storage', 'activeTab', 'scripting', 'tabs', 'sidePanel'],
     host_permissions: ['<all_urls>'],
