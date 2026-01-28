@@ -48,10 +48,7 @@ export default defineManifest({
             gecko: {
                 id: 'browse-bot@protosgalaxias.com',
                 data_collection_permissions: {
-                    required: false,
-                    technicalData: false,
-                    interactionData: false,
-                    analyticsData: false
+                    required: ['none']
                 }
             }
         }
