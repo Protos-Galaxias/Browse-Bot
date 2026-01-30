@@ -134,6 +134,13 @@ export function logResult(text: string): void {
     updateLog(payload);
 }
 
+export function streamChunk(text: string, done: boolean = false): void {
+    console.log('[Logger] streamChunk:', done ? 'DONE' : text.substring(0, 20));
+    chrome.runtime.sendMessage({ type: 'STREAM_CHUNK', text, done }).catch((e) => {
+        console.warn('[Logger] streamChunk failed:', e?.message);
+    });
+}
+
 export function formatError(error: unknown, context?: string): string {
     try {
         const base = (() => {

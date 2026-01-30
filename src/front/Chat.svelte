@@ -22,6 +22,7 @@ SPDX-License-Identifier: BSL-1.1
     let log: Array<string | { type: 'i18n'; key: string; params?: Record<string, unknown>; prefix?: 'error'|'result'|'system'|'agent'|'user' } | { type: 'ui'; kind: 'click'; title?: string; text: string } | { type: 'error'; message: string; details?: Record<string, unknown> }> = [];
     let isTyping = false;
     let isTaskRunning = false;
+    let streamingText = '';
     let models: string[] = [];
     let activeModel = '';
     let showModelDropdown = false;
@@ -398,6 +399,22 @@ SPDX-License-Identifier: BSL-1.1
     }
 
     chrome.runtime.onMessage.addListener((message) => {
+        if (message.type === 'STREAM_CHUNK') {
+            console.log('[UI] STREAM_CHUNK received:', message.done ? 'DONE' : message.text?.substring(0, 20));
+            if (message.done) {
+                // Stream finished - save the accumulated text as a result
+                if (streamingText.length > 0) {
+                    log = [...log, { type: 'result', text: streamingText }];
+                    saveChatState();
+                }
+                streamingText = '';
+                isTyping = false;
+            } else if (message.text) {
+                streamingText += message.text;
+            }
+
+            return true;
+        }
         if (message.type === 'UPDATE_LOG') {
             const payload = message.data;
             const computed = (() => {
@@ -423,6 +440,7 @@ SPDX-License-Identifier: BSL-1.1
                 } catch {
                 // ignored
                 }
+
                 return String(payload || '');
             })();
             if (hideAgentMessages) {
@@ -436,10 +454,12 @@ SPDX-License-Identifier: BSL-1.1
             }
             log = [...log, computed];
             isTyping = false;
+            streamingText = '';
             saveChatState();
         } else if (message.type === 'TASK_COMPLETE') {
             isTaskRunning = false;
             isTyping = false;
+            streamingText = '';
         }
     });
 
@@ -546,7 +566,7 @@ SPDX-License-Identifier: BSL-1.1
             </div>
         </div>
     {:else}
-        <MessageList {log} {isTyping} />
+        <MessageList {log} {isTyping} {streamingText} />
     {/if}
 
     {#if log.length !== 0}

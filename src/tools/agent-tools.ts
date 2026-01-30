@@ -11,6 +11,7 @@ import { selectOptionTool } from './selectOption';
 import { setCheckboxTool } from './setCheckbox';
 import { setRadioTool } from './setRadio';
 import { finishTaskTool } from './finishTask';
+import { chatTool } from './chat';
 import { getYouTubeSubtitlesTool } from './getYouTubeSubtitles';
 import { setMemoryTool } from './setMemory';
 import { createMcpDynamicTools } from './mcp-dynamic';
@@ -30,6 +31,7 @@ export const agentTools = async (context: ToolContext) => {
         setRadio: setRadioTool(context),
         getYouTubeSubtitles: getYouTubeSubtitlesTool(context),
         setMemory: setMemoryTool(),
+        chat: chatTool(context),
         finishTask: finishTaskTool(),
         ...dynamicMcp,
         ...external

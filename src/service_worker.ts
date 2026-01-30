@@ -137,6 +137,9 @@ async function runAgentTask(
     currentController = new AbortController();
     const signal = currentController.signal;
 
+    const hasTools = tools && Object.keys(tools).length > 0;
+    console.log('[SW] Running with', hasTools ? Object.keys(tools).length : 0, 'tools');
+
     type ToolResultOutput = { answer?: string; [key: string]: unknown };
     type ToolResult = { toolCallId: string; toolName: string; output: ToolResultOutput };
 
@@ -162,15 +165,18 @@ async function runAgentTask(
             llmCalls: steps?.length || 1
         };
         console.log('[SW] LLM metrics:', metrics);
+        console.log('[SW] Steps:', steps?.length, 'flattenContent:', flattenContent.length);
 
         const toolCalls = flattenContent.filter((c: any) => c?.type === 'tool-call');
         const sdkToolResults = flattenContent.filter((c: any) => c?.type === 'tool-result');
         const text = (() => {
             const texts = flattenContent.filter((c: any) => c?.type === 'text' && typeof c.text === 'string');
+
             return texts.length > 0 ? texts[texts.length - 1].text : undefined;
         })();
-        console.log('derived', { stepsCount: steps?.length ?? 0, toolCalls: toolCalls.length, toolResults: sdkToolResults.length, hasText: Boolean(text) });
+        console.log('[SW] Derived:', { toolCalls: toolCalls.length, toolResults: sdkToolResults.length, hasText: Boolean(text) });
 
+        // Update history with tool calls
         if (Array.isArray(toolCalls)) {
             for (const call of toolCalls) {
                 agentHistory.push({
@@ -197,17 +203,27 @@ async function runAgentTask(
             agentHistory.push(...toolResultsMsgs);
         }
 
-        const finish = (sdkToolResults || []).find((tr: ToolResult) => tr.toolName === 'finishTask');
-        if (finish && finish.output && typeof finish.output.answer === 'string') {
-            return { text: finish.output.answer as string, metrics };
+        // Check for chat tool (simple conversational response)
+        const chatResult = (sdkToolResults || []).find((tr: ToolResult) => tr.toolName === 'chat');
+        if (chatResult && chatResult.output && typeof chatResult.output.answer === 'string') {
+            console.log('[SW] Chat tool detected, answer:', chatResult.output.answer.substring(0, 50));
+
+            return { text: chatResult.output.answer, metrics };
         }
 
+        // Check for finishTask tool (task completion)
+        const finish = (sdkToolResults || []).find((tr: ToolResult) => tr.toolName === 'finishTask');
+        if (finish && finish.output && typeof finish.output.answer === 'string') {
+            console.log('[SW] FinishTask tool detected');
 
+            return { text: finish.output.answer, metrics };
+        }
+
+        // Fallback to text
         if (Array.isArray(steps)) agentHistory.push(...steps);
         if (typeof text === 'string' && text.length > 0) {
             agentHistory.push({ role: 'assistant', content: text });
         }
-        console.log('agentHistory', agentHistory);
 
         return { text: text || 'Task completed without a final text answer.', metrics };
     } catch (error) {

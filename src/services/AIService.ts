@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: BSL-1.1
 
 import { ConfigService } from './ConfigService';
-import { generateObject, generateText, stepCountIs } from 'ai';
+import { generateObject, generateText, streamText, stepCountIs } from 'ai';
 import type { GenerateTextResult, ModelMessage, ToolSet, LanguageModel } from 'ai';
 import { ProviderConfigs, type ProviderDescriptor } from './ProviderConfigs';
 import { reportErrorKey } from '../logger';
@@ -21,11 +21,36 @@ export type GenerateWithToolsParams = {
   abortSignal?: AbortSignal;
 };
 
+export type StreamTextParams = {
+  messages: ModelMessage[];
+  onTextChunk: (chunk: string) => void;
+  abortSignal?: AbortSignal;
+};
+
+export type StreamWithToolsParams = {
+  messages: ModelMessage[];
+  tools: ToolSet;
+  onTextChunk: (chunk: string) => void;
+  onChatResponse?: (response: string) => void;
+  maxRetries?: number;
+  maxToolRoundtrips?: number;
+  abortSignal?: AbortSignal;
+};
+
+export type StreamWithToolsResult = {
+  chatResponse?: string;
+  text: string;
+  steps: any[];
+  usage: any;
+};
+
 export interface AIService {
   generate<T>(schema: unknown, systemPrompt: string, prompt: string, options?: AIGenerateOptions): Promise<T>;
   generateSimpleText(systemPrompt: string, prompt: string, options?: AIGenerateOptions): Promise<string>;
   getChatModel(): Promise<LanguageModel>;
   generateWithTools(params: GenerateWithToolsParams): Promise<GenerateTextResult<any, any>>;
+  streamText(params: StreamTextParams): Promise<string>;
+  streamWithTools(params: StreamWithToolsParams): Promise<StreamWithToolsResult>;
 }
 
 export class AiService implements AIService {
@@ -106,6 +131,7 @@ export class AiService implements AIService {
             const model = await this.getChatModel();
             const maxRetries = typeof params.maxRetries === 'number' ? params.maxRetries : 5;
             const maxToolRoundtrips = typeof params.maxToolRoundtrips === 'number' ? params.maxToolRoundtrips : 10;
+
             return generateText({
                 model,
                 messages: params.messages,
@@ -116,6 +142,95 @@ export class AiService implements AIService {
             }) as unknown as GenerateTextResult<any, any>;
         } catch (error) {
             reportErrorKey('errors.aiGenerateWithTools', error);
+            throw error;
+        }
+    }
+
+    async streamText(params: StreamTextParams): Promise<string> {
+        try {
+            const model = await this.getChatModel();
+            console.log('[AI] streamText starting...');
+
+            const result = streamText({
+                model,
+                messages: params.messages,
+                abortSignal: params.abortSignal
+            });
+
+            let chunkCount = 0;
+            // Stream text chunks
+            for await (const chunk of result.textStream) {
+                if (chunk) {
+                    chunkCount++;
+                    console.log('[AI] Chunk', chunkCount, ':', chunk.substring(0, 30));
+                    params.onTextChunk(chunk);
+                }
+            }
+
+            const finalText = await result.text;
+            console.log('[AI] streamText completed. Chunks:', chunkCount, 'Total length:', finalText?.length);
+
+            // Return final text
+            return finalText;
+        } catch (error) {
+            console.error('[AI] streamText error:', error);
+            reportErrorKey('errors.aiStreamText', error);
+            throw error;
+        }
+    }
+
+    async streamWithTools(params: StreamWithToolsParams): Promise<StreamWithToolsResult> {
+        try {
+            const model = await this.getChatModel();
+            const maxRetries = typeof params.maxRetries === 'number' ? params.maxRetries : 5;
+            const maxToolRoundtrips = typeof params.maxToolRoundtrips === 'number' ? params.maxToolRoundtrips : 10;
+
+            console.log('[AI] streamWithTools starting...');
+
+            const result = streamText({
+                model,
+                messages: params.messages,
+                tools: params.tools,
+                maxRetries,
+                maxSteps: maxToolRoundtrips,
+                abortSignal: params.abortSignal
+            });
+
+            let chatResponse: string | undefined;
+
+            // Consume fullStream to get all events
+            for await (const part of result.fullStream) {
+                if (part.type === 'text-delta' && part.textDelta) {
+                    params.onTextChunk(part.textDelta);
+                }
+                // Detect chat tool call and extract response immediately
+                if (part.type === 'tool-call' && part.toolName === 'chat') {
+                    const args = part.args as { response?: string };
+                    if (args?.response) {
+                        chatResponse = args.response;
+                        console.log('[AI] Chat tool called, response length:', chatResponse.length);
+                        if (params.onChatResponse) {
+                            params.onChatResponse(chatResponse);
+                        }
+                    }
+                }
+            }
+
+            const finalText = await result.text;
+            const steps = await result.steps;
+            const usage = await result.usage;
+
+            console.log('[AI] streamWithTools completed. Steps:', steps?.length, 'ChatResponse:', Boolean(chatResponse));
+
+            return {
+                chatResponse,
+                text: finalText,
+                steps: steps || [],
+                usage
+            };
+        } catch (error) {
+            console.error('[AI] streamWithTools error:', error);
+            reportErrorKey('errors.aiStreamWithTools', error);
             throw error;
         }
     }

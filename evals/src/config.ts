@@ -12,10 +12,10 @@ export const DEFAULT_MODELS: ModelConfig[] = [
     //   provider: 'openai',
     //   model: 'gpt-4.1-mini',
     // },
-    // { provider: 'openrouter', model: 'openai/gpt-4o-mini' },
+    { provider: 'openrouter', model: 'openai/gpt-4o-mini' },
     // { provider: 'openrouter', model: 'anthropic/claude-3.5-haiku' },
     // { provider: 'openrouter', model: 'google/gemini-2.0-flash-001' },
-    { provider: 'openrouter', model: 'anthropic/claude-haiku-4.5' }
+    // { provider: 'openrouter', model: 'anthropic/claude-haiku-4.5' }
     // Uncomment for quality comparison (slower):
     // { provider: 'openrouter', model: 'anthropic/claude-3.5-sonnet' },
     // { provider: 'openrouter', model: 'openai/gpt-4o' },
