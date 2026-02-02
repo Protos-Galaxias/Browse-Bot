@@ -452,6 +452,14 @@ SPDX-License-Identifier: BSL-1.1
                 const isFinalOrError = isError || isResult || isI18nResult;
                 if (!isFinalOrError) return true;
             }
+            // Skip duplicate results (can happen when streaming + logResult both fire)
+            const lastItem = log[log.length - 1];
+            const isResultType = typeof computed === 'object' && (computed as any).type === 'result';
+            if (isResultType && lastItem && typeof lastItem === 'object' && (lastItem as any).type === 'result') {
+                if ((computed as any).text === (lastItem as any).text) {
+                    return true;
+                }
+            }
             log = [...log, computed];
             isTyping = false;
             streamingText = '';
@@ -505,6 +513,12 @@ SPDX-License-Identifier: BSL-1.1
                     Boolean(changes.activeModel_lmstudio);
             if (providerChanged || modelKeysChanged) {
                 await loadModelsFromStorage();
+            }
+            if (changes.sendOnEnter) {
+                sendOnEnter = typeof changes.sendOnEnter.newValue === 'boolean' ? changes.sendOnEnter.newValue : true;
+            }
+            if (changes.hideAgentMessages) {
+                hideAgentMessages = typeof changes.hideAgentMessages.newValue === 'boolean' ? changes.hideAgentMessages.newValue : true;
             }
         });
     } catch {

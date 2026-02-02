@@ -113,6 +113,7 @@ export interface AgentTaskResult {
         totalTokens: number;
         llmCalls: number;
     };
+    streamed?: boolean;
 }
 
 async function runAgentTask(
@@ -208,7 +209,7 @@ async function runAgentTask(
         if (chatResult && chatResult.output && typeof chatResult.output.answer === 'string') {
             console.log('[SW] Chat tool detected, answer:', chatResult.output.answer.substring(0, 50));
 
-            return { text: chatResult.output.answer, metrics };
+            return { text: chatResult.output.answer, metrics, streamed: true };
         }
 
         // Check for finishTask tool (task completion)
@@ -478,7 +479,9 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
                     const providerConfig = ProviderConfigs[providerFromConfig] || ProviderConfigs['openrouter'];
                     try {
                         const result = await runAgentTask(messages, {} as ToolSet, selectedServiceGeneric, providerConfig.defaultMaxContextTokens);
-                        logResult(result.text);
+                        if (!result.streamed) {
+                            logResult(result.text);
+                        }
                     } catch (err) {
                         if (err instanceof UserAbortedError) {
                             updateLogI18n('task.aborted', {}, 'result');
@@ -524,7 +527,9 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
             const providerConfig = ProviderConfigs[providerFromConfig] || ProviderConfigs['openrouter'];
             const result = await runAgentTask(messages, tools, selectedServiceGeneric, providerConfig.defaultMaxContextTokens);
 
-            logResult(result.text);
+            if (!result.streamed) {
+                logResult(result.text);
+            }
         } catch (err) {
             if (err instanceof UserAbortedError) {
                 updateLogI18n('task.aborted', {}, 'result');
