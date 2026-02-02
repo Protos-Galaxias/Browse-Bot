@@ -131,6 +131,7 @@ SPDX-License-Identifier: BSL-1.1
 
     async function selectChat(id: string) {
         if (activeChatId === id) { showChatList = false; dispatch('chatSelected'); return; }
+        const previousChatId = activeChatId;
         try {
             activeChatId = id;
             await ChatStorage.setActiveChatId(id);
@@ -140,15 +141,15 @@ SPDX-License-Identifier: BSL-1.1
         // ignored
         }
         showChatList = false;
-        // reset agent memory/history in background to isolate chats
-        try { chrome.runtime.sendMessage({ type: 'RESET_CONTEXT' }); } catch { /* ignored */ }
+        // reset agent memory/history in background to isolate chats, save debug log for previous chat
+        try { chrome.runtime.sendMessage({ type: 'RESET_CONTEXT', chatId: previousChatId }); } catch { /* ignored */ }
         dispatch('chatSelected');
     }
 
     async function newChat() {
         try {
-            // reset agent memory/history to isolate chats
-            try { chrome.runtime.sendMessage({ type: 'RESET_CONTEXT' }); } catch { /* ignored */ }
+            // reset agent memory/history to isolate chats, save debug log for current chat
+            try { chrome.runtime.sendMessage({ type: 'RESET_CONTEXT', chatId: activeChatId }); } catch { /* ignored */ }
             const meta = await ChatStorage.createChat();
             // Immediately clear current view to avoid showing previous history
             log = [];
@@ -221,6 +222,105 @@ SPDX-License-Identifier: BSL-1.1
         } else if (e.key === 'Escape') {
             cancelEditing();
         }
+    }
+
+    async function copyDebugLog() {
+        console.log('[UI] copyDebugLog called');
+        try {
+            // Trigger service worker to save debug log to storage
+            console.log('[UI] Sending GET_DEBUG_LOG message, chatId:', activeChatId);
+            chrome.runtime.sendMessage({ type: 'GET_DEBUG_LOG', chatId: activeChatId });
+
+            // Wait a bit for the async save to complete
+            await new Promise(r => setTimeout(r, 500));
+
+            // Read from chrome.storage.local (not extStorage which uses IndexedDB)
+            console.log('[UI] Reading from chrome.storage.local');
+            const stored = await chrome.storage.local.get(['_debugLog']);
+            console.log('[UI] Storage result:', stored);
+            const debugLog = stored._debugLog;
+
+            if (!debugLog) {
+                console.warn('[UI] No debug log available');
+                alert('No debug log available - run a task first');
+                return;
+            }
+
+            const formatted = formatDebugLog(debugLog);
+            console.log('[UI] Formatted log length:', formatted.length);
+
+            // Use textarea fallback for clipboard (more reliable in extensions)
+            const textarea = document.createElement('textarea');
+            textarea.value = formatted;
+            textarea.style.position = 'fixed';
+            textarea.style.left = '-9999px';
+            textarea.style.top = '0';
+            document.body.appendChild(textarea);
+            textarea.focus();
+            textarea.select();
+            const success = document.execCommand('copy');
+            console.log('[UI] execCommand copy result:', success);
+            document.body.removeChild(textarea);
+
+            if (success) {
+                console.log('[UI] Debug log copied to clipboard, length:', formatted.length);
+                alert('Debug log copied! Length: ' + formatted.length);
+            } else {
+                console.error('[UI] execCommand copy failed');
+                alert('Failed to copy to clipboard');
+            }
+        } catch (e) {
+            console.error('[UI] Failed to copy debug log:', e);
+            alert('Error: ' + String(e));
+        }
+    }
+
+    function formatDebugLog(debugLog: { timestamp: string; provider: string; model: string; messages: any[] }): string {
+        const messages = debugLog.messages || [];
+
+        const lines: string[] = [
+            '=== BROWSE BOT DEBUG LOG ===',
+            `Timestamp: ${debugLog.timestamp || 'unknown'}`,
+            `Provider: ${debugLog.provider || 'unknown'}`,
+            `Model: ${debugLog.model || 'unknown'}`,
+            '',
+            '=== MESSAGES ===',
+        ];
+
+        if (messages.length === 0) {
+            lines.push('(no messages - run a task first)');
+        }
+
+        for (const msg of messages) {
+            lines.push('');
+            lines.push(`--- ${String(msg.role).toUpperCase()} ---`);
+            
+            if (typeof msg.content === 'string') {
+                lines.push(msg.content);
+            } else if (Array.isArray(msg.content)) {
+                for (const item of msg.content) {
+                    if (item.type === 'text') {
+                        lines.push(item.text);
+                    } else if (item.type === 'tool-call') {
+                        lines.push(`[Tool Call: ${item.toolName}]`);
+                        lines.push(`Input: ${JSON.stringify(item.input, null, 2)}`);
+                    } else if (item.type === 'tool-result') {
+                        lines.push(`[Tool Result: ${item.toolName}]`);
+                        const output = item.output?.value ?? item.output;
+                        lines.push(`Output: ${JSON.stringify(output, null, 2)}`);
+                    } else {
+                        lines.push(JSON.stringify(item, null, 2));
+                    }
+                }
+            } else if (msg.content) {
+                lines.push(JSON.stringify(msg.content, null, 2));
+            }
+        }
+        
+        lines.push('');
+        lines.push('=== END DEBUG LOG ===');
+        
+        return lines.join('\n');
     }
 
     async function fetchActiveTab(): Promise<{ id: number; title: string; url?: string; favIconUrl?: string } | null> {
@@ -657,6 +757,11 @@ SPDX-License-Identifier: BSL-1.1
                                         <button class="dropdown-item" on:click|stopPropagation={() => startEditing(c)}>
                                             ✏️ Rename
                                         </button>
+                                        {#if c.id === activeChatId}
+                                            <button class="dropdown-item" on:click|stopPropagation={() => { copyDebugLog(); closeMenu(); }}>
+                                                📋 Copy debug log
+                                            </button>
+                                        {/if}
                                         <button class="dropdown-item danger" on:click|stopPropagation={() => { removeChat(c.id); closeMenu(); }}>
                                             🗑️ Delete
                                         </button>

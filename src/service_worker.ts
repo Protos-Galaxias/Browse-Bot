@@ -386,9 +386,65 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
         return;
     }
     if (message.type === 'RESET_CONTEXT') {
+        const chatId = message.chatId as string | undefined;
+        // Save debug log for the chat before clearing
+        if (chatId && agentHistory.length > 0) {
+            (async () => {
+                try {
+                    const configService = ConfigService.getInstance();
+                    const provider = await configService.get('provider') || 'unknown';
+                    const model = await configService.get('activeModel') || 'unknown';
+                    const debugInfo = {
+                        timestamp: new Date().toISOString(),
+                        provider,
+                        model,
+                        messages: JSON.parse(JSON.stringify(agentHistory))
+                    };
+                    await chrome.storage.local.set({ [`_debugLog_${chatId}`]: debugInfo });
+                } catch { /* ignore */ }
+            })();
+        }
         try { StateService.getInstance().clearMemory(); } catch (e) { void e; }
         agentHistory = [];
         currentTaskTabs = [];
+        return;
+    }
+    if (message.type === 'GET_DEBUG_LOG') {
+        const chatId = message.chatId as string | undefined;
+        console.log('[SW] GET_DEBUG_LOG handler, chatId:', chatId, 'agentHistory:', agentHistory.length);
+
+        (async () => {
+            try {
+                const configService = ConfigService.getInstance();
+                const provider = await configService.get('provider') || 'unknown';
+                const model = await configService.get('activeModel') || 'unknown';
+
+                // If current history has data, use it
+                if (agentHistory.length > 0) {
+                    const debugInfo = {
+                        timestamp: new Date().toISOString(),
+                        provider,
+                        model,
+                        messages: JSON.parse(JSON.stringify(agentHistory))
+                    };
+                    await chrome.storage.local.set({ _debugLog: debugInfo });
+                    return;
+                }
+
+                // Otherwise, try to load from saved chat debug log
+                if (chatId) {
+                    const stored = await chrome.storage.local.get([`_debugLog_${chatId}`]);
+                    const saved = stored[`_debugLog_${chatId}`];
+                    if (saved) {
+                        await chrome.storage.local.set({ _debugLog: saved });
+                    } else {
+                        await chrome.storage.local.set({ _debugLog: { timestamp: new Date().toISOString(), provider, model, messages: [] } });
+                    }
+                } else {
+                    await chrome.storage.local.set({ _debugLog: { timestamp: new Date().toISOString(), provider, model, messages: [] } });
+                }
+            } catch { /* ignore */ }
+        })();
         return;
     }
     if (message.type === 'SET_CONFIG') {
