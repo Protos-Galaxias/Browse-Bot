@@ -157,6 +157,49 @@ SPDX-License-Identifier: BSL-1.1
         if (e.textKey) return fmt(e.textKey, e.params ?? {});
         return e.text;
     })();
+
+    // Get plain text for copying
+    $: plainText = (() => {
+        if (isError && isErrorLog(entry)) {
+            return entry.message;
+        }
+        if (isResult && isResultLog(entry)) {
+            return entry.text;
+        }
+        if (isI18nProc && isI18nProcessed(entry)) {
+            return entry.text;
+        }
+        if (isI18n && isI18nLog(entry)) {
+            const fmt = get(format) as I18nFmt;
+            return fmt(entry.key, entry.params ?? {});
+        }
+        if (isUi) {
+            return uiText;
+        }
+        return String(entry);
+    })();
+
+    let copied = false;
+
+    async function copyToClipboard() {
+        try {
+            await navigator.clipboard.writeText(plainText);
+            copied = true;
+            setTimeout(() => { copied = false; }, 1500);
+        } catch {
+            // Fallback for extension context
+            const textarea = document.createElement('textarea');
+            textarea.value = plainText;
+            textarea.style.position = 'fixed';
+            textarea.style.left = '-9999px';
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            copied = true;
+            setTimeout(() => { copied = false; }, 1500);
+        }
+    }
 </script>
 
 <div class="message {isUser ? 'user' : 'assistant'}">
@@ -242,6 +285,18 @@ SPDX-License-Identifier: BSL-1.1
                 {@html html}
             </div>
         {/if}
+        <button class="copy-btn" on:click={copyToClipboard} title={copied ? 'Copied!' : 'Copy'}>
+            {#if copied}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+            {:else}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+            {/if}
+        </button>
     {/if}
 </div>
 
@@ -250,6 +305,7 @@ SPDX-License-Identifier: BSL-1.1
         display: flex;
         gap: 1rem;
         align-items: flex-start;
+        position: relative;
     }
 
     .message.user {
@@ -259,6 +315,34 @@ SPDX-License-Identifier: BSL-1.1
 
     .message.assistant {
         flex-direction: column;
+        padding-bottom: 10px;
+    }
+
+    .copy-btn {
+        position: absolute;
+        bottom: -2px;
+        left: 0;
+        opacity: 0;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        padding: 4px;
+        cursor: pointer;
+        color: var(--text-secondary);
+        transition: opacity 0.15s, color 0.15s, background 0.15s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .message.assistant:hover .copy-btn {
+        opacity: 1;
+    }
+
+    .copy-btn:hover {
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        border-color: var(--accent-color);
     }
 
     .message-avatar {
