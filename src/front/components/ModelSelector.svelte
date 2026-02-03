@@ -4,7 +4,7 @@ SPDX-License-Identifier: BSL-1.1
 -->
 
 <script lang="ts">
-    import {createEventDispatcher} from 'svelte';
+    import {createEventDispatcher, onMount} from 'svelte';
 
     export let models: string[] = [];
     export let activeModel = '';
@@ -12,8 +12,11 @@ SPDX-License-Identifier: BSL-1.1
     export let openUpward = false;
     const dispatch = createEventDispatcher();
 
+    let containerEl: HTMLDivElement;
+
     function selectModel(m: string) {
         dispatch('change', {model: m});
+        open = false;
     }
 
     function toggle() {
@@ -26,9 +29,26 @@ SPDX-License-Identifier: BSL-1.1
             callback();
         }
     }
+
+    function onClickOutside(event: MouseEvent) {
+        if (!open) {
+            return;
+        }
+
+        const target = event.target as Node;
+        if (containerEl && !containerEl.contains(target)) {
+            open = false;
+        }
+    }
+
+    onMount(() => {
+        document.addEventListener('click', onClickOutside, true);
+
+        return () => document.removeEventListener('click', onClickOutside, true);
+    });
 </script>
 
-<div class="model-selector" role="button" tabindex="0" on:click={toggle} on:keydown={(e) => onKeyActivate(e, toggle)}>
+<div class="model-selector" role="button" tabindex="0" bind:this={containerEl} on:click={toggle} on:keydown={(e) => onKeyActivate(e, toggle)}>
     <p class="model-name">{activeModel}</p>
     <span class="chevron">▼</span>
     {#if open}

@@ -294,7 +294,7 @@ SPDX-License-Identifier: BSL-1.1
         for (const msg of messages) {
             lines.push('');
             lines.push(`--- ${String(msg.role).toUpperCase()} ---`);
-            
+
             if (typeof msg.content === 'string') {
                 lines.push(msg.content);
             } else if (Array.isArray(msg.content)) {
@@ -316,10 +316,10 @@ SPDX-License-Identifier: BSL-1.1
                 lines.push(JSON.stringify(msg.content, null, 2));
             }
         }
-        
+
         lines.push('');
         lines.push('=== END DEBUG LOG ===');
-        
+
         return lines.join('\n');
     }
 
