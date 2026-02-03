@@ -412,39 +412,20 @@ SPDX-License-Identifier: BSL-1.1
         }
     }
 
-    async function generateChatTitle(userMessage: string, siteUrl?: string) {
-        try {
-            if (!activeChatId) return;
-
-            const chatIdToUpdate = activeChatId;
-            console.log('[UI] Requesting chat title generation for:', chatIdToUpdate, userMessage);
-
-            // Use Promise-based approach instead of callback
-            const response = await chrome.runtime.sendMessage({
-                type: 'GENERATE_CHAT_TITLE',
-                userMessage,
-                siteUrl,
-                chatId: chatIdToUpdate
-            });
-
-            console.log('[UI] Received response:', response);
-
-            if (response?.title) {
-                try {
-                    console.log('[UI] Renaming chat', chatIdToUpdate, 'to:', response.title);
-                    await ChatStorage.renameChat(chatIdToUpdate, response.title);
-                    await loadChats();
-                    console.log('[UI] Chat title updated successfully');
-                } catch (e) {
-                    console.warn('[UI] Failed to update chat title:', e);
-                }
-            } else {
-                console.warn('[UI] No title in response:', response);
-            }
-        } catch (error) {
-            console.warn('[UI] Failed to generate chat title:', error);
-        // Silently fail - not critical
+    function generateChatTitle(userMessage: string, siteUrl?: string) {
+        if (!activeChatId) {
+            return;
         }
+
+        const chatIdToUpdate = activeChatId;
+        console.log('[UI] Requesting chat title generation for:', chatIdToUpdate, userMessage);
+
+        chrome.runtime.sendMessage({
+            type: 'GENERATE_CHAT_TITLE',
+            userMessage,
+            siteUrl,
+            chatId: chatIdToUpdate
+        }).catch(() => {});
     }
 
     function startTask() {
@@ -499,6 +480,18 @@ SPDX-License-Identifier: BSL-1.1
     }
 
     chrome.runtime.onMessage.addListener((message) => {
+        if (message.type === 'CHAT_TITLE_GENERATED') {
+            const { chatId, title } = message;
+            console.log('[UI] CHAT_TITLE_GENERATED received:', chatId, title);
+            if (chatId && title) {
+                ChatStorage.renameChat(chatId, title)
+                    .then(() => loadChats())
+                    .then(() => console.log('[UI] Chat title updated successfully'))
+                    .catch((e) => console.warn('[UI] Failed to update chat title:', e));
+            }
+
+            return true;
+        }
         if (message.type === 'STREAM_CHUNK') {
             console.log('[UI] STREAM_CHUNK received:', message.done ? 'DONE' : message.text?.substring(0, 20));
             if (message.done) {

@@ -468,11 +468,10 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
         return true; // Keep message channel open for async response
     }
     if (message.type === 'GENERATE_CHAT_TITLE') {
-        const { userMessage, siteUrl } = message as { userMessage: string; siteUrl?: string };
-        console.log('[SW] Generating chat title for:', userMessage, siteUrl);
+        const { userMessage, siteUrl, chatId } = message as { userMessage: string; siteUrl?: string; chatId?: string };
+        console.log('[SW] Generating chat title for:', userMessage, siteUrl, chatId);
 
-        // Return Promise directly - Chrome supports this!
-        return (async () => {
+        (async () => {
             try {
                 const providerFromConfig = (await ConfigService.getInstance().get<string>('provider')) || 'openrouter';
                 const aiService = AiService.fromProviderName(providerFromConfig);
@@ -485,18 +484,16 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
                 const title = await aiService.generateSimpleText(systemPrompt, prompt, { temperature: 0.7 });
                 console.log('[SW] Generated chat title:', title);
 
-                if (title && title.length > 0 && title.length < 100) {
-                    console.log('[SW] Returning title:', title);
-                    return { title };
-                } else {
-                    console.log('[SW] Invalid title, returning null');
-                    return { title: null };
+                if (title && title.length > 0 && title.length < 100 && chatId) {
+                    console.log('[SW] Sending title back:', title);
+                    chrome.runtime.sendMessage({ type: 'CHAT_TITLE_GENERATED', chatId, title }).catch(() => {});
                 }
             } catch (error) {
                 console.error('[SW] Failed to generate chat title:', error);
-                return { title: null, error: String(error) };
             }
         })();
+
+        return;
     }
     if (message.type === 'START_TASK') {
         // Immediately respond to prevent "Receiving end does not exist" error
