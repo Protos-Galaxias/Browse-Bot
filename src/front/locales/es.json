@@ -96,6 +96,7 @@
     "globalPromptLabel": "Prompt del sistema",
     "domainPrompts": "Prompts por dominio",
     "mcp": {
+      "label": "Servidores MCP",
       "serverName": "Nombre del servidor",
       "enabled": "Habilitado",
       "addServer": "Agregar servidor",
@@ -116,7 +117,11 @@
     },
     "sendOnEnterLabel": "Enviar mensajes con Enter",
     "themeLabel": "Tema",
-    "hideAgentMessagesLabel": "Ocultar mensajes intermedios en el chat"
+    "hideAgentMessagesLabel": "Ocultar mensajes intermedios en el chat",
+    "keyboardShortcutLabel": "Atajo de teclado para abrir",
+    "keyboardShortcutChange": "Cambiar",
+    "keyboardShortcutHint": "Abre la configuración de atajos de extensiones del navegador",
+    "keyboardShortcutHintFirefox": "Para cambiar: about:addons → ⚙️ → Administrar atajos de extensiones"
   },
   "chat": {
     "welcome": "Introduce tu solicitud",

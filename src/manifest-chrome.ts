@@ -10,6 +10,15 @@ export default defineManifest({
     description: 'Page-aware AI browser assistant that helps automate on-page interactions, summarize pages and images, and find information promptly',
     version: packageJson.version,
     permissions: ['storage', 'activeTab', 'scripting', 'tabs', 'sidePanel'],
+    commands: {
+        '_execute_action': {
+            suggested_key: {
+                default: 'Alt+B',
+                mac: 'Alt+B'
+            },
+            description: 'Open Browse Bot'
+        }
+    },
     host_permissions: ['<all_urls>'],
     // web_accessible_resources: [
     //     {

@@ -97,6 +97,7 @@
     "globalPromptLabel": "Системный промпт",
     "domainPrompts": "Индивидуальные доменные промпты",
     "mcp": {
+      "label": "MCP-серверы",
       "serverName": "Имя сервера",
       "enabled": "Включен",
       "addServer": "Добавить сервер",
@@ -117,7 +118,11 @@
     },
     "sendOnEnterLabel": "Отправка сообщений при нажатии Enter",
     "themeLabel": "Тема",
-    "hideAgentMessagesLabel": "Скрывать промежуточные сообщения в чате"
+    "hideAgentMessagesLabel": "Скрывать промежуточные сообщения в чате",
+    "keyboardShortcutLabel": "Сочетание клавиш для открытия",
+    "keyboardShortcutChange": "Изменить",
+    "keyboardShortcutHint": "Откроет настройки быстрых клавиш браузера",
+    "keyboardShortcutHintFirefox": "Чтобы изменить: about:addons → ⚙️ → Управление сочетаниями клавиш"
   },
   "chat": {
     "welcome": "Введите ваш запрос",

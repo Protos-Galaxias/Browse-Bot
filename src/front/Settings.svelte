@@ -144,6 +144,14 @@ SPDX-License-Identifier: BSL-1.1
         saveSettings();
     }
 
+    const isFirefoxBrowser = typeof navigator !== 'undefined' && navigator.userAgent.includes('Firefox');
+    const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().includes('MAC');
+    const defaultShortcut = isMac ? '⌥+B' : 'Alt+B';
+
+    function openShortcutsPage() {
+        chrome.tabs.create({ url: 'chrome://extensions/shortcuts' });
+    }
+
     function addModel() {
         if (newModel.trim() && !models.includes(newModel.trim())) {
             models = [...models, newModel.trim()];
@@ -451,7 +459,7 @@ SPDX-License-Identifier: BSL-1.1
         </div>
 
         <div class="setting-group">
-            <div class="setting-label">MCP Servers</div>
+            <div class="setting-label">{$_('settings.mcp.label')}</div>
             {#each mcps as m, index (index)}
                 <div class="mcp-card">
                     <div class="mcp-card-main">
@@ -539,7 +547,7 @@ SPDX-License-Identifier: BSL-1.1
             <div class="modal-overlay" on:click|self={closeMcpModal}>
                 <div class="modal">
                     <div class="modal-header">
-                        <div class="modal-title">MCP Server</div>
+                        <div class="modal-title">{$_('settings.mcp.label')}</div>
                         <button class="icon-btn" type="button" aria-label="Close" on:click={closeMcpModal}>×</button>
                     </div>
                     <div class="modal-body">
@@ -637,6 +645,23 @@ SPDX-License-Identifier: BSL-1.1
                     <label for="hideAgentMessages">{$_('settings.hideAgentMessages')}</label>
                 </div>
             </label>
+        </div>
+
+        <div class="setting-group">
+            <div class="setting-label">{$_('settings.keyboardShortcutLabel')}</div>
+            <div class="shortcut-display">
+                <span class="shortcut-badge">{defaultShortcut}</span>
+                {#if !isFirefoxBrowser}
+                    <button type="button" class="shortcut-change-btn" on:click={openShortcutsPage}>
+                        {$_('settings.keyboardShortcutChange')}
+                    </button>
+                {/if}
+            </div>
+            {#if isFirefoxBrowser}
+                <div class="setting-hint">{$_('settings.keyboardShortcutHintFirefox')}</div>
+            {:else}
+                <div class="setting-hint">{$_('settings.keyboardShortcutHint')}</div>
+            {/if}
         </div>
     {/if}
 
@@ -1063,5 +1088,45 @@ SPDX-License-Identifier: BSL-1.1
 
     .license {
         font-weight: 500;
+    }
+
+    .shortcut-display {
+        display: flex;
+        gap: 0.75rem;
+        align-items: center;
+        margin-top: 0.5rem;
+    }
+
+    .shortcut-badge {
+        padding: 0.5rem 1rem;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        font-family: monospace;
+        font-weight: 600;
+        font-size: 0.95rem;
+        color: var(--text-primary);
+    }
+
+    .shortcut-change-btn {
+        padding: 0.5rem 1rem;
+        background: transparent;
+        border: 1px solid var(--accent-color);
+        border-radius: 6px;
+        color: var(--accent-color);
+        cursor: pointer;
+        font-size: 0.85rem;
+        transition: all 0.2s;
+    }
+
+    .shortcut-change-btn:hover {
+        background: var(--accent-color);
+        color: #000;
+    }
+
+    .setting-hint {
+        margin-top: 0.5rem;
+        font-size: 0.8rem;
+        color: var(--text-secondary);
     }
 </style>

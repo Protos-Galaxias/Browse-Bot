@@ -96,6 +96,7 @@
     "globalPromptLabel": "System-Prompt",
     "domainPrompts": "Domänenspezifische Prompts",
     "mcp": {
+      "label": "MCP-Server",
       "serverName": "Servername",
       "enabled": "Aktiviert",
       "addServer": "Server hinzufügen",
@@ -116,7 +117,11 @@
     },
     "sendOnEnterLabel": "Nachrichten mit Enter senden",
     "themeLabel": "Design",
-    "hideAgentMessagesLabel": "Zwischennachrichten im Chat ausblenden"
+    "hideAgentMessagesLabel": "Zwischennachrichten im Chat ausblenden",
+    "keyboardShortcutLabel": "Tastenkombination zum Öffnen",
+    "keyboardShortcutChange": "Ändern",
+    "keyboardShortcutHint": "Öffnet die Browser-Erweiterungskurzbefehle",
+    "keyboardShortcutHintFirefox": "Zum Ändern: about:addons → ⚙️ → Tastenkürzel verwalten"
   },
   "chat": {
     "welcome": "Geben Sie Ihre Anfrage ein",

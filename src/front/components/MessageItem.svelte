@@ -119,8 +119,7 @@ SPDX-License-Identifier: BSL-1.1
             return renderMarkdownSafe(`${prefix ? prefix + ': ' : ''}${entry.message}`);
         }
         if (isResult && isResultLog(entry)) {
-            const prefix = getLocalizedPrefix('result');
-            return renderMarkdownSafe(`${prefix ? prefix + ': ' : ''}${entry.text}`);
+            return renderMarkdownSafe(entry.text);
         }
         if (isI18nProc && isI18nProcessed(entry)) {
             const prefix = getLocalizedPrefix(entry.prefix);

@@ -97,6 +97,7 @@
     "globalPromptLabel": "System prompt",
     "domainPrompts": "Individual domain prompts",
     "mcp": {
+      "label": "MCP Servers",
       "serverName": "Server name",
       "enabled": "Enabled",
       "addServer": "Add server",
@@ -117,7 +118,11 @@
     },
     "sendOnEnterLabel": "Send messages on Enter",
     "themeLabel": "Theme",
-    "hideAgentMessagesLabel": "Hide intermediate messages in chat"
+    "hideAgentMessagesLabel": "Hide intermediate messages in chat",
+    "keyboardShortcutLabel": "Keyboard shortcut to open",
+    "keyboardShortcutChange": "Change",
+    "keyboardShortcutHint": "Opens browser extension shortcuts settings",
+    "keyboardShortcutHintFirefox": "To change: about:addons → ⚙️ → Manage Extension Shortcuts"
   },
   "chat": {
     "welcome": "Enter your request",

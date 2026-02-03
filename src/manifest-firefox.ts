@@ -12,6 +12,15 @@ export default defineManifest({
         extension_pages: "script-src 'self' 'unsafe-eval'; object-src 'self'"
     } as any,
     permissions: ['storage', 'activeTab', 'scripting', 'tabs'],
+    commands: {
+        '_execute_sidebar_action': {
+            suggested_key: {
+                default: 'Alt+B',
+                mac: 'Alt+B'
+            },
+            description: 'Open Browse Bot'
+        }
+    },
     background: {
         scripts: ['src/service_worker.ts']
     },
