@@ -118,10 +118,10 @@
     "sendOnEnterLabel": "Enviar mensajes con Enter",
     "themeLabel": "Tema",
     "hideAgentMessagesLabel": "Ocultar mensajes intermedios en el chat",
-    "keyboardShortcutLabel": "Atajo de teclado para abrir",
+    "keyboardShortcutLabel": "Abrir usando atajo de teclado",
     "keyboardShortcutChange": "Cambiar",
-    "keyboardShortcutHint": "Abre la configuración de atajos de extensiones del navegador",
-    "keyboardShortcutHintFirefox": "Para cambiar: about:addons → ⚙️ → Administrar atajos de extensiones"
+    "keyboardShortcutHint": "Después de hacer clic en Cambiar, serás redirigido a la configuración de atajos de teclado del navegador",
+    "keyboardShortcutHintFirefox": "Para cambiar: about:addons → ⚙️ → Administrar atajos de extensión"
   },
   "chat": {
     "welcome": "Introduce tu solicitud",

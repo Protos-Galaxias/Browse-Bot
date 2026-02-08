@@ -118,10 +118,10 @@
     "sendOnEnterLabel": "Nachrichten mit Enter senden",
     "themeLabel": "Design",
     "hideAgentMessagesLabel": "Zwischennachrichten im Chat ausblenden",
-    "keyboardShortcutLabel": "Tastenkombination zum Öffnen",
+    "keyboardShortcutLabel": "Mit Tastenkürzel öffnen",
     "keyboardShortcutChange": "Ändern",
-    "keyboardShortcutHint": "Öffnet die Browser-Erweiterungskurzbefehle",
-    "keyboardShortcutHintFirefox": "Zum Ändern: about:addons → ⚙️ → Tastenkürzel verwalten"
+    "keyboardShortcutHint": "Nach dem Klicken auf Ändern werden Sie zu den Tastenkürzel-Einstellungen des Browsers weitergeleitet",
+    "keyboardShortcutHintFirefox": "Zum Ändern: about:addons → ⚙️ → Erweiterungs-Tastenkürzel verwalten"
   },
   "chat": {
     "welcome": "Geben Sie Ihre Anfrage ein",

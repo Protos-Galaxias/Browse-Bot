@@ -119,9 +119,9 @@
     "sendOnEnterLabel": "Send messages on Enter",
     "themeLabel": "Theme",
     "hideAgentMessagesLabel": "Hide intermediate messages in chat",
-    "keyboardShortcutLabel": "Keyboard shortcut to open",
+    "keyboardShortcutLabel": "Open using keyboard shortcut",
     "keyboardShortcutChange": "Change",
-    "keyboardShortcutHint": "Opens browser extension shortcuts settings",
+    "keyboardShortcutHint": "After clicking Change you will be redirected to the browser's keyboard shortcuts settings",
     "keyboardShortcutHintFirefox": "To change: about:addons → ⚙️ → Manage Extension Shortcuts"
   },
   "chat": {

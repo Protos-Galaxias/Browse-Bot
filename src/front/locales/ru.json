@@ -116,13 +116,13 @@
       "editAriaLabel": "Редактировать инструмент",
       "removeAriaLabel": "Удалить инструмент"
     },
-    "sendOnEnterLabel": "Отправка сообщений при нажатии Enter",
+    "sendOnEnterLabel": "Отправлять сообщения при нажатии Enter",
     "themeLabel": "Тема",
     "hideAgentMessagesLabel": "Скрывать промежуточные сообщения в чате",
-    "keyboardShortcutLabel": "Сочетание клавиш для открытия",
+    "keyboardShortcutLabel": "Открывать расширение по сочетанию клавиш",
     "keyboardShortcutChange": "Изменить",
-    "keyboardShortcutHint": "Откроет настройки быстрых клавиш браузера",
-    "keyboardShortcutHintFirefox": "Чтобы изменить: about:addons → ⚙️ → Управление сочетаниями клавиш"
+    "keyboardShortcutHint": "После нажатия на Изменить откроются настройки сочетания клавиш браузера",
+    "keyboardShortcutHintFirefox": "Чтобы изменить: about:addons → ⚙️ → Управление горячими клавишами расширений"
   },
   "chat": {
     "welcome": "Введите ваш запрос",

@@ -119,10 +119,10 @@
     "sendOnEnterLabel": "Envoyer les messages avec Entrée",
     "themeLabel": "Thème",
     "hideAgentMessagesLabel": "Masquer les messages intermédiaires dans le chat",
-    "keyboardShortcutLabel": "Raccourci clavier pour ouvrir",
+    "keyboardShortcutLabel": "Ouvrir avec raccourci clavier",
     "keyboardShortcutChange": "Modifier",
-    "keyboardShortcutHint": "Ouvre les paramètres des raccourcis d'extensions du navigateur",
-    "keyboardShortcutHintFirefox": "Pour modifier : about:addons → ⚙️ → Gérer les raccourcis"
+    "keyboardShortcutHint": "Après avoir cliqué sur Modifier, vous serez redirigé vers les paramètres de raccourcis clavier du navigateur",
+    "keyboardShortcutHintFirefox": "Pour modifier : about:addons → ⚙️ → Gérer les raccourcis d'extension"
   },
   "chat": {
     "welcome": "Saisissez votre requête",
