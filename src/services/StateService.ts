@@ -21,6 +21,11 @@ export interface WalkerState {
 export interface WalkerMemory {
   lastEntities?: unknown;
   lastSelection?: unknown;
+  pageContext?: {
+    url?: string;
+    title?: string;
+    cartCount?: number;
+  };
 }
 
 export class StateService {

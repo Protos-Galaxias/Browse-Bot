@@ -5,6 +5,7 @@ import { reportError, updateLogI18n, logResult } from './logger';
 import { AiService } from './services/AIService';
 import { agentTools } from './tools/agent-tools';
 import type { ToolContext } from './tools/types';
+import { generateText, stepCountIs } from 'ai';
 import type { ToolSet, ModelMessage } from 'ai';
 import { ConfigService } from './services/ConfigService';
 import type { AIService } from './services/AIService';
@@ -21,6 +22,25 @@ class UserAbortedError extends Error {
         super('User aborted');
         this.name = 'UserAbortedError';
     }
+}
+
+function estimateStepLimit(prompt: string): number {
+    const lower = prompt.toLowerCase();
+
+    // Multi-item indicators → need more steps
+    const isMulti = /\b(all|each|every|multiple|все|каждый|каждую|несколько|всех|каждое|всё)\b/i.test(lower);
+
+    // Count distinct action words
+    const actionPattern = /\b(add|click|search|fill|navigate|open|close|select|check|submit|type|enter|find|go|remove|delete|buy|compare|добавь|добавить|нажми|найди|перейди|заполни|выбери|открой|закрой|удали|купи|сравни|посмотри|положи|покажи|скачай|загрузи)\b/gi;
+    const matches = lower.match(actionPattern) || [];
+    const uniqueActions = new Set(matches.map(m => m.toLowerCase())).size;
+
+    if (isMulti) { return 20; }
+    if (uniqueActions >= 3) { return 15; }
+
+    // Minimum 10 — knowledge questions stop naturally at 1-2 steps,
+    // page tasks always need parse→act→verify cycles
+    return 10;
 }
 
 if (isChrome() && chrome.sidePanel) {
@@ -120,8 +140,11 @@ async function runAgentTask(
     messages: ModelMessage[],
     tools: ToolSet,
     aiService: AIService,
-    maxContextTokens?: number
+    maxContextTokens?: number,
+    maxSteps?: number
 ): Promise<AgentTaskResult> {
+    const taskStartTime = Date.now();
+
     // Truncate context if needed to prevent overflow errors
     const truncatedMessages = truncateContext(messages, { maxContextTokens });
     const originalTokens = getTotalTokenEstimate(messages);
@@ -131,9 +154,7 @@ async function runAgentTask(
         console.log(`[SW] Context truncated: ${originalTokens} -> ${truncatedTokens} tokens (est.)`);
     }
 
-    const history: ModelMessage[] = truncatedMessages;
-
-    agentHistory = [...history];
+    agentHistory = [...truncatedMessages];
 
     currentController = new AbortController();
     const signal = currentController.signal;
@@ -141,93 +162,138 @@ async function runAgentTask(
     const hasTools = tools && Object.keys(tools).length > 0;
     console.log('[SW] Running with', hasTools ? Object.keys(tools).length : 0, 'tools');
 
-    type ToolResultOutput = { answer?: string; [key: string]: unknown };
-    type ToolResult = { toolCallId: string; toolName: string; output: ToolResultOutput };
+    // Per-step telemetry via onStepFinish
+    let promptTokens = 0;
+    let completionTokens = 0;
+    let totalTokens = 0;
+    const toolChain: string[] = [];
+    let stepCount = 0;
+
+    const model = await aiService.getChatModel();
 
     try {
-        const res: unknown = await aiService.generateWithTools({
-            messages: history,
-            tools,
-            abortSignal: signal
+        const result = await generateText({
+            model,
+            messages: truncatedMessages,
+            ...(hasTools ? { tools } : {}),
+            stopWhen: stepCountIs(maxSteps || 10),
+            maxRetries: 5,
+            abortSignal: signal,
+            onStepFinish: async ({ usage, toolCalls, finishReason }) => {
+                stepCount++;
+                if (usage) {
+                    promptTokens += usage.promptTokens || 0;
+                    completionTokens += usage.completionTokens || 0;
+                    totalTokens += usage.totalTokens || 0;
+                }
+                const names = toolCalls?.map(tc => tc.toolName) || [];
+                toolChain.push(...names);
+                console.log(`[SW] Step ${stepCount}: tools=[${names.join(', ') || 'text'}] tokens=${usage?.totalTokens || 0} reason=${finishReason}`);
+            }
         });
 
-        const raw: any = res as any;
-        const steps: Array<any> | undefined = Array.isArray(raw?.steps) ? raw.steps : undefined;
-        const flattenContent: Array<any> = Array.isArray(steps)
-            ? steps.flatMap((s: any) => (Array.isArray(s?.content) ? s.content : []))
-            : [];
+        // Fallback to aggregated usage if onStepFinish didn't capture
+        if (totalTokens === 0 && result.usage) {
+            promptTokens = result.usage.promptTokens || 0;
+            completionTokens = result.usage.completionTokens || 0;
+            totalTokens = result.usage.totalTokens || 0;
+        }
 
-        // Extract usage/metrics from result
-        const usage = raw?.usage || {};
         const metrics = {
-            promptTokens: usage.promptTokens || 0,
-            completionTokens: usage.completionTokens || 0,
-            totalTokens: usage.totalTokens || 0,
-            llmCalls: steps?.length || 1
+            promptTokens,
+            completionTokens,
+            totalTokens,
+            llmCalls: result.steps?.length || stepCount || 1
         };
-        console.log('[SW] LLM metrics:', metrics);
-        console.log('[SW] Steps:', steps?.length, 'flattenContent:', flattenContent.length);
 
-        const toolCalls = flattenContent.filter((c: any) => c?.type === 'tool-call');
-        const sdkToolResults = flattenContent.filter((c: any) => c?.type === 'tool-result');
-        const text = (() => {
-            const texts = flattenContent.filter((c: any) => c?.type === 'text' && typeof c.text === 'string');
+        const taskDuration = Date.now() - taskStartTime;
 
-            return texts.length > 0 ? texts[texts.length - 1].text : undefined;
-        })();
-        console.log('[SW] Derived:', { toolCalls: toolCalls.length, toolResults: sdkToolResults.length, hasText: Boolean(text) });
+        // ═══════════════ BENCHMARK LOG ═══════════════
+        console.log(
+            '\n%c═══ BENCHMARK ═══',
+            'color: #00ff88; font-weight: bold; font-size: 14px',
+            '\n📊 Steps:', metrics.llmCalls, '/' + (maxSteps || 10),
+            '\n🔗 Tool chain:', toolChain.join(' → ') || '(none)',
+            '\n📥 Prompt tokens:', promptTokens,
+            '\n📤 Completion tokens:', completionTokens,
+            '\n📦 Total tokens:', totalTokens,
+            '\n⏱️ Duration:', (taskDuration / 1000).toFixed(1) + 's',
+            '\n🔄 LLM calls:', metrics.llmCalls,
+            '\n📐 Context (est.):', truncatedTokens, 'tokens',
+            '\n═══════════════════'
+        );
+        // ═══════════════════════════════════════════════
 
-        // Update history with tool calls
-        if (Array.isArray(toolCalls)) {
-            for (const call of toolCalls) {
-                agentHistory.push({
-                    role: 'assistant',
-                    content: [{
-                        type: 'tool-call',
-                        toolCallId: call.toolCallId,
-                        toolName: call.toolName,
-                        input: call.input
-                    }]
-                });
+        if (metrics.llmCalls >= (maxSteps || 10)) {
+            console.log('[BENCHMARK] ⚠️ Step limit reached — task may be incomplete');
+        }
+
+        // Populate agentHistory from steps for debug log
+        for (const step of result.steps || []) {
+            if (step.toolCalls?.length) {
+                for (const tc of step.toolCalls) {
+                    agentHistory.push({
+                        role: 'assistant',
+                        content: [{
+                            type: 'tool-call',
+                            toolCallId: tc.toolCallId,
+                            toolName: tc.toolName,
+                            input: tc.args
+                        }]
+                    });
+                }
+            }
+            if (step.toolResults?.length) {
+                for (const tr of step.toolResults) {
+                    agentHistory.push({
+                        role: 'tool',
+                        content: [{
+                            type: 'tool-result',
+                            toolCallId: tr.toolCallId,
+                            toolName: tr.toolName,
+                            output: { type: 'json', value: tr.result }
+                        }]
+                    });
+                }
             }
         }
-        if (Array.isArray(sdkToolResults) && sdkToolResults.length > 0) {
-            const toolResultsMsgs = sdkToolResults.map((tr: ToolResult) => ({
-                role: 'tool',
-                content: [{
-                    type: 'tool-result',
-                    toolCallId: tr.toolCallId,
-                    toolName: tr.toolName,
-                    output: { type: 'json', value: tr.output }
-                }]
-            }));
-            agentHistory.push(...toolResultsMsgs);
+
+        // Check for chat tool in steps (streamed response)
+        for (const step of result.steps || []) {
+            for (const tr of step.toolResults || []) {
+                if (tr.toolName === 'chat' && (tr.result as any)?.answer) {
+                    console.log('[BENCHMARK] ✅ Outcome: chat tool response');
+
+                    return { text: (tr.result as any).answer, metrics, streamed: true };
+                }
+            }
         }
 
-        // Check for chat tool (simple conversational response)
-        const chatResult = (sdkToolResults || []).find((tr: ToolResult) => tr.toolName === 'chat');
-        if (chatResult && chatResult.output && typeof chatResult.output.answer === 'string') {
-            console.log('[SW] Chat tool detected, answer:', chatResult.output.answer.substring(0, 50));
+        // Check for finishTask in steps
+        for (const step of result.steps || []) {
+            for (const tr of step.toolResults || []) {
+                if (tr.toolName === 'finishTask' && (tr.result as any)?.answer) {
+                    console.log('[BENCHMARK] ✅ Outcome: finishTask');
 
-            return { text: chatResult.output.answer, metrics, streamed: true };
+                    return { text: (tr.result as any).answer, metrics };
+                }
+            }
         }
 
-        // Check for finishTask tool (task completion)
-        const finish = (sdkToolResults || []).find((tr: ToolResult) => tr.toolName === 'finishTask');
-        if (finish && finish.output && typeof finish.output.answer === 'string') {
-            console.log('[SW] FinishTask tool detected');
+        // Fallback to model's final text
+        if (result.text) {
+            agentHistory.push({ role: 'assistant', content: result.text });
+            console.log('[BENCHMARK] ✅ Outcome: model text');
 
-            return { text: finish.output.answer, metrics };
+            return { text: result.text, metrics };
         }
 
-        // Fallback to text
-        if (Array.isArray(steps)) agentHistory.push(...steps);
-        if (typeof text === 'string' && text.length > 0) {
-            agentHistory.push({ role: 'assistant', content: text });
-        }
+        console.log('[BENCHMARK] ⚠️ Outcome: no text response');
 
-        return { text: text || 'Task completed without a final text answer.', metrics };
+        return { text: 'Task completed without a final text answer.', metrics };
     } catch (error) {
+        const taskDurationErr = Date.now() - taskStartTime;
+        console.log(`[BENCHMARK] ❌ Outcome: ERROR after ${(taskDurationErr / 1000).toFixed(1)}s`);
         if (error instanceof Error && error.name === 'AbortError') {
             throw new UserAbortedError();
         }
@@ -531,7 +597,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
 
                     const providerConfig = ProviderConfigs[providerFromConfig] || ProviderConfigs['openrouter'];
                     try {
-                        const result = await runAgentTask(messages, {} as ToolSet, selectedServiceGeneric, providerConfig.defaultMaxContextTokens);
+                        const result = await runAgentTask(messages, {} as ToolSet, selectedServiceGeneric, providerConfig.defaultMaxContextTokens, 10);
                         if (!result.streamed) {
                             logResult(result.text);
                         }
@@ -578,7 +644,9 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
             agentHistory = [...messages];
 
             const providerConfig = ProviderConfigs[providerFromConfig] || ProviderConfigs['openrouter'];
-            const result = await runAgentTask(messages, tools, selectedServiceGeneric, providerConfig.defaultMaxContextTokens);
+            const stepLimit = estimateStepLimit(prompt);
+            console.log(`[SW] Step limit: ${stepLimit} for "${prompt.substring(0, 50)}"`);
+            const result = await runAgentTask(messages, tools, selectedServiceGeneric, providerConfig.defaultMaxContextTokens, stepLimit);
 
             if (!result.streamed) {
                 logResult(result.text);
@@ -686,7 +754,8 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
 
                 let taskMetrics = { promptTokens: 0, completionTokens: 0, totalTokens: 0, llmCalls: 0 };
                 try {
-                    const result = await runAgentTask(messages, wrappedTools, selectedServiceGeneric, providerConfig.defaultMaxContextTokens);
+                    const evalStepLimit = estimateStepLimit(task);
+                    const result = await runAgentTask(messages, wrappedTools, selectedServiceGeneric, providerConfig.defaultMaxContextTokens, evalStepLimit);
                     taskMetrics = result.metrics;
                     await sendDebug(tabId, `Agent task completed. Tokens: ${taskMetrics.totalTokens}, LLM calls: ${taskMetrics.llmCalls}`);
                 } catch (agentError) {

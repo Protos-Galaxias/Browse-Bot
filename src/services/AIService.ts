@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: BSL-1.1
 
 import { ConfigService } from './ConfigService';
-import { generateObject, generateText, streamText, stepCountIs } from 'ai';
+import { generateText, streamText, stepCountIs, Output } from 'ai';
 import type { GenerateTextResult, ModelMessage, ToolSet, LanguageModel } from 'ai';
 import { ProviderConfigs, type ProviderDescriptor } from './ProviderConfigs';
 import { reportErrorKey } from '../logger';
@@ -97,13 +97,14 @@ export class AiService implements AIService {
     async generate<T>(schema: unknown, systemPrompt: string, prompt: string, options: AIGenerateOptions = {}): Promise<T> {
         try {
             const modelName = await this.resolveModelName(options.model);
-            const result = await generateObject({
+            const result = await generateText({
                 model: this.provider.getModel(this.ensureClient(), modelName) as LanguageModel,
-                schema: schema as any,
+                output: Output.object({ schema: schema as any }),
                 system: systemPrompt,
                 prompt
             });
-            return result.object as T;
+
+            return result.output as T;
         } catch (error) {
             reportErrorKey('errors.aiInvalidJson', error);
             throw error;
@@ -192,7 +193,7 @@ export class AiService implements AIService {
                 messages: params.messages,
                 tools: params.tools,
                 maxRetries,
-                maxSteps: maxToolRoundtrips,
+                stopWhen: stepCountIs(maxToolRoundtrips),
                 abortSignal: params.abortSignal
             });
 

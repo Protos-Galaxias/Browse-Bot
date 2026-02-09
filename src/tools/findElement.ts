@@ -108,3 +108,14 @@ export async function findElementIds(
     }
     return aids;
 }
+
+export function resolveElementByRef(
+    elements: any[],
+    ref: string
+): { id: string; tid?: number } | null {
+    const cleanRef = ref.startsWith('@') ? ref.slice(1) : ref;
+    const el = elements.find((e: any) => e._ref === cleanRef);
+    if (!el) { return null; }
+
+    return { id: el.id, tid: el.tid };
+}
