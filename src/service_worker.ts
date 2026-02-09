@@ -24,24 +24,9 @@ class UserAbortedError extends Error {
     }
 }
 
-function estimateStepLimit(prompt: string): number {
-    const lower = prompt.toLowerCase();
-
-    // Multi-item indicators → need more steps
-    const isMulti = /\b(all|each|every|multiple|все|каждый|каждую|несколько|всех|каждое|всё)\b/i.test(lower);
-
-    // Count distinct action words
-    const actionPattern = /\b(add|click|search|fill|navigate|open|close|select|check|submit|type|enter|find|go|remove|delete|buy|compare|добавь|добавить|нажми|найди|перейди|заполни|выбери|открой|закрой|удали|купи|сравни|посмотри|положи|покажи|скачай|загрузи)\b/gi;
-    const matches = lower.match(actionPattern) || [];
-    const uniqueActions = new Set(matches.map(m => m.toLowerCase())).size;
-
-    if (isMulti) { return 20; }
-    if (uniqueActions >= 3) { return 15; }
-
-    // Minimum 10 — knowledge questions stop naturally at 1-2 steps,
-    // page tasks always need parse→act→verify cycles
-    return 10;
-}
+// Step limit is a safety ceiling against infinite loops, not a planning tool.
+// The agent stops naturally via finishTask — this just prevents runaway costs.
+const MAX_AGENT_STEPS = 20;
 
 if (isChrome() && chrome.sidePanel) {
     chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
@@ -597,7 +582,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
 
                     const providerConfig = ProviderConfigs[providerFromConfig] || ProviderConfigs['openrouter'];
                     try {
-                        const result = await runAgentTask(messages, {} as ToolSet, selectedServiceGeneric, providerConfig.defaultMaxContextTokens, 10);
+                        const result = await runAgentTask(messages, {} as ToolSet, selectedServiceGeneric, providerConfig.defaultMaxContextTokens, MAX_AGENT_STEPS);
                         if (!result.streamed) {
                             logResult(result.text);
                         }
@@ -644,9 +629,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
             agentHistory = [...messages];
 
             const providerConfig = ProviderConfigs[providerFromConfig] || ProviderConfigs['openrouter'];
-            const stepLimit = estimateStepLimit(prompt);
-            console.log(`[SW] Step limit: ${stepLimit} for "${prompt.substring(0, 50)}"`);
-            const result = await runAgentTask(messages, tools, selectedServiceGeneric, providerConfig.defaultMaxContextTokens, stepLimit);
+            const result = await runAgentTask(messages, tools, selectedServiceGeneric, providerConfig.defaultMaxContextTokens, MAX_AGENT_STEPS);
 
             if (!result.streamed) {
                 logResult(result.text);
@@ -754,8 +737,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
 
                 let taskMetrics = { promptTokens: 0, completionTokens: 0, totalTokens: 0, llmCalls: 0 };
                 try {
-                    const evalStepLimit = estimateStepLimit(task);
-                    const result = await runAgentTask(messages, wrappedTools, selectedServiceGeneric, providerConfig.defaultMaxContextTokens, evalStepLimit);
+                    const result = await runAgentTask(messages, wrappedTools, selectedServiceGeneric, providerConfig.defaultMaxContextTokens, MAX_AGENT_STEPS);
                     taskMetrics = result.metrics;
                     await sendDebug(tabId, `Agent task completed. Tokens: ${taskMetrics.totalTokens}, LLM calls: ${taskMetrics.llmCalls}`);
                 } catch (agentError) {
