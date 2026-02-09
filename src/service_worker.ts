@@ -28,6 +28,112 @@ class UserAbortedError extends Error {
 // The agent stops naturally via finishTask — this just prevents runaway costs.
 const MAX_AGENT_STEPS = 20;
 
+// Number of recent tool call/result pairs to keep intact during compression.
+// Older pairs are summarized into a compact system message.
+const KEEP_RECENT_PAIRS = 2;
+
+function summarizeToolPair(assistantMsg: ModelMessage, toolMsg: ModelMessage): string {
+    // Extract tool call info from assistant message
+    const calls: string[] = [];
+    if (Array.isArray(assistantMsg.content)) {
+        for (const part of assistantMsg.content as any[]) {
+            if (part?.type !== 'tool-call') { continue; }
+            const name: string = part.toolName || 'unknown';
+            const args = part.input || {};
+
+            if (name.startsWith('parse')) {
+                calls.push(name);
+            } else if (name === 'findAndClick') {
+                calls.push(`click(${args.ref || args.element_description || '?'})`);
+            } else if (name === 'findAndInsertText') {
+                calls.push(`type(${args.ref || '?'}, "${String(args.text || '').slice(0, 30)}")`);
+            } else if (name === 'selectOption') {
+                calls.push(`select(${args.ref || '?'}, "${args.option || ''}")`);
+            } else {
+                calls.push(name);
+            }
+        }
+    }
+
+    // Extract result summary from tool message
+    const results: string[] = [];
+    if (Array.isArray(toolMsg.content)) {
+        for (const part of toolMsg.content as any[]) {
+            if (part?.type !== 'tool-result') { continue; }
+            const output = part.output;
+
+            if (output && typeof output === 'object') {
+                if ('value' in output && typeof output.value === 'string') {
+                    // toModelOutput text — count @refs as element count proxy
+                    const refCount = (output.value.match(/@\d+/g) || []).length;
+                    results.push(refCount > 0 ? `${refCount} elements` : 'ok');
+                } else if ('success' in output) {
+                    results.push((output as any).success ? 'ok' : 'fail');
+                } else {
+                    results.push('ok');
+                }
+            } else {
+                results.push('ok');
+            }
+        }
+    }
+
+    return `${calls.join(', ')} → ${results.join(', ')}`;
+}
+
+function compressStepHistory(messages: ModelMessage[], keepRecentPairs: number): ModelMessage[] {
+    // Find the last user message — everything before it is "preamble" (system + history)
+    let lastUserIdx = -1;
+    for (let i = messages.length - 1; i >= 0; i--) {
+        if (messages[i].role === 'user') {
+            lastUserIdx = i;
+            break;
+        }
+    }
+
+    if (lastUserIdx === -1) { return messages; }
+
+    const preamble = messages.slice(0, lastUserIdx + 1);
+    const interactions = messages.slice(lastUserIdx + 1);
+
+    // Pair up assistant + tool messages
+    const pairs: Array<[ModelMessage, ModelMessage]> = [];
+    for (let i = 0; i < interactions.length - 1; i += 2) {
+        if (interactions[i].role === 'assistant' && interactions[i + 1].role === 'tool') {
+            pairs.push([interactions[i], interactions[i + 1]]);
+        } else {
+            break; // Unexpected structure, stop pairing
+        }
+    }
+
+    // Trailing messages that don't form a complete pair
+    const pairedCount = pairs.length * 2;
+    const trailing = interactions.slice(pairedCount);
+
+    if (pairs.length <= keepRecentPairs) {
+        return messages; // Nothing to compress
+    }
+
+    const toCompress = pairs.slice(0, pairs.length - keepRecentPairs);
+    const toKeep = pairs.slice(pairs.length - keepRecentPairs);
+
+    const summaryLines = toCompress.map(([assistant, tool]) =>
+        summarizeToolPair(assistant, tool)
+    );
+
+    const summaryMsg: ModelMessage = {
+        role: 'system',
+        content: `[Previous ${toCompress.length} steps]\n${summaryLines.join('\n')}`
+    };
+
+    return [
+        ...preamble,
+        summaryMsg,
+        ...toKeep.flat(),
+        ...trailing
+    ];
+}
+
 if (isChrome() && chrome.sidePanel) {
     chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 }
@@ -153,6 +259,7 @@ async function runAgentTask(
     let totalTokens = 0;
     const toolChain: string[] = [];
     let stepCount = 0;
+    let lastStepHadClick = false;
 
     const model = await aiService.getChatModel();
 
@@ -164,6 +271,25 @@ async function runAgentTask(
             stopWhen: stepCountIs(maxSteps || 10),
             maxRetries: 5,
             abortSignal: signal,
+            prepareStep: ({ stepNumber, messages: stepMessages }) => {
+                if (stepNumber < 2) { return {}; }
+
+                let compressed = compressStepHistory(stepMessages, KEEP_RECENT_PAIRS);
+                if (compressed.length < stepMessages.length) {
+                    console.log(`[SW] prepareStep ${stepNumber}: ${stepMessages.length} → ${compressed.length} messages (compressed ${stepMessages.length - compressed.length})`);
+                }
+
+                // After a click action, inject verification reminder
+                if (lastStepHadClick) {
+                    const verifyMsg: ModelMessage = {
+                        role: 'system',
+                        content: 'IMPORTANT: You just clicked an element that may have navigated or changed the page. Call `parsePage` now (NOT parsePageInteractiveElements) to read the page text and verify the expected content appeared. If you see a login prompt, auth modal, error, or unexpected content — STOP immediately and report the issue to the user via `finishTask`. Do NOT proceed with other actions until you verify.'
+                    };
+                    compressed = [...compressed, verifyMsg];
+                }
+
+                return { messages: compressed };
+            },
             onStepFinish: async ({ usage, toolCalls, finishReason }) => {
                 stepCount++;
                 if (usage) {
@@ -173,6 +299,11 @@ async function runAgentTask(
                 }
                 const names = toolCalls?.map(tc => tc.toolName) || [];
                 toolChain.push(...names);
+
+                // Track if this step had a click — next step needs verification
+                const clickTools = ['findAndClick', 'findAndInsertText', 'selectOption', 'setCheckbox', 'setRadio'];
+                lastStepHadClick = names.some(n => clickTools.includes(n));
+
                 console.log(`[SW] Step ${stepCount}: tools=[${names.join(', ') || 'text'}] tokens=${usage?.totalTokens || 0} reason=${finishReason}`);
             }
         });
